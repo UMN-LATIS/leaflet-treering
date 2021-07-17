@@ -4285,7 +4285,7 @@ function ImageAdjustment(Lt) {
     'initOpen': false
   }).setContent(
     '<div><label style="text-align:center;display:block;">Brightness</label> \
-    <input class="imageSlider" id="brightness-slider" value=100 min=0 max=300 type=range> \
+    <input class="imageSlider" id="brightness-slider" value=1 min=.75 max=2 step = 0.05 type=range> \
     <label style="text-align:center;display:block;">Contrast</label> \
     <input class="imageSlider" id="contrast-slider" type=range min=50 max=350 value=100></div> \
     <label style="text-align:center;display:block;">Saturation</label> \
@@ -4319,7 +4319,7 @@ function ImageAdjustment(Lt) {
    * @function updateFilters
    */
   ImageAdjustment.prototype.updateFilters = function() {
-    var brightnessSlider = document.getElementById("brightness-slider");
+    var brightnessSlider = document.getElementById("brightness-slider").value;
     var contrastSlider = document.getElementById("contrast-slider");
     var saturationSlider = document.getElementById("saturation-slider");
     var hueSlider = document.getElementById("hue-slider");
@@ -4331,7 +4331,6 @@ function ImageAdjustment(Lt) {
     var unsharpnessSlider = document.getElementById("unsharpness-slider").value;
     document.getElementsByClassName("leaflet-pane")[0].style.filter =
       "contrast(" + contrastSlider.value + "%) " +
-      "brightness(" + brightnessSlider.value + "%) " +
       "saturate(" + saturationSlider.value + "%) " +
       "invert(" + invert + ")" +
       "hue-rotate(" + hueSlider.value + "deg)";
@@ -4339,6 +4338,10 @@ function ImageAdjustment(Lt) {
     console.log(embossName);
     console.log(embossDirection.value)
     Lt.baseLayer['GL Layer'].setKernelsAndStrength([
+      {
+        "name": "brightness",
+        "strength": brightnessSlider
+      },
       {
 			"name": embossName,
 			"strength": embossSlider

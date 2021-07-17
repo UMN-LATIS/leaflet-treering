@@ -153,6 +153,11 @@
 		-1, 0, 1,
 		-1, 1, 1,
 		-1, 0, 1
+	],
+	brightness: [
+		-1, 1, -1,
+		 1, 4,  1,
+		-1, 1, -1
 	]
   };
 
@@ -173,10 +178,15 @@
 	{ name: "emboss2", on: true},
 	{name: "emboss3", on: true},
 	{name: "emboss4", on: true},
+	{name: "emboss5", on: true},
+	{name: "emboss6", on: true},
+	{name: "emboss7", on: true},
+	{name: "emboss8", on: true},
     { name: "edgeDetect", },
     { name: "edgeDetect", },
     { name: "edgeDetect3", },
     { name: "edgeDetect3", },
+	{name: "brightness", on: true},
   ];
 
 L.TileLayer.GL = L.GridLayer.extend({
