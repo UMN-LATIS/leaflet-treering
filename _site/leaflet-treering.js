@@ -3527,15 +3527,7 @@ function Popout(Lt) {
     }
 
     // 6) spline buttons
-    if (!this.spline_event_listeners) {
-      this.reset_spline_buttons();
-    }
-  }
-
-  PopoutPlots.prototype.reset_spline_buttons = function () {
-    function addSpline () {
-      let btn = this;
-
+    function addSpline (btn) {
       // find median
       // do not calculate median with existing splines
       var nonSpline_data = [];
@@ -3556,13 +3548,9 @@ function Popout(Lt) {
 
       // switch button to remove spline
       btn.innerHTML = "Remove " + btn.id + "y Spline";
-      btn.removeEventListener('click', addSpline);
-      btn.addEventListener('click', removeSpline);
     }
 
-    function removeSpline () {
-      let btn = this;
-
+    function removeSpline (btn) {
       for (i in Lt.popoutPlots.shownData) {
         let data = Lt.popoutPlots.shownData[i];
         if (data.name == btn.id + 'y Spline') {
@@ -3576,20 +3564,26 @@ function Popout(Lt) {
 
       // switch button to add spline
       btn.innerHTML = "Add " + btn.id + "y Spline";
-      btn.removeEventListener('click', removeSpline);
-      btn.addEventListener('click', addSpline);
     }
 
-    for (let btn of this.win.document.getElementsByClassName("spline-button")) {
-      if (!this.spline_event_listeners) {
-        btn.addEventListener('click', addSpline);
-      } else if (btn.innerHTML == "Remove " + btn.id + "y Spline") {
+    for (let btn of this.win.document.getElementsByClassName('spline-button')) {
+      $(btn).off().click(() => {
+        if($(btn).text().includes("Add")) {
+          addSpline(btn);
+        } else {
+          removeSpline(btn);
+        }
+      })
+    }
+
+  }
+
+  PopoutPlots.prototype.reset_spline_buttons = function () {
+    for (btn of this.win.document.getElementsByClassName('spline-button')) {
+      if (btn.innerHTML == "Remove " + btn.id + "y Spline") {
         btn.innerHTML = "Add " + btn.id + "y Spline";
-        btn.removeEventListener('click', removeSpline);
-        btn.addEventListener('click', addSpline);
       }
     }
-    this.spline_event_listeners = true;
   }
 
   PopoutPlots.prototype.updatePlot_afterChangingPoints = function () {
