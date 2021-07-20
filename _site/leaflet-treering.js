@@ -2622,7 +2622,7 @@ function Popout(Lt) {
                              resetButton.className = 'plot-inputs';
                              resetButton.innerHTML = 'Reset plot'
                              resetButton.addEventListener('click', () => {
-                               this.spline_reset = true;
+                               this.reset_spline_buttons();
                                this.parseFiles(fileInput.files);
                              });
                              this.win.document.getElementById('files').insertBefore(resetButton, this.win.document.getElementById('instructions'));
@@ -2632,7 +2632,7 @@ function Popout(Lt) {
                              clearButton.className = 'plot-inputs';
                              clearButton.innerHTML = 'Clear added data'
                              clearButton.addEventListener('click', () => {
-                               this.spline_reset = true;
+                               this.reset_spline_buttons();
                                fileInput.value = null;
                                this.prepData_forPlotting();
                              });
@@ -2646,7 +2646,7 @@ function Popout(Lt) {
                              fileInput.setAttribute('accept', '.txt, .json, .csv, .rwl');
                              fileInput.setAttribute('multiple', '');
                              fileInput.addEventListener('input', () => {
-                               this.spline_reset = true;
+                               this.reset_spline_buttons();
                                this.parseFiles(fileInput.files);
                              });
                              this.win.document.getElementById('files').insertBefore(fileInput, this.win.document.getElementById('instructions'));
@@ -2659,7 +2659,7 @@ function Popout(Lt) {
                              // auto-spaghetti plot number limit
                              var numberLimit = this.win.document.getElementById('auto-spaghetti-number')
                              numberLimit.addEventListener('change', () => {
-                               this.spline_reset = true;
+                               this.reset_spline_buttons();
                                this.parseFiles(fileInput.files);
                              });
 
@@ -3527,11 +3527,9 @@ function Popout(Lt) {
     }
 
     // 6) spline buttons
-    if (this.spline_reset) {
+    if (!this.spline_event_listeners) {
       this.reset_spline_buttons();
-      this.spline_reset = false;
     }
-    this.reset_spline_buttons();
   }
 
   PopoutPlots.prototype.reset_spline_buttons = function () {
@@ -3583,11 +3581,11 @@ function Popout(Lt) {
     }
 
     for (let btn of this.win.document.getElementsByClassName("spline-button")) {
-      if (btn.innerHTML == "Remove " + btn.id + "y Spline") {
+      if (!this.spline_event_listeners) {
+        btn.addEventListener('click', addSpline);
+      } else if (btn.innerHTML == "Remove " + btn.id + "y Spline") {
         btn.innerHTML = "Add " + btn.id + "y Spline";
         btn.removeEventListener('click', removeSpline);
-        btn.addEventListener('click', addSpline);
-      } else if (!this.spline_event_listeners) {
         btn.addEventListener('click', addSpline);
       }
     }
