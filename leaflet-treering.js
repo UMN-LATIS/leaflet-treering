@@ -2646,6 +2646,7 @@ function Popout(Lt) {
                              fileInput.setAttribute('accept', '.txt, .json, .csv, .rwl');
                              fileInput.setAttribute('multiple', '');
                              fileInput.addEventListener('input', () => {
+                               this.spline_reset = true;
                                this.parseFiles(fileInput.files);
                              });
                              this.win.document.getElementById('files').insertBefore(fileInput, this.win.document.getElementById('instructions'));
@@ -2658,6 +2659,7 @@ function Popout(Lt) {
                              // auto-spaghetti plot number limit
                              var numberLimit = this.win.document.getElementById('auto-spaghetti-number')
                              numberLimit.addEventListener('change', () => {
+                               this.spline_reset = true;
                                this.parseFiles(fileInput.files);
                              });
 
@@ -3478,6 +3480,9 @@ function Popout(Lt) {
           if (span.innerHTML == set.name) {
             this.shownData.splice(m, 1);
             table.deleteRow(row_index);
+            if (set.name.split(" ")[1] == 'Spline') {
+                Lt.popoutPlots.reset_spline_buttons();
+            }
           }
         }
 
@@ -3522,6 +3527,14 @@ function Popout(Lt) {
     }
 
     // 6) spline buttons
+    if (this.spline_reset) {
+      this.reset_spline_buttons();
+      this.spline_reset = false;
+    }
+    this.reset_spline_buttons();
+  }
+
+  PopoutPlots.prototype.reset_spline_buttons = function () {
     function addSpline () {
       let btn = this;
 
@@ -3569,22 +3582,16 @@ function Popout(Lt) {
       btn.addEventListener('click', addSpline);
     }
 
-    if (!this.spline_event_listeners) { // only add listeners if they don't exist
-      this.spline_event_listeners = true;
-      for (let btn of doc.getElementsByClassName("spline-button")) {
+    for (let btn of this.win.document.getElementsByClassName("spline-button")) {
+      if (btn.innerHTML == "Remove " + btn.id + "y Spline") {
+        btn.innerHTML = "Add " + btn.id + "y Spline";
+        btn.removeEventListener('click', removeSpline);
+        btn.addEventListener('click', addSpline);
+      } else if (!this.spline_event_listeners) {
         btn.addEventListener('click', addSpline);
       }
-    } else if (this.spline_reset) {
-      this.spline_reset = false;
-      for (let btn of doc.getElementsByClassName("spline-button")) {
-        if (btn.innerHTML == "Remove " + btn.id + "y Spline") {
-          btn.innerHTML = "Add " + btn.id + "y Spline";
-          btn.removeEventListener('click', removeSpline);
-          btn.addEventListener('click', addSpline);
-        }
-      }
     }
-
+    this.spline_event_listeners = true;
   }
 
   PopoutPlots.prototype.updatePlot_afterChangingPoints = function () {
