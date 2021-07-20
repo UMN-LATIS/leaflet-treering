@@ -2622,6 +2622,7 @@ function Popout(Lt) {
                              resetButton.className = 'plot-inputs';
                              resetButton.innerHTML = 'Reset plot'
                              resetButton.addEventListener('click', () => {
+                               this.spline_reset = true;
                                this.parseFiles(fileInput.files);
                              });
                              this.win.document.getElementById('files').insertBefore(resetButton, this.win.document.getElementById('instructions'));
@@ -2631,6 +2632,7 @@ function Popout(Lt) {
                              clearButton.className = 'plot-inputs';
                              clearButton.innerHTML = 'Clear added data'
                              clearButton.addEventListener('click', () => {
+                               this.spline_reset = true;
                                fileInput.value = null;
                                this.prepData_forPlotting();
                              });
@@ -3072,17 +3074,13 @@ function Popout(Lt) {
     }
 
     var lambda = 0.00001 * Math.pow(2, 9.9784 * Math.log(year_freq) + 3.975);
-    console.log(lambda)
 
-    // const spline = smoothingSpline(spline_data, { lambda: lambda });
-    // spline.points = [ {x: x0, y: y0}, {x: x1, y: y1}, ... ]
-
-    var spline_points = [];
+    const spline = simpleSmoothingSpline(spline_data, { lambda: lambda });
 
     // Plotly.js format
     var splineWidths = [];
     var splineYears = [];
-    for (let pair of spline_points) {
+    for (let pair of spline.points) {
       splineYears.push(String(pair.x));
       splineWidths.push(String(pair.y));
     }
@@ -3090,7 +3088,7 @@ function Popout(Lt) {
     var splineSet = new Object();
     splineSet[y_name] = splineWidths;
     splineSet[x_name] = splineYears;
-    splineSet.name = "20y Spline";
+    splineSet.name = year_freq + "y Spline";
     var color = (color_loc == "line") ? ({color: '#ff0000', width: 4}) : ('#ff0000');
     if (color_loc == "line") {
       splineSet.mode = 'lines';
@@ -3492,6 +3490,14 @@ function Popout(Lt) {
           }
         }
 
+        if (!this.data_pre_highlight_hover.length) {
+          this.data_pre_highlight_hover = this.shownData;
+        }
+
+        if (!this.data_pre_highlight_checkbox.length) {
+          this.data_pre_highlight_checkbox = this.shownData;
+        }
+
         remove_from_data(this.data_pre_highlight_hover);
         remove_from_data(this.data_pre_highlight_checkbox);
 
@@ -3506,7 +3512,7 @@ function Popout(Lt) {
           }
         }
 
-        if (checked_question == false) { // reset data color if non checked
+        if (checked_question == false) { // reset data color if none checked
           this.shownData = JSON.parse(JSON.stringify(this.data_pre_highlight_checkbox));
         }
 
@@ -3515,20 +3521,68 @@ function Popout(Lt) {
       });
     }
 
-    // 6) spline button
-    var splineBtns = doc.getElementsByClassName("spline-button");
-    for (let btn of splineBtns) {
-      let year_freq = parseInt(btn.id);
-      btn.addEventListener('click', () => {
-        // find median
-        var median = Lt.popoutPlots.median(this.shownData, "x", "y", "line");
+    // 6) spline buttons
+    function addSpline () {
+      let btn = this;
 
-        // create spline
-        var spline = Lt.popoutPlots.spline(year_freq, median, "x", "y", "line");
-        this.shownData.push(spline);
+      // find median
+      // do not calculate median with existing splines
+      var nonSpline_data = [];
+      for (data of Lt.popoutPlots.shownData) {
+        if (data.name.split(' ')[1] != 'Spline') {
+          nonSpline_data.push(data);
+        }
+      }
+      var median = Lt.popoutPlots.median(nonSpline_data, "x", "y", "line");
 
-        this.updatePlot(this.shownData);
-      });
+      // create spline
+      var spline = Lt.popoutPlots.spline(parseInt(btn.id), median, "x", "y", "line");
+      Lt.popoutPlots.shownData.push(spline);
+
+      Lt.popoutPlots.updatePlot(Lt.popoutPlots.shownData);
+      Lt.popoutPlots.createDataOptions(Lt.popoutPlots.shownData);
+      Lt.popoutPlots.createListeners();
+
+      // switch button to remove spline
+      btn.innerHTML = "Remove " + btn.id + "y Spline";
+      btn.removeEventListener('click', addSpline);
+      btn.addEventListener('click', removeSpline);
+    }
+
+    function removeSpline () {
+      let btn = this;
+
+      for (i in Lt.popoutPlots.shownData) {
+        let data = Lt.popoutPlots.shownData[i];
+        if (data.name == btn.id + 'y Spline') {
+          Lt.popoutPlots.shownData.splice(parseInt(i), 1);
+        }
+      }
+
+      Lt.popoutPlots.updatePlot(Lt.popoutPlots.shownData);
+      Lt.popoutPlots.createDataOptions(Lt.popoutPlots.shownData);
+      Lt.popoutPlots.createListeners();
+
+      // switch button to add spline
+      btn.innerHTML = "Add " + btn.id + "y Spline";
+      btn.removeEventListener('click', removeSpline);
+      btn.addEventListener('click', addSpline);
+    }
+
+    if (!this.spline_event_listeners) { // only add listeners if they don't exist
+      this.spline_event_listeners = true;
+      for (let btn of doc.getElementsByClassName("spline-button")) {
+        btn.addEventListener('click', addSpline);
+      }
+    } else if (this.spline_reset) {
+      this.spline_reset = false;
+      for (let btn of doc.getElementsByClassName("spline-button")) {
+        if (btn.innerHTML == "Remove " + btn.id + "y Spline") {
+          btn.innerHTML = "Add " + btn.id + "y Spline";
+          btn.removeEventListener('click', removeSpline);
+          btn.addEventListener('click', addSpline);
+        }
+      }
     }
 
   }
