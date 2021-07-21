@@ -3306,40 +3306,25 @@ function Popout(Lt) {
     var select = doc.createElement('select');
     select.id = 'spline-name';
 
+    for (set of data) {
+      if (set.name.includes('Spline') == false) { // don't give option for splines
+        let option = doc.createElement('option');
+        option.value = set.name;
+        option.innerHTML = set.name;
+        select.appendChild(option);
+      }
+    }
+
     var submit = doc.createElement('button');
     submit.id = 'spline-submit';
     submit.type = 'button';
     submit.innerHTML = 'create spline.';
-    $(submit).click(() => {
-      var input = doc.getElementById('spline-frequency');
-      var spline_name = doc.getElementById('spline-name').value;
-
-      for (set of data) {
-        if (spline_name == set.name) {
-          var core = set;
-        }
-      }
-
-      var spline = Lt.popoutPlots.spline(parseInt(input.value), core, "x", "y", "line");
-      Lt.popoutPlots.shownData.push(spline);
-
-      Lt.popoutPlots.updatePlot(Lt.popoutPlots.shownData);
-      Lt.popoutPlots.createDataOptions(Lt.popoutPlots.shownData);
-      Lt.popoutPlots.createListeners();
-    })
 
     div.appendChild(labelA);
     div.appendChild(select);
     div.appendChild(labelB);
     div.appendChild(yearInput);
     div.appendChild(submit);
-
-    for (set of data) {
-      let option = doc.createElement('option');
-      option.value = set.name;
-      option.innerHTML = set.name;
-      select.appendChild(option);
-    }
 
     parent.insertBefore(div, ref);
   }
@@ -3366,12 +3351,12 @@ function Popout(Lt) {
     this.data_pre_highlight_hover = [];
     this.data_pre_highlight_checkbox = [];
 
-    function updateData (elem, new_data, option, change) {
+    function updateData (elem, new_data, option1, option2, change) {
       this.shownData = new_data;
       let span = $(elem).closest('tr').find('span.data-name-span')[0];
       for (set of new_data) {
         if (set.name == span.innerHTML) {
-          set[option] = change;
+          (!option2) ? set[option1] = change : set[option1][option2] = change;
           return
         }
       }
@@ -3464,7 +3449,7 @@ function Popout(Lt) {
     for (let j = 0; j < colorInputs.length; j++) {
       let colorInput = colorInputs[j];
       colorInput.addEventListener('change', () => {
-        updateData(colorInput, this.shownData, 'line', { color: colorInput.value } );
+        updateData(colorInput, this.shownData, 'line', 'color', colorInput.value);
         this.updatePlot(this.shownData);
       });
     }
@@ -3498,14 +3483,14 @@ function Popout(Lt) {
 
         if (highlightInput.checked) {
           if (highlightCount > 1) {
-            updateData(highlightInput, this.shownData, 'line', { color: '#00d907', width: 4 } );
+            updateData(highlightInput, this.shownData, 'line', null, { color: '#00d907', width: 4 } );
           } else {
             for (input of checkboxes_for_highlighting) {
-              updateData(input, this.shownData, 'line', { color: '#797979' } );
+              updateData(input, this.shownData, 'line', null, { color: '#797979' } );
             }
-            updateData(highlightInput, this.shownData, 'line', { color: '#00d907', width: 4 } );
+            updateData(highlightInput, this.shownData, 'line', null, { color: '#00d907', width: 4 } );
           }
-          updateData(highlightInput, this.shownData, 'opacity', 1 );
+          updateData(highlightInput, this.shownData, 'opacity', null, 1 );
 
           // move set to end so it appears on top of all other lines
           let span = $(highlightInput).closest('tr').find('span.data-name-span')[0];
@@ -3519,7 +3504,7 @@ function Popout(Lt) {
 
         } else {
           if (highlightCount > 0) {
-            updateData(highlightInput, this.shownData, 'line', { color: '#797979' } );
+            updateData(highlightInput, this.shownData, 'line', 'color', '#797979');
           } else {
             this.shownData = JSON.parse(JSON.stringify(this.data_pre_highlight_checkbox)); // plot goes back to original if no inputs checked
           }
@@ -3544,7 +3529,8 @@ function Popout(Lt) {
           if (span.innerHTML == set.name) {
             this.shownData.splice(m, 1);
             table.deleteRow(row_index);
-            Lt.popoutPlots.reset_spline_buttons();
+            let splineBtnID = span.innerHTML.split(' ')[1].substring(0, 2);
+            Lt.popoutPlots.reset_spline_buttons(splineBtnID);
           }
         }
 
@@ -3594,7 +3580,7 @@ function Popout(Lt) {
       // do not calculate median with existing splines
       var nonSpline_data = [];
       for (data of Lt.popoutPlots.shownData) {
-        if (data.name.split(' ')[1] != 'Spline') {
+        if (data.name.includes('Spline') == false) {
           nonSpline_data.push(data);
         }
       }
@@ -3615,7 +3601,7 @@ function Popout(Lt) {
     function removeSpline (btn) {
       for (i in Lt.popoutPlots.shownData) {
         let data = Lt.popoutPlots.shownData[i];
-        if (data.name == btn.id + 'y Spline') {
+        if (data.name == 'Median ' + btn.id + 'y Spline') {
           Lt.popoutPlots.shownData.splice(parseInt(i), 1);
         }
       }
@@ -3638,12 +3624,38 @@ function Popout(Lt) {
       })
     }
 
+    // individual spline button
+    var submit = doc.getElementById('spline-submit');
+    $(submit).click(() => {
+      var input = doc.getElementById('spline-frequency');
+      var spline_name = doc.getElementById('spline-name').value;
+
+      for (set of Lt.popoutPlots.shownData) {
+        if (spline_name == set.name) {
+          var core = set;
+        }
+      }
+
+      var spline = Lt.popoutPlots.spline(parseInt(input.value), core, "x", "y", "line");
+      Lt.popoutPlots.shownData.push(spline);
+
+      Lt.popoutPlots.updatePlot(Lt.popoutPlots.shownData);
+      Lt.popoutPlots.createDataOptions(Lt.popoutPlots.shownData);
+      Lt.popoutPlots.createListeners();
+    })
+
   }
 
-  PopoutPlots.prototype.reset_spline_buttons = function () {
+  PopoutPlots.prototype.reset_spline_buttons = function (specfic_btn_id) {
     for (btn of this.win.document.getElementsByClassName('spline-button')) {
-      if (btn.innerHTML == "Remove " + btn.id + "y Spline") {
-        btn.innerHTML = "Add " + btn.id + "y Spline";
+      if (specfic_btn_id) {
+        if (btn.innerHTML == "Remove " + specfic_btn_id + "y Spline") {
+          btn.innerHTML = "Add " + specfic_btn_id + "y Spline";
+        }
+      } else {
+        if (btn.innerHTML == "Remove " + btn.id + "y Spline") {
+          btn.innerHTML = "Add " + btn.id + "y Spline";
+        }
       }
     }
   }
