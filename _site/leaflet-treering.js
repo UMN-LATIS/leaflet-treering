@@ -2600,7 +2600,7 @@ function ButtonBar(Lt, btns, icon, toolTip) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function Popout(Lt) {
-  this.btn = new Button('launch', 'Enter Popout Mode to access the full suite\nof measurement and annotation tools', () => {
+  this.btn = new Button('straighten', 'Enter Popout Mode to access the full suite\nof measurement and annotation tools', () => {
     window.open(Lt.meta.popoutUrl, 'popout' + Math.round(Math.random()*10000),
                 'location=yes,height=600,width=800,scrollbars=yes,status=yes');
   });
@@ -2611,7 +2611,7 @@ function Popout(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
  function PopoutPlots (Lt) {
-   this.btn = new Button('launch',
+   this.btn = new Button('insights',
                          'Open time series plots in a new window',
                          () => {
                            this.win = window.open('plot.html', '', 'height=600,width=' + String(screen.width));
