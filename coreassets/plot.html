@@ -42,12 +42,28 @@
        width: auto;
      }
 
-     .spline-button {
+     #spline-submit {
+       border: 2px solid #d1d1d1;
+       margin-left: 5px;
+       outline: none;
+       cursor: pointer;
+       font-family: Arial;
+       font-weight: bold;
+       background-color: transparent;
+       color: #636363;
+       width: auto;
+     }
+
+     .spline-button, #spline-submit {
        font-size: 14px;
      }
 
-     .plot-inputs:hover, .spline-button:hover {
+     .plot-inputs:hover, .spline-button:hover, #spline-submit:hover  {
        background-color: #d1d1d1 !important;
+     }
+
+     #individual-spline {
+       margin-top: 5px;
      }
 
      #fileInput, #\31 00 {
@@ -78,11 +94,11 @@
          margin-bottom: 10px;
        }
 
-      #auto-spaghetti-number {
+      #auto-spaghetti-number, #spline-frequency {
         width: 60px;
       }
 
-      p {
+      p, label {
         margin: 0;
         margin-top: 2px;
         margin-bottom: 10px;
@@ -133,7 +149,7 @@
       <button class="spline-button" id="30" type="button">Add 30y spline</button>
       <button class="spline-button" id="50" type="button">Add 50y spline</button>
       <button class="spline-button" id="100" type="button">Add 100y spline</button>
-      <p> Splines for multiple datasets or large datasets may take longer to compute and render. </p>
+      <p id="spline-warning"> Splines for multiple datasets or large datasets may take longer to compute and render. </p>
       <p> Number of files until spaghetti plot is rendered: <input type='number' id='auto-spaghetti-number' value='5'></input> </p>
       <p> Hover over file name to highlight corresponding line. Select checkbox to highlight multiple lines.</p>
     </div>

@@ -3090,7 +3090,7 @@ function Popout(Lt) {
     var splineSet = new Object();
     splineSet[y_name] = splineWidths;
     splineSet[x_name] = splineYears;
-    splineSet.name = year_freq + "y Spline";
+    splineSet.name = data.name + ' ' + year_freq + "y Spline";
     var color = (color_loc == "line") ? ({color: '#ff0000', width: 4}) : ('#ff0000');
     if (color_loc == "line") {
       splineSet.mode = 'lines';
@@ -3278,6 +3278,70 @@ function Popout(Lt) {
     })
 
     optionsDiv.appendChild(inputTable);
+
+    // create dropdown menu for individual core splines
+    var parent = doc.getElementById('files');
+    var ref = doc.getElementById('spline-warning');
+
+    if (doc.getElementById('individual-spline')) { // remove when refreshed
+      doc.getElementById('individual-spline').remove();
+    }
+
+    var div = doc.createElement('div');
+    div.id = 'individual-spline';
+
+    var labelA = doc.createElement('label');
+    labelA.for = 'spline-name';
+    labelA.innerHTML = 'Spline for: ';
+
+    var labelB = doc.createElement('label');
+    labelB.for = 'spline-frequency';
+    labelB.innerHTML = ' at frequency: ';
+
+    var yearInput = doc.createElement('input');
+    yearInput.value = 10;
+    yearInput.type = 'number';
+    yearInput.id = 'spline-frequency';
+
+    var select = doc.createElement('select');
+    select.id = 'spline-name';
+
+    var submit = doc.createElement('button');
+    submit.id = 'spline-submit';
+    submit.type = 'button';
+    submit.innerHTML = 'create spline.';
+    $(submit).click(() => {
+      var input = doc.getElementById('spline-frequency');
+      var spline_name = doc.getElementById('spline-name').value;
+
+      for (set of data) {
+        if (spline_name == set.name) {
+          var core = set;
+        }
+      }
+
+      var spline = Lt.popoutPlots.spline(parseInt(input.value), core, "x", "y", "line");
+      Lt.popoutPlots.shownData.push(spline);
+
+      Lt.popoutPlots.updatePlot(Lt.popoutPlots.shownData);
+      Lt.popoutPlots.createDataOptions(Lt.popoutPlots.shownData);
+      Lt.popoutPlots.createListeners();
+    })
+
+    div.appendChild(labelA);
+    div.appendChild(select);
+    div.appendChild(labelB);
+    div.appendChild(yearInput);
+    div.appendChild(submit);
+
+    for (set of data) {
+      let option = doc.createElement('option');
+      option.value = set.name;
+      option.innerHTML = set.name;
+      select.appendChild(option);
+    }
+
+    parent.insertBefore(div, ref);
   }
 
   PopoutPlots.prototype.updatePlot = function (new_data) {
@@ -3480,9 +3544,7 @@ function Popout(Lt) {
           if (span.innerHTML == set.name) {
             this.shownData.splice(m, 1);
             table.deleteRow(row_index);
-            if (set.name.split(" ")[1] == 'Spline') {
-                Lt.popoutPlots.reset_spline_buttons();
-            }
+            Lt.popoutPlots.reset_spline_buttons();
           }
         }
 
