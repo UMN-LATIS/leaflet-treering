@@ -3529,8 +3529,11 @@ function Popout(Lt) {
           if (span.innerHTML == set.name) {
             this.shownData.splice(m, 1);
             table.deleteRow(row_index);
-            let splineBtnID = span.innerHTML.split(' ')[1].substring(0, 2);
-            Lt.popoutPlots.reset_spline_buttons(splineBtnID);
+
+            if (span.innerHTML.includes('Median') && span.innerHTML.includes('Spline')) {
+              let splineBtnID = span.innerHTML.split(' ')[1].substring(0, 2);
+              Lt.popoutPlots.reset_spline_buttons(splineBtnID);
+            }
           }
         }
 
