@@ -155,9 +155,14 @@
 		-1, 0, 1
 	],
 	brightness: [
-		-1, 1, -1,
-		 1, 4,  1,
-		-1, 1, -1
+		0, 0, 0,
+		 0, 1,  0,
+		0, 0, 0
+	],
+	contrast: [
+		0, 0, 0,
+		 0, 1,  0,
+		0, 0, 0
 	]
   };
 
@@ -187,6 +192,7 @@
     { name: "edgeDetect3", },
     { name: "edgeDetect3", },
 	{name: "brightness", on: true},
+	{name: "contrast", on: true},
   ];
 
 L.TileLayer.GL = L.GridLayer.extend({
@@ -579,6 +585,7 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 			gl.uniform1f(this.kernelWeightLocation, this.computeKernelWeight(kernels[kernel.name]));
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[frameBufferNumber]);
 			this.setUniform("uSharpenStrength", kernel.strength);
+			this.setUniform("uContrastStrength", kernel.strength);
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 			gl.bindTexture(gl.TEXTURE_2D, this.textures[frameBufferNumber]);
 			frameBufferNumber++;

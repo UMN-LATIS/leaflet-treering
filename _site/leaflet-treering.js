@@ -4285,9 +4285,9 @@ function ImageAdjustment(Lt) {
     'initOpen': false
   }).setContent(
     '<div><label style="text-align:center;display:block;">Brightness</label> \
-    <input class="imageSlider" id="brightness-slider" value=1 min=.75 max=2 step = 0.05 type=range> \
+    <input class="imageSlider" id="brightness-slider" value=1 min=1 max=3 step = 0.05 type=range> \
     <label style="text-align:center;display:block;">Contrast</label> \
-    <input class="imageSlider" id="contrast-slider" type=range min=50 max=350 value=100></div> \
+    <input class="imageSlider" id="contrast-slider" type=range min=0 max=2 value=0 step=0.05 type=range></div> \
     <label style="text-align:center;display:block;">Saturation</label> \
     <input class="imageSlider" id="saturation-slider" type=range min=0 max=350 value=100></div> \
     <label style="text-align:center;display:block;">Hue Rotation</label> \
@@ -4320,7 +4320,7 @@ function ImageAdjustment(Lt) {
    */
   ImageAdjustment.prototype.updateFilters = function() {
     var brightnessSlider = document.getElementById("brightness-slider").value;
-    var contrastSlider = document.getElementById("contrast-slider");
+    var contrastSlider = document.getElementById("contrast-slider").value;
     var saturationSlider = document.getElementById("saturation-slider");
     var hueSlider = document.getElementById("hue-slider");
     var invert = $("#invert-checkbox").prop('checked')?1:0;
@@ -4357,6 +4357,10 @@ function ImageAdjustment(Lt) {
       {
         "name":"unsharpen",
         "strength": unsharpnessSlider
+      },
+      {
+        "name":"contrast",
+        "strength": contrastSlider
       }
     ]);
   };

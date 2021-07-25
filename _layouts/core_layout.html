@@ -73,6 +73,23 @@ vec3 embossFilter(in vec2 fragCoord, float strength){
 		;
 		return mix(texSample( 0., 0., fragCoord), f , strength);
 }
+vec4 applyContrast( vec4 tex, float u_contrast, float u_rangeCenter, float u_rangeWidth ) {
+	if( u_contrast > 0.0 ) {
+		tex.rgb = ( tex.rgb - 0.5 ) / ( 1.0 - u_contrast ) + 0.5;
+	} else {
+		tex.rgb = ( tex.rgb - 0.5 ) * ( 1.0 + u_contrast ) + 0.5;
+	}
+
+	return vec4(
+		clamp(
+			// minus matrix by center range and divide by width of applied contrast (normalize by 0.5)
+			( tex.rgb - u_rangeCenter ) / u_rangeWidth + 0.5,
+			0.0,
+			1.0
+		),
+		tex.a
+	);
+}
 void main(void){
 		// gl_Position = vec4(clipSpace * vec2(1, u_flipY), 0, 1);
 		vec4 targetTexture = texture2D(uTexture0, vec2(vTextureCoords.x, vTextureCoords.y));
@@ -118,7 +135,8 @@ void main(void){
 
 		var layer = L.tileLayer.gl({
 				uniforms: {
-						uSharpenStrength: 0
+						uSharpenStrength: 0,
+						uContrastStrength: 0
 				},
 						crs: L.CRS.Simple,
 						noWrap: true,
