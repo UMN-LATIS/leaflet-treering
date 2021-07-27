@@ -2600,9 +2600,12 @@ function ButtonBar(Lt, btns, icon, toolTip) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function Popout(Lt) {
+  var height = (1/3) * screen.height;
+  var width = screen.width;
+
   this.btn = new Button('straighten', 'Enter Popout Mode to access the full suite\nof measurement and annotation tools', () => {
     window.open(Lt.meta.popoutUrl, 'popout' + Math.round(Math.random()*10000),
-                'location=yes,height=600,width=800,scrollbars=yes,status=yes');
+                'location=yes,height=' + height + ',width=' + width + ',scrollbars=yes,status=yes, top=0');
   });
 };
 
@@ -2611,10 +2614,14 @@ function Popout(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
  function PopoutPlots (Lt) {
+   var height = (4/9) * screen.height;
+   var top = (2/3) * screen.height;
+   var width = screen.width;
+
    this.btn = new Button('insights',
                          'Open time series plots in a new window',
                          () => {
-                           this.win = window.open('plot.html', '', 'height=600,width=' + String(screen.width));
+                           this.win = window.open('plot.html', '', 'height=' + height + ',width=' + width + ', top=' + top);
 
                            this.win.onload = () => {
                              // reset plot from user changes
