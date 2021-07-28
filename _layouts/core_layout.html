@@ -22,6 +22,8 @@
 
 	<link rel="stylesheet" href="../style.css">
 
+	<script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
+
 	<script src="../assets/jquery/dist/jquery.min.js"></script>
 	<script src="../assets/jquery-ui/jquery-ui.min.js"></script>
 	<script src="../assets/jszip/dist/jszip.min.js"></script>
@@ -135,8 +137,10 @@ void main(void){
 			tileLayers: [baseLayer],
 		}).addTo(map);
 
-    // map, basepath, {ppm: int, saveURL: string, savePermission: bool, popoutUrl: string, assetName: string, hasLatewood: bool, initialData: json}
-		// basepath is the local image folder location
-		var treering = new LTreering(map, "../", coreData);
-		treering.loadInterface();
+		// add templates to body before interface loaded
+		$.get("templates.html", function (data) {
+			$("body").append(data);
+			var treering = new LTreering(map, "../", coreData, baseLayer, layer);
+			treering.loadInterface();
+		});
 	</script>
