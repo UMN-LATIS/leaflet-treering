@@ -511,7 +511,7 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 	_render: function(coords) {
 		var gl = this._gl;
 
-		// this._currentKernel = kernels["unsharpen"];
+		//this._currentKernel = kernels["unsharpen"];
 		
 		
 		gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
