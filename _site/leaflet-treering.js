@@ -4287,7 +4287,7 @@ function ImageAdjustment(Lt) {
     '<div><label style="text-align:center;display:block;">Brightness</label> \
     <input class="imageSlider" id="brightness-slider" value=1 min=1 max=3 step = 0.05 type=range> \
     <label style="text-align:center;display:block;">Contrast</label> \
-    <input class="imageSlider" id="contrast-slider" type=range min=0 max=2 value=0 step=0.05 type=range></div> \
+    <input class="imageSlider" id="contrast-slider" type=range min=0 max=2 value=1 step=0.05 type=range></div> \
     <label style="text-align:center;display:block;">Saturation</label> \
     <input class="imageSlider" id="saturation-slider" type=range min=0 max=350 value=100></div> \
     <label style="text-align:center;display:block;">Hue Rotation</label> \
@@ -4336,31 +4336,31 @@ function ImageAdjustment(Lt) {
       "hue-rotate(" + hueSlider.value + "deg)";
     var embossName = embossDirection; 
     console.log(embossName);
-    console.log(embossDirection.value)
+    console.log(contrastSlider)
     Lt.baseLayer['GL Layer'].setKernelsAndStrength([
       {
         "name": "brightness",
-        "strength": brightnessSlider
+        "strength": parseFloat(brightnessSlider)
       },
       {
 			"name": embossName,
-			"strength": embossSlider
+			"strength": parseFloat(embossSlider)
       },
       {
         "name":"edgeDetect3",
-        "strength": edgeDetect
+        "strength": parseFloat(edgeDetect)
       },
       {
         "name":"sharpness",
-        "strength": sharpnessSlider
+        "strength": parseFloat(sharpnessSlider)
       },
       {
         "name":"unsharpen",
-        "strength": unsharpnessSlider
+        "strength": parseFloat(unsharpnessSlider)
       },
       {
         "name":"contrast",
-        "strength": contrastSlider
+        "strength": parseFloat(contrastSlider)
       }
     ]);
   };
@@ -4397,9 +4397,9 @@ function ImageAdjustment(Lt) {
       this.updateFilters();
     });
     $("#reset-button").click(() => {
-      $(brightnessSlider).val(100);
-      $(contrastSlider).val(100);
-      $(saturationSlider).val(100);
+      $(brightnessSlider).val(1);
+      $(contrastSlider).val(1);
+      $(saturationSlider).val(1);
       $(hueSlider).val(0);
       $(sharpnessSlider).val(0);
       $(embossSlider).val(0);

@@ -53,14 +53,10 @@ vec3 texSample(const float x, const float y, in vec2 fragCoord)
 {
 		vec2 uv = fragCoord;
 		uv = (uv + vec2((x)/256.0 , (y)/256.0 ));
-		// this also fixed the seam by clamping one pixel from the bottom, but it's super hacky
-		// if(uv.y > 0.996) {
-		//     uv.y = 0.99;
-		// }
-			return texture2D(uTexture0, uv).xyz;
+		return texture2D(uTexture0, uv).xyz;
 	}
 vec3 embossFilter(in vec2 fragCoord, float strength){
-		vec3 f =
+	vec3 f =
 		texSample(-1.,-1., fragCoord) *  u_kernel[0] +
 		texSample( 0.,-1., fragCoord) *  u_kernel[1] +
 		texSample( 1.,-1., fragCoord) *  u_kernel[2] +
@@ -71,33 +67,27 @@ vec3 embossFilter(in vec2 fragCoord, float strength){
 		texSample( 0., 1., fragCoord) *  u_kernel[7] +
 		texSample( 1., 1., fragCoord) *  u_kernel[8]
 		;
-		return mix(texSample( 0., 0., fragCoord), f , strength);
+	return mix(texSample( 0., 0., fragCoord), f , strength);
 }
-vec4 applyContrast( vec4 tex, float u_contrast, float u_rangeCenter, float u_rangeWidth ) 
+vec3 applyContrast( vec3 sample, float u_contrast, float u_rangeCenter, float u_rangeWidth ) 
 {
-	if( u_contrast > 0.0 ) {
-		tex.rgb = ( tex.rgb - 0.5 ) / ( 1.0 - u_contrast ) + 0.5;
-	} else {
-		tex.rgb = ( tex.rgb - 0.5 ) * ( 1.0 + u_contrast ) + 0.5;
-	}
+	
+	vec3 newValue = (( sample.rgb - vec3(0.5) ) * u_contrast ) + vec3(0.5);
 
-	return vec4(
-		clamp(
-			// minus matrix by center range and divide by width of applied contrast (normalize by 0.5)
-			( tex.rgb - u_rangeCenter ) / u_rangeWidth + 0.5,
-			0.0,
-			1.0
-		),
-		tex.a
-	);
+	return clamp(newValue, 0.0, 1.0);
 }
 void main(void){
 		// gl_Position = vec4(clipSpace * vec2(1, u_flipY), 0, 1);
 		vec4 targetTexture = texture2D(uTexture0, vec2(vTextureCoords.x, vTextureCoords.y));
 		// gl_FragColor = targetTexture;
+		
 		vec3 result = embossFilter(vec2(vTextureCoords.x, vTextureCoords.y), uSharpenStrength);
-		vec4 test = applyContrast(texture2D(uTexture0, vec2(vTextureCoords.x, vTextureCoords.y)),uContrastStrength, 1.0, 0.5);
-		gl_FragColor = vec4((result / u_kernelWeight).rgb,targetTexture.a);
+		
+		// apply contrast after our other kernels have run
+		// we could refactor this to actually have separate shaders
+		vec3 constrastResult = applyContrast(result,uContrastStrength, 0.5, 1.);
+		
+		gl_FragColor = vec4(constrastResult,targetTexture.a);
 }
 `;
 
@@ -138,7 +128,7 @@ void main(void){
 		var layer = L.tileLayer.gl({
 				uniforms: {
 						uSharpenStrength: 0,
-						uContrastStrength: 0
+						uContrastStrength: 1
 				},
 						crs: L.CRS.Simple,
 						noWrap: true,

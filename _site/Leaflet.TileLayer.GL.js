@@ -156,7 +156,7 @@
 	],
 	brightness: [
 		0, 0, 0,
-		 0, 1,  0,
+		0, 1, 0,
 		0, 0, 0
 	],
 	contrast: [
@@ -580,12 +580,25 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 			const kernel = this.kernelSettings[index];
 			if(kernel.strength === 0) {
 				continue;
+				
 			}
+		
 			gl.uniform1fv(this._currentKernel, kernels[kernel.name]);
 			gl.uniform1f(this.kernelWeightLocation, this.computeKernelWeight(kernels[kernel.name]));
 			gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffers[frameBufferNumber]);
-			this.setUniform("uSharpenStrength", kernel.strength);
-			this.setUniform("uContrastStrength", kernel.strength);
+			
+
+			// hacky conditional to make sure we don't reapply constrast on each kernel.
+			// TODO: unwind this and see if it actually matters?
+			if(kernel.name == "contrast") {
+				this.setUniform("uContrastStrength", kernel.strength);
+				this.setUniform("uSharpenStrength", 0.0);
+			}
+			else {
+				this.setUniform("uSharpenStrength", kernel.strength);
+				this.setUniform("uContrastStrength", 1.0);
+			}
+			
 			gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 			gl.bindTexture(gl.TEXTURE_2D, this.textures[frameBufferNumber]);
 			frameBufferNumber++;
