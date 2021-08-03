@@ -4285,7 +4285,7 @@ function ImageAdjustment(Lt) {
     'initOpen': false
   }).setContent(
     '<div><label style="text-align:center;display:block;">Brightness</label> \
-    <input class="imageSlider" id="brightness-slider" value=1 min=1 max=3 step = 0.05 type=range> \
+    <input class="imageSlider" id="brightness-slider" value=0.0 min=0.0 max=1 step = 0.05 type=range> \
     <label style="text-align:center;display:block;">Contrast</label> \
     <input class="imageSlider" id="contrast-slider" type=range min=0 max=2 value=1 step=0.05 type=range></div> \
     <label style="text-align:center;display:block;">Saturation</label> \
