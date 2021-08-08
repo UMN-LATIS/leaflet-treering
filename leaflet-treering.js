@@ -5742,6 +5742,7 @@ function SaveLocal(Lt) {
       'points': Lt.data.points,
       'attributesObjectArray': Lt.annotationAsset.attributesObjectArray,
       'annotations': Lt.aData.annotations,
+      'ptWidths': Lt.helper.findDistances(),
     };
 
     // don't serialize our default value
@@ -6394,6 +6395,58 @@ function Helper(Lt) {
 
    return pts;
   };
+
+  /**
+   * Finds distances between points for plotting
+   * @function
+   */
+   Helper.prototype.findDistances = function () {
+     var disObj = new Object()
+     var pts = (Lt.preferences.forwardDirection) ? Lt.data.points : this.reverseData(Lt.data.points);
+
+     var yearArray = [];
+     var ewWidthArray = [];
+     var lwWidthArray = [];
+     var twWidthArray = [];
+
+     var breakDis = 0;
+     var prevPt = null;
+     pts.map((e, i) => {
+       if (e.start) {
+         if (!pts[i - 1] || !pts[i - 1].break) {
+           prevPt = e;
+         } else if (pts[i - 1].break) {
+           breakDis = Lt.helper.trueDistance(prevPt.latLng, e.latLng);
+         }
+       } else if (e.year) {
+         yearArray.push(parseInt(e.year));
+         var width = Lt.helper.trueDistance(prevPt.latLng, e.latLng) - breakDis;
+         width = parseFloat(width.toFixed(5));
+         if (e.earlywood && Lt.measurementOptions.subAnnual) {
+           ewWidthArray.push(width);
+         } else if (!e.earlywood && Lt.measurementOptions.subAnnual) {
+           lwWidthArray.push(width)
+         } else {
+           twWidthArray.push(width)
+         }
+         breakDis = 0;
+         prevPt = e;
+       }
+     });
+
+     if (Lt.measurementOptions.subAnnual) {
+       disObj.ew = { x: yearArray, y: ewWidthArray, name: Lt.meta.assetName + '_ew' };
+       disObj.lw = { x: yearArray, y: lwWidthArray, name: Lt.meta.assetName + '_lw' };
+       for (let i = 0; i < ewWidthArray.length; i++) {
+         let width = ewWidthArray[i] + lwWidthArray[i];
+         twWidthArray.push(parseFloat(width.toFixed(5)));
+       }
+     }
+
+     disObj.tw = { x: yearArray, y: twWidthArray, name: Lt.meta.assetName + '_tw' }
+
+     return disObj
+   }
 
   /**
    * Finds closest points for connection
