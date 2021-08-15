@@ -4285,11 +4285,11 @@ function ImageAdjustment(Lt) {
     'initOpen': false
   }).setContent(
     '<div><label style="text-align:center;display:block;">Brightness</label> \
-    <input class="imageSlider" id="brightness-slider" value=0.0 min=0.0 max=1 step = 0.05 type=range> \
+    <input class="imageSlider" id="brightness-slider" value=0.0 min=0.0 max=0.5 step = 0.05 type=range> \
     <label style="text-align:center;display:block;">Contrast</label> \
     <input class="imageSlider" id="contrast-slider" type=range min=0 max=2 value=1 step=0.05 type=range></div> \
     <label style="text-align:center;display:block;">Saturation</label> \
-    <input class="imageSlider" id="saturation-slider" type=range min=0 max=350 value=100></div> \
+    <input class="imageSlider" id="saturation-slider" type=range min=0.0 max=2 step= 0.05 value=1 type = range></div> \
     <label style="text-align:center;display:block;">Hue Rotation</label> \
     <input class="imageSlider" id="hue-slider" type=range min=0 max=360 value=0> \
      <label style="text-align:center;display:block;">Sharpness</label> \
@@ -4321,7 +4321,7 @@ function ImageAdjustment(Lt) {
   ImageAdjustment.prototype.updateFilters = function() {
     var brightnessSlider = document.getElementById("brightness-slider").value;
     var contrastSlider = document.getElementById("contrast-slider").value;
-    var saturationSlider = document.getElementById("saturation-slider");
+    var saturationSlider = document.getElementById("saturation-slider").value;
     var hueSlider = document.getElementById("hue-slider");
     var invert = $("#invert-checkbox").prop('checked')?1:0;
     var sharpnessSlider = document.getElementById("sharpness-slider").value;
@@ -4330,17 +4330,18 @@ function ImageAdjustment(Lt) {
     var edgeDetect = document.getElementById("edgeDetect-slider").value;
     var unsharpnessSlider = document.getElementById("unsharpness-slider").value;
     document.getElementsByClassName("leaflet-pane")[0].style.filter =
-      "contrast(" + contrastSlider.value + "%) " +
-      "saturate(" + saturationSlider.value + "%) " +
       "invert(" + invert + ")" +
       "hue-rotate(" + hueSlider.value + "deg)";
     var embossName = embossDirection; 
-    console.log(embossName);
-    console.log(contrastSlider)
+    console.log(saturationSlider);
     Lt.baseLayer['GL Layer'].setKernelsAndStrength([
       {
         "name": "brightness",
         "strength": parseFloat(brightnessSlider)
+      },
+      {
+        "name": "saturation",
+        "strength": parseFloat(saturationSlider)
       },
       {
 			"name": embossName,
@@ -4372,9 +4373,9 @@ function ImageAdjustment(Lt) {
   ImageAdjustment.prototype.enable = function() {
     this.dialog.lock();
     this.dialog.open();
-    var brightnessSlider = document.getElementById("brightness-slider");
-    var contrastSlider = document.getElementById("contrast-slider");
-    var saturationSlider = document.getElementById("saturation-slider");
+    var brightnessSlider = document.getElementById("brightness-slider").value;
+    var contrastSlider = document.getElementById("contrast-slider").value;
+    var saturationSlider = document.getElementById("saturation-slider").value;
     var hueSlider = document.getElementById("hue-slider");
     var sharpnessSlider = document.getElementById("sharpness-slider");
     var embossSlider = document.getElementById("emboss-slider");

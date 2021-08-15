@@ -76,6 +76,13 @@ vec3 applyContrast( vec3 sample, float u_contrast, float u_rangeCenter, float u_
 
 	return clamp(newValue, 0.0, 1.0);
 }
+vec3 applySaturation(vec3 rgb, float u_saturation)
+{
+    // Algorithm from Chapter 16 of OpenGL Shading Language
+    const vec3 W = vec3(0.2125, 0.7154, 0.0721);
+    vec3 intensity = vec3(dot(rgb, W));
+    return mix(intensity, rgb, u_saturation);
+}
 void main(void){
 		// gl_Position = vec4(clipSpace * vec2(1, u_flipY), 0, 1);
 		vec4 targetTexture = texture2D(uTexture0, vec2(vTextureCoords.x, vTextureCoords.y));
@@ -85,9 +92,10 @@ void main(void){
 		
 		// apply contrast after our other kernels have run
 		// we could refactor this to actually have separate shaders
-		vec3 constrastResult = applyContrast(result,uContrastStrength, 0.5, 1.);
+		vec3 contrastResult = applyContrast(result,uContrastStrength, 0.5, 1.);
+		vec3 saturationResult = applySaturation(contrastResult, uSaturationStrength);
 		
-		gl_FragColor = vec4(constrastResult,targetTexture.a);
+		gl_FragColor = vec4(saturationResult,targetTexture.a);
 }
 `;
 
@@ -128,7 +136,8 @@ void main(void){
 		var layer = L.tileLayer.gl({
 				uniforms: {
 						uSharpenStrength: 0,
-						uContrastStrength: 1
+						uContrastStrength: 1,
+						uSaturationStrength: 1
 				},
 						crs: L.CRS.Simple,
 						noWrap: true,

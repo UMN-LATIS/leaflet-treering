@@ -163,6 +163,11 @@
 		0, 0, 0,
 		 0, 1,  0,
 		0, 0, 0
+	],
+	saturation: [
+		0, 0, 0,
+		 0, 1,  0,
+		0, 0, 0
 	]
   };
 
@@ -592,6 +597,10 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 			// TODO: unwind this and see if it actually matters?
 			if(kernel.name == "contrast") {
 				this.setUniform("uContrastStrength", kernel.strength);
+				this.setUniform("uSharpenStrength", 0.0);
+			}
+			else if(kernel.name == "saturation") {
+				this.setUniform("uSaturationStrength", kernel.strength);
 				this.setUniform("uSharpenStrength", 0.0);
 			}
 			else {
