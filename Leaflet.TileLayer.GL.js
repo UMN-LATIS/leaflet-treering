@@ -164,6 +164,11 @@
 		 0, 1,  0,
 		0, 0, 0
 	],
+	hue: [
+		0, 0, 0,
+		 0, 1,  0,
+		0, 0, 0
+	],
 	saturation: [
 		0, 0, 0,
 		 0, 1,  0,
@@ -601,6 +606,10 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 			}
 			else if(kernel.name == "saturation") {
 				this.setUniform("uSaturationStrength", kernel.strength);
+				this.setUniform("uSharpenStrength", 0.0);
+			}
+			else if(kernel.name == "hue") {
+				this.setUniform("uHueShiftStrength", kernel.strength);
 				this.setUniform("uSharpenStrength", 0.0);
 			}
 			else {

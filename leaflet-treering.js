@@ -4291,7 +4291,7 @@ function ImageAdjustment(Lt) {
     <label style="text-align:center;display:block;">Saturation</label> \
     <input class="imageSlider" id="saturation-slider" type=range min=0.0 max=2 step= 0.05 value=1 type = range></div> \
     <label style="text-align:center;display:block;">Hue Rotation</label> \
-    <input class="imageSlider" id="hue-slider" type=range min=0 max=360 value=0> \
+    <input class="imageSlider" id="hue-slider" type=range min=0 max=10 value=0 step 0.05> \
      <label style="text-align:center;display:block;">Sharpness</label> \
     <input class="imageSlider" id="sharpness-slider" value=0 min=0 max=1 step=0.05 type=range> \
     <label style="text-align:center;display:block;">Emboss</label> \
@@ -4322,7 +4322,7 @@ function ImageAdjustment(Lt) {
     var brightnessSlider = document.getElementById("brightness-slider").value;
     var contrastSlider = document.getElementById("contrast-slider").value;
     var saturationSlider = document.getElementById("saturation-slider").value;
-    var hueSlider = document.getElementById("hue-slider");
+    var hueSlider = document.getElementById("hue-slider").value;
     var invert = $("#invert-checkbox").prop('checked')?1:0;
     var sharpnessSlider = document.getElementById("sharpness-slider").value;
     var embossSlider = document.getElementById("emboss-slider").value;
@@ -4330,11 +4330,13 @@ function ImageAdjustment(Lt) {
     var edgeDetect = document.getElementById("edgeDetect-slider").value;
     var unsharpnessSlider = document.getElementById("unsharpness-slider").value;
     document.getElementsByClassName("leaflet-pane")[0].style.filter =
-      "invert(" + invert + ")" +
-      "hue-rotate(" + hueSlider.value + "deg)";
-    var embossName = embossDirection; 
-    console.log(saturationSlider);
+      "invert(" + invert + ")";
+    var embossName = embossDirection;
     Lt.baseLayer['GL Layer'].setKernelsAndStrength([
+      {
+        "name": "hue",
+        "strength": parseFloat(hueSlider)
+      },
       {
         "name": "brightness",
         "strength": parseFloat(brightnessSlider)
@@ -4376,7 +4378,7 @@ function ImageAdjustment(Lt) {
     var brightnessSlider = document.getElementById("brightness-slider").value;
     var contrastSlider = document.getElementById("contrast-slider").value;
     var saturationSlider = document.getElementById("saturation-slider").value;
-    var hueSlider = document.getElementById("hue-slider");
+    var hueSlider = document.getElementById("hue-slider").value;
     var sharpnessSlider = document.getElementById("sharpness-slider");
     var embossSlider = document.getElementById("emboss-slider");
     var embossDirection = document.getElementById("emboss-direction");

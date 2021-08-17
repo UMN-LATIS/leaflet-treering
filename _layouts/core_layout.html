@@ -83,6 +83,11 @@ vec3 applySaturation(vec3 rgb, float u_saturation)
     vec3 intensity = vec3(dot(rgb, W));
     return mix(intensity, rgb, u_saturation);
 }
+vec3 applyHueShift(vec3 color, float hue) {
+    const vec3 k = vec3(0.57735, 0.57735, 0.57735);
+    float cosAngle = cos(hue);
+    return vec3(color * cosAngle + cross(k, color) * sin(hue) + k * dot(k, color) * (1.0 - cosAngle));
+}
 void main(void){
 		// gl_Position = vec4(clipSpace * vec2(1, u_flipY), 0, 1);
 		vec4 targetTexture = texture2D(uTexture0, vec2(vTextureCoords.x, vTextureCoords.y));
@@ -94,8 +99,9 @@ void main(void){
 		// we could refactor this to actually have separate shaders
 		vec3 contrastResult = applyContrast(result,uContrastStrength, 0.5, 1.);
 		vec3 saturationResult = applySaturation(contrastResult, uSaturationStrength);
+		vec3 hueShiftResult = applyHueShift(saturationResult, uHueShiftStrength);
 		
-		gl_FragColor = vec4(saturationResult,targetTexture.a);
+		gl_FragColor = vec4(hueShiftResult,targetTexture.a);
 }
 `;
 
@@ -137,7 +143,8 @@ void main(void){
 				uniforms: {
 						uSharpenStrength: 0,
 						uContrastStrength: 1,
-						uSaturationStrength: 1
+						uSaturationStrength: 1,
+						uHueShiftStrength: 0
 				},
 						crs: L.CRS.Simple,
 						noWrap: true,
