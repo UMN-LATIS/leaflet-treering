@@ -6401,6 +6401,7 @@ function Helper(Lt) {
    * @function
    */
    Helper.prototype.findDistances = function () {
+     console.log('blah')
      var disObj = new Object()
      var pts = (Lt.preferences.forwardDirection) ? Lt.data.points : this.reverseData(Lt.data.points);
 
@@ -6419,7 +6420,9 @@ function Helper(Lt) {
            breakDis = Lt.helper.trueDistance(prevPt.latLng, e.latLng);
          }
        } else if (e.year) {
-         yearArray.push(parseInt(e.year));
+         if (!yearArray.includes(e.year)) {
+            yearArray.push(parseInt(e.year));
+         }
          var width = Lt.helper.trueDistance(prevPt.latLng, e.latLng) - breakDis;
          width = parseFloat(width.toFixed(5));
          if (e.earlywood && Lt.measurementOptions.subAnnual) {
