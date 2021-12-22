@@ -312,7 +312,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.updatePlot_afterChangingPoints();
+      Lt.popoutPlots.sendData();
     }
   };
 
@@ -399,7 +399,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText(); // updates after a point is deleted
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.updatePlot_afterChangingPoints();
+      Lt.popoutPlots.sendData();
     }
   };
 
@@ -483,7 +483,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText(); // updates after points are cut
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.updatePlot_afterChangingPoints();
+      Lt.popoutPlots.sendData();
     }
   };
 
@@ -594,7 +594,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText(); // updates after a single point is inserted
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.updatePlot_afterChangingPoints();
+      Lt.popoutPlots.sendData();
     }
     return tempK;
   };
@@ -666,7 +666,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText(); // updates after a single point is inserted
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.updatePlot_afterChangingPoints();
+      Lt.popoutPlots.sendData();
     }
     return tempK;
   };
@@ -2736,18 +2736,27 @@ function Popout(Lt) {
    var height = (4/9) * screen.height;
    var top = (2/3) * screen.height;
    var width = screen.width;
+   this.childSite = null
+   this.win = null
 
    this.btn = new Button('insights',
                          'Open time series plots in a new window',
                          () => {
-                           //let childSite = 'http://localhost:8080/dendro-plots/'
-                           let childSite = 'https://umn-latis.github.io/dendro-plots/'
+                           //this.childSite = 'http://localhost:8080/dendro-plots/'
+                           this.childSite = 'https://umn-latis.github.io/dendro-plots/'
+                           this.win = window.open(this.childSite, 'popout' + Math.round(Math.random()*10000),
+                                       'location=yes,height=' + height + ',width=' + width + ',scrollbars=yes,status=yes, top=' + top);
+
                            let data = { points: Lt.helper.findDistances(), annotations: Lt.aData.annotations };
-                           let plotWin = window.open(childSite);
                            window.addEventListener('message', () => {
-                             plotWin.postMessage(data, childSite);
+                             this.win.postMessage(data, this.childSite);
                            }, false)
                          });
+
+    PopoutPlots.prototype.sendData = function() {
+      let data = { points: Lt.helper.findDistances(), annotations: Lt.aData.annotations };
+      this.win.postMessage(data, this.childSite);
+    }
 
 };
 
@@ -2762,7 +2771,7 @@ function Undo(Lt) {
     this.pop();
     Lt.metaDataText.updateText();
     if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.updatePlot_afterChangingPoints();
+      Lt.popoutPlots.sendData();
     }
   });
   this.btn.disable();
@@ -2824,7 +2833,7 @@ function Redo(Lt) {
     this.pop();
     Lt.metaDataText.updateText();
     if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.updatePlot_afterChangingPoints();
+      Lt.popoutPlots.sendData();
     }
   });
   this.btn.disable();
@@ -3043,7 +3052,7 @@ function Dating(Lt) {
     Lt.metaDataText.updateText(); // updates once user hits enter
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.updatePlot_afterChangingPoints();
+      Lt.popoutPlots.sendData();
     }
 
     this.btn.state('inactive');
@@ -3243,7 +3252,7 @@ function CreateZeroGrowth(Lt) {
       Lt.metaDataText.updateText(); // updates after point is inserted
       Lt.annotationAsset.reloadAssociatedYears();
       if (Lt.popoutPlots.win) {
-        Lt.popoutPlots.updatePlot_afterChangingPoints();
+        Lt.popoutPlots.sendData();
       }
 
     } else {
@@ -3560,7 +3569,7 @@ function ConvertToStartPoint(Lt) {
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.updatePlot_afterChangingPoints();
+      Lt.popoutPlots.sendData();
     }
   };
 
@@ -5330,7 +5339,7 @@ function Helper(Lt) {
    */
    Helper.prototype.findDistances = function () {
      var disObj = new Object()
-     var pts = (Lt.preferences.forwardDirection) ? Lt.data.points : this.reverseData(Lt.data.points);
+     var pts = (Lt.measurementOptions.forwardDirection) ? Lt.data.points : this.reverseData();
 
      var yearArray = [];
      var ewWidthArray = [];
@@ -5349,7 +5358,7 @@ function Helper(Lt) {
          } else if (pts[i - 1].break) {
            breakDis = Lt.helper.trueDistance(prevPt.latLng, e.latLng);
          }
-       } else if (e.year) {
+       } else if (e.year || e.year == 0) {
          if (!yearArray.includes(e.year)) {
             yearArray.push(parseInt(e.year));
          }
