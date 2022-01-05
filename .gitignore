@@ -1,3 +1,6 @@
 _site
 .jekyll-cache
 scratch.js
+test.html
+r-spline-0.js
+node_modules

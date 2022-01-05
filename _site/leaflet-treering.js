@@ -105,6 +105,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
   this.keyboardShortCutDialog = new KeyboardShortCutDialog(this);
 
+  this.popoutPlots = new PopoutPlots(this);
+
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
   this.annotationTools = new ButtonBar(this, [this.annotationAsset.createBtn, this.annotationAsset.deleteBtn], 'comment', 'Manage annotations');
   this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
@@ -142,6 +144,9 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     $(map.getContainer()).css('cursor', 'default');
 
     L.control.layers(this.baseLayer, this.overlay).addTo(this.viewer);
+
+    // test placement
+    this.popoutPlots.btn.addTo(this.viewer);
 
     // if popout is opened display measuring tools
     if (window.name.includes('popout')) {
@@ -302,8 +307,13 @@ function MeasurementData (dataObject, Lt) {
 
 
     this.index++;
-    Lt.metaDataText.updateText(); // update every time a point is placed
+
+    // update every time a point is placed
+    Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
+    if (Lt.popoutPlots.win) {
+      Lt.popoutPlots.sendData();
+    }
   };
 
   /**
@@ -388,6 +398,9 @@ function MeasurementData (dataObject, Lt) {
 
     Lt.metaDataText.updateText(); // updates after a point is deleted
     Lt.annotationAsset.reloadAssociatedYears();
+    if (Lt.popoutPlots.win) {
+      Lt.popoutPlots.sendData();
+    }
   };
 
   /**
@@ -469,6 +482,9 @@ function MeasurementData (dataObject, Lt) {
 
     Lt.metaDataText.updateText(); // updates after points are cut
     Lt.annotationAsset.reloadAssociatedYears();
+    if (Lt.popoutPlots.win) {
+      Lt.popoutPlots.sendData();
+    }
   };
 
   /**
@@ -577,6 +593,9 @@ function MeasurementData (dataObject, Lt) {
 
     Lt.metaDataText.updateText(); // updates after a single point is inserted
     Lt.annotationAsset.reloadAssociatedYears();
+    if (Lt.popoutPlots.win) {
+      Lt.popoutPlots.sendData();
+    }
     return tempK;
   };
 
@@ -646,6 +665,9 @@ function MeasurementData (dataObject, Lt) {
 
     Lt.metaDataText.updateText(); // updates after a single point is inserted
     Lt.annotationAsset.reloadAssociatedYears();
+    if (Lt.popoutPlots.win) {
+      Lt.popoutPlots.sendData();
+    }
     return tempK;
   };
 
@@ -2697,11 +2719,46 @@ function ButtonBar(Lt, btns, icon, toolTip) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function Popout(Lt) {
-  this.btn = new Button('launch', 'Enter Popout Mode to access the full suite\nof measurement and annotation tools', () => {
+  var height = (1/3) * screen.height;
+  var width = screen.width;
+
+  this.btn = new Button('straighten', 'Enter Popout Mode to access the full suite\nof measurement and annotation tools', () => {
     window.open(Lt.meta.popoutUrl, 'popout' + Math.round(Math.random()*10000),
-                'location=yes,height=600,width=800,scrollbars=yes,status=yes');
+                'location=yes,height=' + height + ',width=' + width + ',scrollbars=yes,status=yes, top=0');
   });
-}
+};
+
+/** A popout with time series plots
+ * @constructor
+ * @param {Ltreering} Lt - Leaflet treering object
+ */
+ function PopoutPlots (Lt) {
+   var height = (4/9) * screen.height;
+   var top = (2/3) * screen.height;
+   var width = screen.width;
+   this.childSite = null
+   this.win = null
+
+   this.btn = new Button('insights',
+                         'Open time series plots in a new window',
+                         () => {
+                           //this.childSite = 'http://localhost:8080/dendro-plots/'
+                           this.childSite = 'https://umn-latis.github.io/dendro-plots/'
+                           this.win = window.open(this.childSite, 'popout' + Math.round(Math.random()*10000),
+                                       'location=yes,height=' + height + ',width=' + width + ',scrollbars=yes,status=yes, top=' + top);
+
+                           let data = { points: Lt.helper.findDistances(), annotations: Lt.aData.annotations };
+                           window.addEventListener('message', () => {
+                             this.win.postMessage(data, this.childSite);
+                           }, false)
+                         });
+
+    PopoutPlots.prototype.sendData = function() {
+      let data = { points: Lt.helper.findDistances(), annotations: Lt.aData.annotations };
+      this.win.postMessage(data, this.childSite);
+    }
+
+};
 
 /**
  * Undo actions
@@ -2710,7 +2767,13 @@ function Popout(Lt) {
  */
 function Undo(Lt) {
   this.stack = new Array();
-  this.btn = new Button('undo', 'Undo', () => { this.pop(); Lt.metaDataText.updateText() });
+  this.btn = new Button('undo', 'Undo', () => {
+    this.pop();
+    Lt.metaDataText.updateText();
+    if (Lt.popoutPlots.win) {
+      Lt.popoutPlots.sendData();
+    }
+  });
   this.btn.disable();
 
   /**
@@ -2766,7 +2829,13 @@ function Undo(Lt) {
  */
 function Redo(Lt) {
   this.stack = new Array();
-  this.btn = new Button('redo', 'Redo', () => { this.pop(); Lt.metaDataText.updateText();});
+  this.btn = new Button('redo', 'Redo', () => {
+    this.pop();
+    Lt.metaDataText.updateText();
+    if (Lt.popoutPlots.win) {
+      Lt.popoutPlots.sendData();
+    }
+  });
   this.btn.disable();
 
   /**
@@ -2982,6 +3051,9 @@ function Dating(Lt) {
   Dating.prototype.disable = function() {
     Lt.metaDataText.updateText(); // updates once user hits enter
     Lt.annotationAsset.reloadAssociatedYears();
+    if (Lt.popoutPlots.win) {
+      Lt.popoutPlots.sendData();
+    }
 
     this.btn.state('inactive');
     $(Lt.viewer.getContainer()).off('click');
@@ -3179,6 +3251,9 @@ function CreateZeroGrowth(Lt) {
 
       Lt.metaDataText.updateText(); // updates after point is inserted
       Lt.annotationAsset.reloadAssociatedYears();
+      if (Lt.popoutPlots.win) {
+        Lt.popoutPlots.sendData();
+      }
 
     } else {
       alert('First year cannot be missing!');
@@ -3493,6 +3568,9 @@ function ConvertToStartPoint(Lt) {
     Lt.visualAsset.reload();
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
+    if (Lt.popoutPlots.win) {
+      Lt.popoutPlots.sendData();
+    }
   };
 
   ConvertToStartPoint.prototype.enable = function () {
@@ -3716,113 +3794,6 @@ function ViewData(Lt) {
     .addTo(Lt.viewer);
 
   /**
-   * Calculate distance from p1 to p2
-   * @function distance
-   * @param p1 leaflet point - first point
-   * @param p2 leaflet point - second point
-   */
-  ViewData.prototype.distance = function(p1, p2) {
-    var lastPoint = Lt.viewer.project(p1, Lt.getMaxNativeZoom());
-    var newPoint = Lt.viewer.project(p2, Lt.getMaxNativeZoom());
-    var length = Math.sqrt(Math.pow(Math.abs(lastPoint.x - newPoint.x), 2) +
-        Math.pow(Math.abs(newPoint.y - lastPoint.y), 2));
-    var pixelsPerMillimeter = 1;
-    Lt.viewer.eachLayer((layer) => {
-      if (layer.options.pixelsPerMillimeter > 0 || Lt.meta.ppm > 0) {
-        pixelsPerMillimeter = Lt.meta.ppm;
-      }
-    });
-    length = length / pixelsPerMillimeter;
-    var retinaFactor = 1;
-    // if (L.Browser.retina) {
-    //   retinaFactor = 2; // this is potentially incorrect for 3x+ devices
-    // }
-    return length * retinaFactor;
-  }
-
-  /**
-   * Format data to have years ascending
-   * @function reverseData
-   */
-  ViewData.prototype.reverseData = function() {
-    var pref = Lt.measurementOptions; // preferences
-    var pts = JSON.parse(JSON.stringify(Lt.data.points)); // deep copy of points
-
-    var i; // index
-    var lastIndex = pts.length - 1;
-    var before_lastIndex = pts.length - 2;
-
-    // reformatting done in seperate for-statements for code clarity/simplicity
-
-    if (pref.subAnnual) { // subannual earlywood and latewood values swap cycle
-      for (i = 0; i < pts.length; i++) {
-        if (pts[i]) {
-          if (pts[i].earlywood) {
-            pts[i].earlywood = false;
-          } else {
-            pts[i].earlywood = true;
-          };
-        };
-      };
-    };
-
-    for (i = 0; i < pts.length; i++) { // swap start & break point cycle
-      if (pts[i + 1] && pts[i]) {
-        if (pts[i].break && pts[i + 1].start) {
-          pts[i].start = true;
-          pts[i].break = false;
-          pts[i + 1].start = false;
-          pts[i + 1].break = true;
-        };
-      };
-    };
-
-    for (i = 0; i < pts.length; i++) { // swap start & end point cycle
-      if (pts[i + 2] && pts[i + 1] && pts[i]) {
-        if (pts[i].year && pts[i + 1].start && !pts[i + 2].break) { // many conditions so prior cycle is not undone
-          pts[i + 1].start = false;
-          pts[i + 1].year = pts[i].year;
-          pts[i + 1].earlywood = pts[i].earlywood;
-          pts[i].start = true;
-          delete pts[i].year;
-          delete pts[i].earlywood;
-        };
-      };
-    };
-
-    // reverse array order so years ascending
-    pts.reverse();
-
-    // change last point from start to end point
-    if (pts[lastIndex] && pts[before_lastIndex]) {
-      pts[lastIndex].start = false;
-
-      if (pts[before_lastIndex].earlywood) {
-        pts[lastIndex].year = pts[before_lastIndex].year;
-        pts[lastIndex].earlywood = false;
-      } else { // otherwise latewood or annual increment
-        pts[lastIndex].year = pts[before_lastIndex].year + 1
-        pts[lastIndex].earlywood = true;
-      };
-    };
-
-    for (i = lastIndex; i >= 0; i--) { // remove any null points
-      if (pts[i] == null) {
-        pts.splice(i, 1);
-      };
-    };
-
-    // change first point to start point
-    if (pts.length > 0) {
-      pts[0].start = true;
-      delete pts[0].year;
-      delete pts[0].earlywood;
-    };
-
-    return pts;
-  }
-
-  /**
    * Format and download data in Dan's archaic format
    * @function download
    */
@@ -3903,7 +3874,7 @@ function ViewData(Lt) {
     if (Lt.measurementOptions.forwardDirection) { // years ascend in value
       var pts = Lt.data.points;
     } else { // otherwise years descend in value
-      var pts = this.reverseData();
+      var pts = Lt.helper.reverseData();
     }
 
     if (Lt.data.points != undefined && Lt.data.points[1] != undefined) {
@@ -3941,7 +3912,7 @@ function ViewData(Lt) {
             last_latLng = e.latLng;
           } else if (e.break) {
             break_length =
-              Math.round(this.distance(last_latLng, e.latLng) * 1000);
+              Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
               break_point = true;
           } else {
             if (e.year % 10 == 0) {
@@ -3965,7 +3936,7 @@ function ViewData(Lt) {
               last_latLng = e.latLng;
             };
 
-            var length = Math.round(this.distance(last_latLng, e.latLng) * 1000);
+            var length = Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
             if (break_point) {
               length += break_length;
               break_point = false;
@@ -4010,7 +3981,7 @@ function ViewData(Lt) {
             last_latLng = e.latLng;
           } else if (e.break) {
             break_length =
-              Math.round(this.distance(last_latLng, e.latLng) * 1000);
+              Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
             break_point = true;
           } else {
             if (e.year % 10 == 0) {
@@ -4044,7 +4015,7 @@ function ViewData(Lt) {
               }
             }
 
-            length = Math.round(this.distance(last_latLng, e.latLng) * 1000);
+            length = Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
             if (break_point) {
               length += break_length;
               break_point = false;
@@ -4105,7 +4076,7 @@ function ViewData(Lt) {
             }
             else if (e.break) {
               break_length =
-                Math.round(this.distance(last_latLng, e.latLng) * 1000);
+                Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
               break_point = true;
             } else {
             if (e.year % 10 == 0) {
@@ -4125,7 +4096,7 @@ function ViewData(Lt) {
               }
             }
 
-            length = Math.round(this.distance(last_latLng, e.latLng) * 1000);
+            length = Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
             if (break_point) {
               length += break_length;
               break_point = false;
@@ -4183,7 +4154,7 @@ function ViewData(Lt) {
     if (Lt.measurementOptions.forwardDirection) { // years ascend in value
       var pts = Lt.data.points;
     } else { // otherwise years descend in value
-      var pts = this.reverseData();
+      var pts = Lt.helper.reverseData();
     };
 
     if (pts[0] != undefined) {
@@ -4218,7 +4189,7 @@ function ViewData(Lt) {
           last_latLng = e.latLng;
         } else if (e.break) {
           break_length =
-            Math.round(this.distance(last_latLng, e.latLng) * 1000) / 1000;
+            Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000) / 1000;
           break_point = true;
         } else {
           while (e.year > y) {
@@ -4230,7 +4201,7 @@ function ViewData(Lt) {
             stringContent = stringContent.concat(html_B);
             y++;
           }
-          length = Math.round(this.distance(last_latLng, e.latLng) * 1000) / 1000;
+          length = Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000) / 1000;
           if (break_point) {
             length += break_length;
             length = Math.round(length * 1000) / 1000;
@@ -4708,6 +4679,7 @@ function SaveLocal(Lt) {
       'points': Lt.data.points,
       'attributesObjectArray': Lt.annotationAsset.attributesObjectArray,
       'annotations': Lt.aData.annotations,
+      'ptWidths': Lt.helper.findDistances(),
     };
 
     // don't serialize our default value
@@ -5246,6 +5218,177 @@ function KeyboardShortCutDialog (Lt) {
  * @function
  */
 function Helper(Lt) {
+
+  /**
+   * Reverses points data structure so points ascend in time.
+   * @function trueDistance
+   * @param {first point.latLng} p1
+   * @param {second point.latLng} p2
+   */
+  Helper.prototype.trueDistance = function(p1, p2) {
+    var lastPoint = Lt.viewer.project(p1, Lt.getMaxNativeZoom());
+    var newPoint = Lt.viewer.project(p2, Lt.getMaxNativeZoom());
+    var length = Math.sqrt(Math.pow(Math.abs(lastPoint.x - newPoint.x), 2) +
+        Math.pow(Math.abs(newPoint.y - lastPoint.y), 2));
+    var pixelsPerMillimeter = 1;
+    Lt.viewer.eachLayer((layer) => {
+      if (layer.options.pixelsPerMillimeter > 0 || Lt.meta.ppm > 0) {
+        pixelsPerMillimeter = Lt.meta.ppm;
+      }
+    });
+    length = length / pixelsPerMillimeter;
+    var retinaFactor = 1;
+    return length * retinaFactor;
+  };
+
+  /**
+   * Reverses points data structure so points ascend in time.
+   * @function
+   */
+ Helper.prototype.reverseData = function(inputPts) {
+   var pref = Lt.measurementOptions; // preferences
+   if (inputPts) {
+     var pts = inputPts;
+   } else {
+     var pts = JSON.parse(JSON.stringify(Lt.data.points)); // deep copy of points
+   };
+
+   var i; // index
+   var lastIndex = pts.length - 1;
+   var before_lastIndex = pts.length - 2;
+
+   // reformatting done in seperate for-statements for code clarity/simplicity
+
+   for (i = 0; i < pts.length; i++) { // subtract 1 from points cycle
+     if (!pref.subAnnual && pts[i] && pts[i].year) { // only need to subtract if annual
+       pts[i].year--;
+     };
+   };
+
+   if (pref.subAnnual) { // subannual earlywood and latewood values swap cycle
+     for (i = 0; i < pts.length; i++) {
+       if (pts[i]) {
+         if (pts[i].earlywood) {
+           pts[i].earlywood = false;
+         } else {
+           pts[i].earlywood = true;
+         };
+       };
+     };
+   };
+
+   for (i = 0; i < pts.length; i++) { // swap start & break point cycle
+     if (pts[i + 1] && pts[i]) {
+       if (pts[i].break && pts[i + 1].start) {
+         pts[i].start = true;
+         pts[i].break = false;
+         pts[i + 1].start = false;
+         pts[i + 1].break = true;
+       };
+     };
+   };
+
+   for (i = 0; i < pts.length; i++) { // swap start & end point cycle
+     if (pts[i + 2] && pts[i + 1] && pts[i]) {
+       if (pts[i].year && pts[i + 1].start && !pts[i + 2].break) { // many conditions so prior cycle is not undone
+         pts[i + 1].start = false;
+         pts[i + 1].year = pts[i].year;
+         pts[i + 1].earlywood = pts[i].earlywood;
+         pts[i].start = true;
+         delete pts[i].year;
+         delete pts[i].earlywood;
+       };
+     };
+   };
+
+   // reverse array order so years ascending
+   pts.reverse();
+
+   // change last point from start to end point
+   if (pts[lastIndex] && pts[before_lastIndex]) {
+     pts[lastIndex].start = false;
+
+     if (pts[before_lastIndex].earlywood) {
+       pts[lastIndex].year = pts[before_lastIndex].year;
+       pts[lastIndex].earlywood = false;
+     } else { // otherwise latewood or annual increment
+       pts[lastIndex].year = pts[before_lastIndex].year + 1;
+       pts[lastIndex].earlywood = true;
+     };
+   };
+
+   for (i = lastIndex; i >= 0; i--) { // remove any null points
+     if (pts[i] == null) {
+       pts.splice(i, 1);
+     };
+   };
+
+   // change first point to start point
+   if (pts.length > 0) {
+     pts[0].start = true;
+     delete pts[0].year;
+     delete pts[0].earlywood;
+   };
+
+   return pts;
+  };
+
+  /**
+   * Finds distances between points for plotting
+   * @function
+   */
+   Helper.prototype.findDistances = function () {
+     var disObj = new Object()
+     var pts = (Lt.measurementOptions.forwardDirection) ? Lt.data.points : this.reverseData();
+
+     var yearArray = [];
+     var ewWidthArray = [];
+     var lwWidthArray = [];
+     var twWidthArray = [];
+
+     var breakDis = 0;
+     var prevPt = null;
+     pts.map((e, i) => {
+       if (!e) {
+         return
+       }
+       if (e.start) {
+         if (!pts[i - 1] || !pts[i - 1].break) {
+           prevPt = e;
+         } else if (pts[i - 1].break) {
+           breakDis = Lt.helper.trueDistance(prevPt.latLng, e.latLng);
+         }
+       } else if (e.year || e.year == 0) {
+         if (!yearArray.includes(e.year)) {
+            yearArray.push(parseInt(e.year));
+         }
+         var width = Lt.helper.trueDistance(prevPt.latLng, e.latLng) - breakDis;
+         width = parseFloat(width.toFixed(5));
+         if (e.earlywood && Lt.measurementOptions.subAnnual) {
+           ewWidthArray.push(width);
+         } else if (!e.earlywood && Lt.measurementOptions.subAnnual) {
+           lwWidthArray.push(width)
+         } else {
+           twWidthArray.push(width)
+         }
+         breakDis = 0;
+         prevPt = e;
+       }
+     });
+
+     if (Lt.measurementOptions.subAnnual) {
+       disObj.ew = { x: yearArray, y: ewWidthArray, name: Lt.meta.assetName + '_ew' };
+       disObj.lw = { x: yearArray, y: lwWidthArray, name: Lt.meta.assetName + '_lw' };
+       for (let i = 0; i < ewWidthArray.length; i++) {
+         let width = ewWidthArray[i] + lwWidthArray[i];
+         twWidthArray.push(parseFloat(width.toFixed(5)));
+       }
+     }
+
+     disObj.tw = { x: yearArray, y: twWidthArray, name: Lt.meta.assetName + '_tw' }
+
+     return disObj
+   }
 
   /**
    * Finds closest points for connection
