@@ -1199,13 +1199,30 @@ function VisualAsset (Lt) {
           Lt.insertZeroGrowth.action(i);
         }
       }
+
       if (Lt.insertBreak.active) {
         Lt.insertBreak.action(i);
       }
+
       if (Lt.dating.active) {
         Lt.dating.action(i);
       }
     });
+
+    // highlight year in plotting tool when point hovered over
+    // add to conditional disable flashing when measuring
+    // && !Lt.createPoint.active
+    this.markers[i].on('mouseover', e => {
+      if (Lt.popoutPlots.win) {
+        Lt.popoutPlots.highlightYear(pts[i].year)
+      }
+    })
+
+    this.markers[i].on('mouseout', e => {
+      if (Lt.popoutPlots.win) {
+        Lt.popoutPlots.highlightYear(false)
+      }
+    })
 
     //drawing the line if the previous point exists
     if (pts[i - 1] != undefined && !pts[i].start) {
@@ -2742,8 +2759,8 @@ function Popout(Lt) {
    this.btn = new Button('insights',
                          'Open time series plots in a new window',
                          () => {
-                           //this.childSite = 'http://localhost:8080/dendro-plots/'
-                           this.childSite = 'https://umn-latis.github.io/dendro-plots/'
+                           this.childSite = 'http://localhost:8080/dendro-plots/'
+                           //this.childSite = 'https://umn-latis.github.io/dendro-plots/'
                            this.win = window.open(this.childSite, 'popout' + Math.round(Math.random()*10000),
                                        'location=yes,height=' + height + ',width=' + width + ',scrollbars=yes,status=yes, top=' + top);
 
@@ -2756,6 +2773,10 @@ function Popout(Lt) {
     PopoutPlots.prototype.sendData = function() {
       let data = { points: Lt.helper.findDistances(), annotations: Lt.aData.annotations };
       this.win.postMessage(data, this.childSite);
+    }
+
+    PopoutPlots.prototype.highlightYear = function(year) {
+      this.win.postMessage(year, this.childSite);
     }
 
 };
