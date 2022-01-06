@@ -2759,8 +2759,8 @@ function Popout(Lt) {
    this.btn = new Button('insights',
                          'Open time series plots in a new window',
                          () => {
-                           this.childSite = 'http://localhost:8080/dendro-plots/'
-                           //this.childSite = 'https://umn-latis.github.io/dendro-plots/'
+                           //this.childSite = 'http://localhost:8080/dendro-plots/'
+                           this.childSite = 'https://umn-latis.github.io/dendro-plots/'
                            this.win = window.open(this.childSite, 'popout' + Math.round(Math.random()*10000),
                                        'location=yes,height=' + height + ',width=' + width + ',scrollbars=yes,status=yes, top=' + top);
 
