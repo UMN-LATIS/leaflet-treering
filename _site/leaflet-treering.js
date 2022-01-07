@@ -1213,13 +1213,13 @@ function VisualAsset (Lt) {
     // add to conditional disable flashing when measuring
     // && !Lt.createPoint.active
     this.markers[i].on('mouseover', e => {
-      if (Lt.popoutPlots.win) {
+      if (Lt.popoutPlots.win && !Lt.createPoint.active) {
         Lt.popoutPlots.highlightYear(pts[i].year)
       }
     })
 
     this.markers[i].on('mouseout', e => {
-      if (Lt.popoutPlots.win) {
+      if (Lt.popoutPlots.win && !Lt.createPoint.active) {
         Lt.popoutPlots.highlightYear(false)
       }
     })
@@ -2736,7 +2736,7 @@ function ButtonBar(Lt, btns, icon, toolTip) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function Popout(Lt) {
-  var height = (1/3) * screen.height;
+  var height = (4/9) * screen.height;
   var width = screen.width;
 
   this.btn = new Button('straighten', 'Enter Popout Mode to access the full suite\nof measurement and annotation tools', () => {
@@ -2759,8 +2759,8 @@ function Popout(Lt) {
    this.btn = new Button('insights',
                          'Open time series plots in a new window',
                          () => {
-                           this.childSite = 'http://localhost:8080/dendro-plots/'
-                           //this.childSite = 'https://umn-latis.github.io/dendro-plots/'
+                           //this.childSite = 'http://localhost:8080/dendro-plots/'
+                           this.childSite = 'https://umn-latis.github.io/dendro-plots/'
                            this.win = window.open(this.childSite, 'popout' + Math.round(Math.random()*10000),
                                        'location=yes,height=' + height + ',width=' + width + ',scrollbars=yes,status=yes, top=' + top);
 
@@ -5268,23 +5268,13 @@ function Helper(Lt) {
    */
  Helper.prototype.reverseData = function(inputPts) {
    var pref = Lt.measurementOptions; // preferences
-   if (inputPts) {
-     var pts = inputPts;
-   } else {
-     var pts = JSON.parse(JSON.stringify(Lt.data.points)); // deep copy of points
-   };
+   var pts = (inputPts) ? inputPts : JSON.parse(JSON.stringify(Lt.data.points));
 
-   var i; // index
+   var i;
    var lastIndex = pts.length - 1;
    var before_lastIndex = pts.length - 2;
 
    // reformatting done in seperate for-statements for code clarity/simplicity
-
-   for (i = 0; i < pts.length; i++) { // subtract 1 from points cycle
-     if (!pref.subAnnual && pts[i] && pts[i].year) { // only need to subtract if annual
-       pts[i].year--;
-     };
-   };
 
    if (pref.subAnnual) { // subannual earlywood and latewood values swap cycle
      for (i = 0; i < pts.length; i++) {
@@ -5311,7 +5301,7 @@ function Helper(Lt) {
 
    for (i = 0; i < pts.length; i++) { // swap start & end point cycle
      if (pts[i + 2] && pts[i + 1] && pts[i]) {
-       if (pts[i].year && pts[i + 1].start && !pts[i + 2].break) { // many conditions so prior cycle is not undone
+       if (pts[i].year && pts[i + 1].start && !pts[i + 2].break) {
          pts[i + 1].start = false;
          pts[i + 1].year = pts[i].year;
          pts[i + 1].earlywood = pts[i].earlywood;
@@ -5328,27 +5318,18 @@ function Helper(Lt) {
    // change last point from start to end point
    if (pts[lastIndex] && pts[before_lastIndex]) {
      pts[lastIndex].start = false;
-
-     if (pts[before_lastIndex].earlywood) {
-       pts[lastIndex].year = pts[before_lastIndex].year;
-       pts[lastIndex].earlywood = false;
-     } else { // otherwise latewood or annual increment
-       pts[lastIndex].year = pts[before_lastIndex].year + 1;
-       pts[lastIndex].earlywood = true;
-     };
+     pts[lastIndex].year =  (pref.subAnnual) ? pts[before_lastIndex].year : pts[before_lastIndex].year + 1;
+     pts[lastIndex].earlywood = false;
    };
 
-   for (i = lastIndex; i >= 0; i--) { // remove any null points
-     if (pts[i] == null) {
-       pts.splice(i, 1);
-     };
-   };
+   pts.filter(Boolean) // remove any null points
 
    // change first point to start point
    if (pts.length > 0) {
-     pts[0].start = true;
-     delete pts[0].year;
-     delete pts[0].earlywood;
+     let i = pts.findIndex(Boolean)
+     pts[i].start = true;
+     delete pts[i].year;
+     delete pts[i].earlywood;
    };
 
    return pts;
@@ -5398,10 +5379,18 @@ function Helper(Lt) {
      });
 
      if (Lt.measurementOptions.subAnnual) {
-       disObj.ew = { x: yearArray, y: ewWidthArray, name: Lt.meta.assetName + '_ew' };
        disObj.lw = { x: yearArray, y: lwWidthArray, name: Lt.meta.assetName + '_lw' };
-       for (let i = 0; i < ewWidthArray.length; i++) {
-         let width = ewWidthArray[i] + lwWidthArray[i];
+
+       // when measuring backwards, the earliest earlywood point may be missing due to the point placement pattern
+       // this point would always be present if measuring forwards thus visual issues occur with plotting tool
+       // account for this by removing the year which would be associated with this
+       yearArray = (yearArray.length != ewWidthArray.length) ? yearArray.slice(1) : yearArray;
+       disObj.ew = { x: yearArray, y: ewWidthArray, name: Lt.meta.assetName + '_ew' };
+
+      // need to adjust tw calculation when measuring backwards b/c ew value may be missing thus tw cannot be found
+       let c = (!Lt.measurementOptions.forwardDirection) ? lwWidthArray.length - yearArray.length : 0;
+       for (let i = 0; i < yearArray.length; i++) {
+         let width = ewWidthArray[i] + lwWidthArray[i + c];
          twWidthArray.push(parseFloat(width.toFixed(5)));
        }
      }
