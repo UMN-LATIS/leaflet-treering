@@ -5322,8 +5322,6 @@ function Helper(Lt) {
      pts[lastIndex].earlywood = false;
    };
 
-   pts.filter(Boolean) // remove any null points
-
    // change first point to start point
    if (pts.length > 0) {
      let i = pts.findIndex(Boolean)
@@ -5332,7 +5330,7 @@ function Helper(Lt) {
      delete pts[i].earlywood;
    };
 
-   return pts;
+   return pts.filter(Boolean) // remove any null points;
   };
 
   /**
