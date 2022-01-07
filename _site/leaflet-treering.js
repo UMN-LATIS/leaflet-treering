@@ -87,6 +87,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.createPoint = new CreatePoint(this);
   this.zeroGrowth = new CreateZeroGrowth(this);
   this.createBreak = new CreateBreak(this);
+  this.autoRingDetection = new AutoRingDetection(this);
 
   this.deletePoint = new DeletePoint(this);
   this.cut = new Cut(this);
@@ -109,13 +110,13 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
   this.annotationTools = new ButtonBar(this, [this.annotationAsset.createBtn, this.annotationAsset.deleteBtn], 'comment', 'Manage annotations');
-  this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
+  this.createTools = new ButtonBar(this, [this.createPoint.btn, this.autoRingDetection.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
   // add this.insertBreak.btn below once fixed
   this.editTools = new ButtonBar(this, [this.dating.btn, this.insertPoint.btn, this.convertToStartPoint.btn, this.deletePoint.btn, this.insertZeroGrowth.btn, this.cut.btn], 'edit', 'Edit existing measurements');
   this.ioTools = new ButtonBar(this, ioBtns, 'folder_open', 'Save or upload a record of measurements, annotations, etc.');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
-  this.tools = [this.viewData, this.calibration, this.dating, this.createPoint, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
+  this.tools = [this.viewData, this.calibration, this.dating, this.createPoint, this.autoRingDetection, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
 
   this.baseLayer = {
     'Tree Ring': base_layer,
@@ -4482,6 +4483,142 @@ function ImageAdjustment(Lt) {
     this.btn.state('inactive');
   };
 
+}
+
+/**
+* Use GL Layer filters and ring detection algorithms to automatically place points.
+* @constructor
+* @param {Ltreeing} Lt - Leaflet treering object
+*/
+function AutoRingDetection(Lt) {
+  this.active = false;
+  this.btn = new Button(
+    'search',
+    'Auto ring detection',
+    () => { Lt.disableTools(); this.enable() },
+    () => { this.disable() }
+  );
+
+  AutoRingDetection.prototype.enable = function () {
+    this.active = true;
+    this.btn.state('active');
+    Lt.viewer.getContainer().style.cursor = 'pointer';
+
+    this.tuneGLLayer(false);
+    this.selectPoints();
+  }
+
+  AutoRingDetection.prototype.disable = function () {
+    this.active = false;
+    this.btn.state('inactive');
+    Lt.viewer.getContainer().style.cursor = 'default';
+
+    this.tuneGLLayer(true);
+  }
+
+  AutoRingDetection.prototype.selectPoints = function() {
+    // ESC key to disable
+    $(document).keyup(e => {
+      var key = e.which || e.keyCode;
+      if (key === 27) {
+        this.disable();
+      }
+    });
+
+    var clickCount = 0;
+    var first, second;
+    $(Lt.viewer.getContainer()).click(e => {
+      clickCount++;
+
+      switch (clickCount) {
+        case 1: {
+          first = e;
+          break;
+        }
+        case 2: {
+          second = e;
+          this.createColorArray(first, second);
+          this.disable();
+          break;
+        }
+      }
+    })
+  }
+
+  AutoRingDetection.prototype.createColorArray = function(first, second) {
+    var firstLoc = Lt.viewer.mouseEventToLatLng(first);
+    var secondLoc = Lt.viewer.mouseEventToLatLng(second);
+
+    var slope = (firstLoc.lat - secondLoc.lat) / (firstLoc.lng - secondLoc.lng);
+    var intercept = firstLoc.lat - (slope * firstLoc.lng)
+
+    var leftMost = firstLoc;
+    var rightMost = secondLoc;
+    if (firstLoc.lng > secondLoc.lng) {
+      leftMost = secondLoc
+      rightMost = firstLoc
+    }
+    var arr = [];
+    // TODO: increment should prdoce an array length roughly the number of image pixels sampled
+    for (var c = 0; leftMost.lng + c <= secondLoc.lng; c += 0.001) {
+      var lng = leftMost.lng + c;
+      var lat = (slope * lng) + intercept
+      var latlng = L.latLng(lat, lng);
+      var color = Lt.baseLayer['GL Layer'].getColor(latlng)
+      var colorObj = {
+        'latlng': latlng,
+        'value': color,
+      }
+      arr.push(colorObj);
+    }
+
+    console.log(arr)
+  }
+
+  AutoRingDetection.prototype.tuneGLLayer = function (reset) {
+    var brightnessSlider = document.getElementById("brightness-slider");
+    var contrastSlider = document.getElementById("contrast-slider");
+    var saturationSlider = document.getElementById("saturation-slider");
+    var hueSlider = document.getElementById("hue-slider");
+    var sharpnessSlider = document.getElementById("sharpness-slider");
+    var embossSlider = document.getElementById("emboss-slider");
+    var edgeDetect = document.getElementById("edgeDetect-slider");
+    var unsharpnessSlider = document.getElementById("unsharpness-slider");
+
+    var genSettings = {
+      brightness: 100,
+      contrast: 100,
+      saturation: 100,
+      hue: 0,
+      sharpness: 0,
+      emboss: 0,
+      edgeDetect: 0,
+      unsharpness: 0,
+    }
+
+    var detectSettings = {
+      brightness: 100,
+      contrast: 350,
+      saturation: 0,
+      hue: 0,
+      sharpness: 0,
+      emboss: 0,
+      edgeDetect: 0,
+      unsharpness: 0,
+    }
+
+    var settings = (reset) ? genSettings : detectSettings;
+
+    $(brightnessSlider).val(settings.brightness);
+    $(contrastSlider).val(settings.contrast);
+    $(saturationSlider).val(settings.saturation);
+    $(hueSlider).val(settings.hue);
+    $(sharpnessSlider).val(settings.sharpness);
+    $(embossSlider).val(settings.emboss);
+    $(edgeDetect).val(settings.edgeDetect);
+    $(unsharpnessSlider).val(settings.unsharpness);
+    Lt.imageAdjustment.updateFilters();
+  }
 }
 
 /**

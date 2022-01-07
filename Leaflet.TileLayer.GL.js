@@ -163,7 +163,7 @@ L.TileLayer.GL = L.GridLayer.extend({
 		subdomains: ["a", "b", "c", "d"],
 	},
 	kernelSettings: [
-		
+
 	],
 	// On instantiating the layer, it will initialize all the GL context
 	//   and upload the shaders to the GPU, along with the vertex buffer
@@ -211,17 +211,17 @@ L.TileLayer.GL = L.GridLayer.extend({
 		for (var ii = 0; ii < 6; ++ii) {
 			this.texture = this.createAndSetupTexture(gl);
 			this.textures.push(this.texture);
-		
+
 			// make the texture the same size as the image
 			gl.texImage2D(
 				gl.TEXTURE_2D, 0, gl.RGBA, 256, 256, 0,
 				gl.RGBA, gl.UNSIGNED_BYTE, null);
-		
+
 			// Create a framebuffer
 			var fbo = gl.createFramebuffer();
 			this.framebuffers.push(fbo);
 			gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-		
+
 			// Attach a texture to it.
 			gl.framebufferTexture2D(
 				gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this.texture, 0);
@@ -230,15 +230,15 @@ L.TileLayer.GL = L.GridLayer.extend({
   createAndSetupTexture: function(gl) {
     var texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
- 
+
     // Set up texture so we can render any size image and so we are
     // working with pixels.
 gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
- 
- 
+
+
     return texture;
   },
 	_setFragment: function(fragment){
@@ -456,8 +456,8 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 		var gl = this._gl;
 
 		// this._currentKernel = kernels["unsharpen"];
-		
-		
+
+
 		gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 		gl.clearColor(0.5, 0.5, 0.5, 0);
 		gl.enable(gl.BLEND);
@@ -533,19 +533,19 @@ gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
 			gl.bindTexture(gl.TEXTURE_2D, this.textures[frameBufferNumber]);
 			frameBufferNumber++;
 		}
-	
-		
+
+
 		gl.uniform1f(this._uFlipPosition, 1);
 
 		gl.uniform1fv(this._currentKernel, kernels["normal"]);
 		gl.uniform1f(this.kernelWeightLocation, this.computeKernelWeight(kernels["normal"]));
- 
+
 		// clear the framebuffer
 		gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-		
+
 
 		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-		
+
 	},
 
 	computeKernelWeight: function(kernel) {
@@ -612,7 +612,7 @@ nextHighestPowerOfTwo: function(x) {
 		var tile = L.DomUtil.create("canvas", "leaflet-tile");
 		tile.width = tile.height = this.options.tileSize;
 		tile.onselectstart = tile.onmousemove = L.Util.falseFn;
-		
+
 		var ctx = tile.getContext("2d");
 		var unwrappedKey = this._unwrappedKey;
 		var texFetches = [];
@@ -707,7 +707,7 @@ nextHighestPowerOfTwo: function(x) {
 			L.Util.cancelAnimFrame(this._animFrame);
 			this._animFrame = L.Util.requestAnimFrame(this._onFrame, this);
 		}
-		
+
 		L.TileLayer.prototype.onAdd.call(this);
 	},
 	//onRemove Leaflet Documentation: https://leafletjs.com/reference-1.7.1.html#layer-onremove
@@ -771,7 +771,7 @@ nextHighestPowerOfTwo: function(x) {
 				break;
 		}
 	},
-	
+
 	setKernelsAndStrength(kernelArray) {
 		this.kernelSettings = kernelArray;
 		this.reRender();
@@ -813,6 +813,28 @@ nextHighestPowerOfTwo: function(x) {
 			}.bind(this)
 		);
 	},
+
+  // Returns RBG data at a specified coordinate
+  getColor: function(latlng) {
+    var size = this.getTileSize();
+    var point = this._map.project(latlng, this._tileZoom).floor();
+    var coords = point.unscaleBy(size).floor();
+    var offset = point.subtract(coords.scaleBy(size));
+    coords.z = this._tileZoom;
+    var tile = this._tiles[this._tileCoordsToKey(coords)];
+    if (!tile || !tile.loaded) return null;
+    try {
+      var canvas = document.createElement("canvas");
+      canvas.width = 1;
+      canvas.height = 1;
+      var context = canvas.getContext('2d');
+      context.drawImage(tile.el, -offset.x, -offset.y, size.x, size.y);
+      return context.getImageData(0, 0, 1, 1).data;
+    } catch (e) {
+      return null;
+    }
+  },
+
 });
 
 L.tileLayer.gl = function(opts) {
