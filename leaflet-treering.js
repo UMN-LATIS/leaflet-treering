@@ -4498,6 +4498,8 @@ function ImageAdjustment(Lt) {
 * @param {Ltreeing} Lt - Leaflet treering object
 */
 function AutoRingDetection(Lt) {
+  this.originalZoom;
+
   this.active = false;
   this.btn = new Button(
     'search',
@@ -4518,8 +4520,6 @@ function AutoRingDetection(Lt) {
     this.active = false;
     this.btn.state('inactive');
     Lt.viewer.getContainer().style.cursor = 'default';
-
-    this.tuneGLLayer(true);
   }
 
   AutoRingDetection.prototype.selectPoints = function() {
@@ -4543,19 +4543,26 @@ function AutoRingDetection(Lt) {
         }
         case 2: {
           second = e;
-          this.tuneGLLayer(false);
-          rgbArr = this.createRGBArr(first, second);
-          hsvArr = this.createHSVArr(rgbArr);
-          console.log(hsvArr);
-          this.detectRings(hsvArr);
-          this.disable();
+          this.originalZoom = Lt.viewer.getZoom();
+          Lt.viewer.setZoom(0);
+          // Wait for map to finish zooming out before ring detection occurs.
+          Lt.viewer.on('zoomend', this.action.bind(first, second));
           break;
         }
       }
     })
   }
 
-  AutoRingDetection.prototype.createRGBArr = function(first, second) {
+  AutoRingDetection.prototype.action = async function(first, second) {
+    Lt.autoRingDetection.tuneImage(false);
+    rgbArr = await Lt.autoRingDetection.createRGBArr(first, second);
+    hsvArr = Lt.autoRingDetection.createHSVArr(rgbArr);
+    Lt.autoRingDetection.detectRings(hsvArr);
+    Lt.autoRingDetection.tuneImage(true);
+    Lt.autoRingDetection.disable();
+  }
+
+  AutoRingDetection.prototype.createRGBArr = async function(first, second) {
     var firstLoc = Lt.viewer.mouseEventToLatLng(first);
     var secondLoc = Lt.viewer.mouseEventToLatLng(second);
 
@@ -4569,12 +4576,11 @@ function AutoRingDetection(Lt) {
       rightMost = firstLoc
     }
     var arr = [];
-    // TODO: increment should prdoce an array length roughly the number of image pixels sampled
     for (var c = 0; leftMost.lng + c <= secondLoc.lng; c += 0.001) {
       var lng = leftMost.lng + c;
       var lat = (slope * lng) + intercept
       var latlng = L.latLng(lat, lng);
-      var color = Lt.baseLayer['GL Layer'].getColor(latlng)
+      var color = await Lt.baseLayer['GL Layer'].getColor(latlng)
       var colorObj = {
         'latlng': latlng,
         'value': color,
@@ -4582,11 +4588,12 @@ function AutoRingDetection(Lt) {
       arr.push(colorObj);
     }
 
-    console.log(arr)
     return arr
   }
 
-  AutoRingDetection.prototype.tuneGLLayer = function (reset) {
+  AutoRingDetection.prototype.tuneImage = function (reset) {
+    if (!reset) this.originalZoom = Lt.viewer.getZoom();
+
     var genSettings = {
       sharpness: 0,
       emboss: 0,
@@ -4633,6 +4640,8 @@ function AutoRingDetection(Lt) {
         "strength": settings.sobel,
       },
     ]);
+
+    Lt.viewer.setZoom(settings.zoom);
   }
 
   AutoRingDetection.prototype.createHSVArr = function (rgbArr) {
@@ -4673,10 +4682,6 @@ function AutoRingDetection(Lt) {
       s = (v === 0) ? 0 : c / v;
       s = Math.round(s * 100) / 100
       v = Math.round(v * 100) / 100
-
-      if (!h && h !== 0) {
-        console.log(r, g, b)
-      }
 
       return {
         'latlng': rgbObj.latlng,
@@ -4727,7 +4732,9 @@ function AutoRingDetection(Lt) {
       ringLimit = locMaxima[half].v;
     }
 
-    console.log(locMaxima)
+    // Reset zoom level before placing points so mouseline renders correctly.
+    Lt.viewer.removeEventListener('zoomend', this.action.bind(null, null));
+    Lt.viewer.setZoom(this.originalZoom);
 
     var count = 0;
     for (var maximaObj of maximaCopy) {
