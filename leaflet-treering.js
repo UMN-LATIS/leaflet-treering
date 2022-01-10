@@ -4400,6 +4400,7 @@ function ImageAdjustment(Lt) {
     var embossSlider = document.getElementById("emboss-slider").value;
     var edgeDetect = document.getElementById("edgeDetect-slider").value;
     var unsharpnessSlider = document.getElementById("unsharpness-slider").value;
+    var boxBlurSlider = document.getElementById("boxBlur-slider").value;
     document.getElementsByClassName("leaflet-pane")[0].style.filter =
       "contrast(" + contrastSlider.value + "%) " +
       "brightness(" + brightnessSlider.value + "%) " +
@@ -4422,7 +4423,11 @@ function ImageAdjustment(Lt) {
       {
         "name":"unsharpen",
         "strength": unsharpnessSlider
-      }
+      },
+      {
+        "name": "boxBlur",
+        "strength": boxBlurSlider
+      },
     ]);
   };
 
@@ -4441,6 +4446,7 @@ function ImageAdjustment(Lt) {
     var embossSlider = document.getElementById("emboss-slider");
     var edgeDetect = document.getElementById("edgeDetect-slider");
     var unsharpnessSlider = document.getElementById("unsharpness-slider");
+    var boxBlurSlider = document.getElementById("boxBlur-slider")
     //Close view if user clicks anywhere outside of slider window
     $(Lt.viewer.getContainer()).click(e => {
       this.disable();
@@ -4462,6 +4468,7 @@ function ImageAdjustment(Lt) {
       $(embossSlider).val(0);
       $(edgeDetect).val(0);
       $(unsharpnessSlider).val(0);
+      $(boxBlurSlider).val(0)
       this.updateFilters();
     });
     $("#invert-button").click(() => {
@@ -4504,7 +4511,6 @@ function AutoRingDetection(Lt) {
     this.btn.state('active');
     Lt.viewer.getContainer().style.cursor = 'pointer';
 
-    this.tuneGLLayer(false);
     this.selectPoints();
   }
 
@@ -4526,7 +4532,7 @@ function AutoRingDetection(Lt) {
     });
 
     var clickCount = 0;
-    var first, second;
+    var first, second, rgbArr, hsvArr;
     $(Lt.viewer.getContainer()).click(e => {
       clickCount++;
 
@@ -4537,7 +4543,11 @@ function AutoRingDetection(Lt) {
         }
         case 2: {
           second = e;
-          this.createColorArray(first, second);
+          this.tuneGLLayer(false);
+          rgbArr = this.createRGBArr(first, second);
+          hsvArr = this.createHSVArr(rgbArr);
+          console.log(hsvArr);
+          this.detectRings(hsvArr);
           this.disable();
           break;
         }
@@ -4545,7 +4555,7 @@ function AutoRingDetection(Lt) {
     })
   }
 
-  AutoRingDetection.prototype.createColorArray = function(first, second) {
+  AutoRingDetection.prototype.createRGBArr = function(first, second) {
     var firstLoc = Lt.viewer.mouseEventToLatLng(first);
     var secondLoc = Lt.viewer.mouseEventToLatLng(second);
 
@@ -4573,52 +4583,161 @@ function AutoRingDetection(Lt) {
     }
 
     console.log(arr)
+    return arr
   }
 
   AutoRingDetection.prototype.tuneGLLayer = function (reset) {
-    var brightnessSlider = document.getElementById("brightness-slider");
-    var contrastSlider = document.getElementById("contrast-slider");
-    var saturationSlider = document.getElementById("saturation-slider");
-    var hueSlider = document.getElementById("hue-slider");
-    var sharpnessSlider = document.getElementById("sharpness-slider");
-    var embossSlider = document.getElementById("emboss-slider");
-    var edgeDetect = document.getElementById("edgeDetect-slider");
-    var unsharpnessSlider = document.getElementById("unsharpness-slider");
-
     var genSettings = {
-      brightness: 100,
-      contrast: 100,
-      saturation: 100,
-      hue: 0,
       sharpness: 0,
       emboss: 0,
       edgeDetect: 0,
-      unsharpness: 0,
+      unsharpen: 0,
+      boxBlur: 0,
+      sobel: 0,
     }
 
     var detectSettings = {
-      brightness: 100,
-      contrast: 350,
-      saturation: 0,
-      hue: 0,
       sharpness: 0,
       emboss: 0,
       edgeDetect: 0,
-      unsharpness: 0,
+      unsharpen: 0,
+      boxBlur: 1,
+      sobel: 1,
     }
 
     var settings = (reset) ? genSettings : detectSettings;
 
-    $(brightnessSlider).val(settings.brightness);
-    $(contrastSlider).val(settings.contrast);
-    $(saturationSlider).val(settings.saturation);
-    $(hueSlider).val(settings.hue);
-    $(sharpnessSlider).val(settings.sharpness);
-    $(embossSlider).val(settings.emboss);
-    $(edgeDetect).val(settings.edgeDetect);
-    $(unsharpnessSlider).val(settings.unsharpness);
-    Lt.imageAdjustment.updateFilters();
+    Lt.baseLayer['GL Layer'].setKernelsAndStrength([
+      {
+			"name":"emboss",
+			"strength": settings.emboss,
+      },
+      {
+        "name":"edgeDetect3",
+        "strength": settings.edgeDetect,
+      },
+      {
+        "name":"sharpness",
+        "strength": settings.sharpness,
+      },
+      {
+        "name":"unsharpen",
+        "strength": settings.unsharpen,
+      },
+      {
+        "name": "boxBlur",
+        "strength": settings.boxBlur,
+      },
+      {
+        "name": "sobelY",
+        "strength": settings.sobel,
+      },
+    ]);
   }
+
+  AutoRingDetection.prototype.createHSVArr = function (rgbArr) {
+    var r, g, b, h, s, v, c;
+    var hsvArr = rgbArr.map(rgbObj => {
+      r = rgbObj.value[0] / 255;
+      g = rgbObj.value[1] / 255;
+      b = rgbObj.value[2] / 255;
+
+      v = Math.max(r, g, b);
+      c = v - Math.min(r, g, b);
+
+      switch(v) {
+        case (0): {
+          h = 0
+          break;
+        }
+        case (r): {
+          h = 60 * ((g - b) / c)
+          break;
+        }
+        case (g): {
+          h = 60 * (2 + ((b - r) / c))
+          break;
+        }
+        case (b): {
+          h = 60 * (4 + ((r - g) / c))
+          break;
+        }
+        default: {
+          h = 0;
+        }
+      }
+      if (c === 0) h = 0;
+      h = Math.round(h)
+      if (h < 0) h += 360
+
+      s = (v === 0) ? 0 : c / v;
+      s = Math.round(s * 100) / 100
+      v = Math.round(v * 100) / 100
+
+      if (!h && h !== 0) {
+        console.log(r, g, b)
+      }
+
+      return {
+        'latlng': rgbObj.latlng,
+        'value': [h, s, v],
+      };
+    });
+
+    return hsvArr;
+  }
+
+  AutoRingDetection.prototype.detectRings = function (arr) {
+    var v, vPrev, vNext, latlng, temp;
+    var locMaxima = [];
+    for (var i = 1; i < arr.length - 1; i++) {
+      v = arr[i].value[2];
+      vPrev = arr[i - 1].value[2];
+      vNext = arr[i + 1].value[2];
+      latlng = arr[i].latlng;
+      if (v > vPrev) {
+        if (v > vNext) {
+          locMaxima.push({
+            'latlng': latlng,
+            'v': v,
+          });
+        } else if (v === vNext) {
+          temp = i;
+          while(i < arr.length - 1 && arr[i].value[2] === arr[temp].value[2]) i++;
+          if (arr[temp].value[2] > arr[i].value[2]) {
+            locMaxima.push({
+              'latlng': arr[temp].latlng,
+              'v': arr[temp].value[2],
+            });
+          }
+        }
+      }
+    }
+
+    // Create ring indicator by taking the median of the maximum values.
+    var maximaCopy = JSON.parse(JSON.stringify(locMaxima));
+    locMaxima.sort((a, b) => {
+      return a.v - b.v;
+    });
+    var ringLimit;
+    var half = Math.round(locMaxima.length / 2);
+    if (locMaxima.length % 2 === 0) {
+      ringLimit = (locMaxima[half - 1].v + locMaxima[half].v) / 2;
+    } else {
+      ringLimit = locMaxima[half].v;
+    }
+
+    console.log(locMaxima)
+
+    var count = 0;
+    for (var maximaObj of maximaCopy) {
+      if (maximaObj.v > ringLimit) {
+        Lt.data.newPoint(count++ < 1, maximaObj.latlng);
+        Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, maximaObj.latlng);
+      }
+    }
+  }
+
 }
 
 /**
