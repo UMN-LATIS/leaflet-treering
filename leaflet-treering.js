@@ -976,31 +976,74 @@ function VisualAsset (Lt) {
     this.lineLayer.clearLayers();
     this.lines = new Array();
 
+    var swap = (!Lt.measurementOptions.forwardDirection &&
+                 Lt.measurementOptions.subAnnual &&
+                !Lt.data.points[0].earlywood);
+
     // plot the data back onto the map
     if (Lt.data.points !== undefined) {
       Object.values(Lt.data.points).map((e, i) => {
         if (e != undefined) {
+
+          // Old design of measuring backwards had the first point as latewood.
+          // Need to swap earlywood values of legacy cores.
+          if (swap) {
+            e.earlywood = !e.earlywood
+          }
+
           this.newLatLng(Lt.data.points, i, e.latLng);
 
-          // marker tool tips
-          if (Lt.data.points[i].year && Lt.measurementOptions.subAnnual) {
-            var descFor = (Lt.data.points[i].earlywood) ? ', early' : ', late';
-            var descBac = (Lt.data.points[i].earlywood) ? ', late' : ', early';
-            var desc = (Lt.preferences.forwardDirection) ? descFor : descBac;
-            this.markers[i].bindTooltip(String(Lt.data.points[i].year) + desc, { direction: 'top' });
-          } else if (Lt.data.points[i].year) {
-            this.markers[i].bindTooltip(String(Lt.data.points[i].year), { direction: 'top' });
+          // Marker tool tips:
+          // If measuring forward, point tooltips are "honest". For a start/break pair: start point says...
+          // ...Start, break says Break.
+          // If measuring backwards, point tooltips "lie". Tooltips will have the text as if the specimin was...
+          // ...measured forwards. For a start/break pair: start point says Break, break point says Start.
+          var tooltip = "";
+          if (Lt.data.points[i].year) {
+            var desc = (!Lt.measurementOptions.subAnnual) ? '' :
+                       (Lt.data.points[i].earlywood) ? ', early' : ', late';
+            tooltip = String(Lt.data.points[i].year) + desc;
           } else if (Lt.data.points[i].start) {
-            this.markers[i].bindTooltip('Start', { direction: 'top' });
+            tooltip = 'Start';
           } else if (Lt.data.points[i].break) {
-            this.markers[i].bindTooltip('Break', { direction: 'top' });
+            tooltip = 'Break';
           }
+
+          // Measuring backwards "lies":
+          if (!Lt.measurementOptions.forwardDirection) {
+            // Break point pair: start point
+            if (Lt.data.points[i].start && Lt.data.points[i - 1] && Lt.data.points[i - 1].break) {
+              tooltip = 'Break';
+            // Break point pair: break point
+            } else if (Lt.data.points[i + 1] && Lt.data.points[i + 1].start && Lt.data.points[i].break) {
+              tooltip = 'Start';
+            // Start point has year value, previous actual start point has Start tooltip.
+            } else if (Lt.data.points[i - 1] && Lt.data.points[i].start) {
+              var desc = (!Lt.measurementOptions.subAnnual) ? '' :
+                         (Lt.data.points[i - 1].earlywood) ? ', early' : ', late';
+              tooltip = String(Lt.data.points[i - 1].year) + desc;
+            } else if (Lt.data.points[i + 1] && Lt.data.points[i + 1].start) {
+              tooltip = 'Start';
+            }
+
+            // First point is treated as a measurement point, not a start point.
+            if (i === 0) {
+              var desc = (!Lt.measurementOptions.subAnnual) ? '' : ', late';
+              var c = (!Lt.measurementOptions.subAnnual) ? 1 : 0;
+              tooltip = String(Lt.data.points[i + 1].year + c) + desc;
+            // Last point is treated as a start point, not a measurement point.
+            } else if (i === Lt.data.points.length - 1) {
+              tooltip = 'Start';
+            }
+          }
+
+          this.markers[i].bindTooltip(tooltip, { direction: 'top' })
         }
       });
     }
 
     // bind popups to lines if not popped out
-    const pts = JSON.parse(JSON.stringify(Lt.data.points)).filter( pt => pt ); // filter null points
+    const pts = JSON.parse(JSON.stringify(Lt.data.points)).filter(Boolean); // filter null points
 
     function create_tooltips_annual () {
       pts.map((e, i) => {
@@ -1018,13 +1061,14 @@ function VisualAsset (Lt) {
       pts.map((e, i) => {
         let forward = Lt.preferences.forwardDirection;
         let backward = !Lt.preferences.forwardDirection;
-        let year = (forward || (backward && !pts[i].earlywood)) ? pts[i].year : pts[i].year + 1;
-        let ew = (forward) ? pts[i].earlywood : !pts[i].earlywood;
+        let year = pts[i].year;
+        let ew = pts[i].earlywood;
         let latLng = L.latLng(pts[i].latLng);
+
         if (year) {
           let first_or_last = (i == 1 || i == pts.length - 2) ? true : false;
           let static = (year % 50 == 0 || first_or_last) ? true : false;
-          let options = (static && ew) ? { permanent: true, direction: 'top' } : { direction: 'top' };
+          let options = (static && pts[i].earlywood) ? { permanent: true, direction: 'top' } : { direction: 'top' };
           let tooltip = String(year);
 
           if (static && ew) { // permanent tooltips are attached to 1st increment of sub-annual measurements
@@ -1034,18 +1078,17 @@ function VisualAsset (Lt) {
             inv_marker.openTooltip();
             options = { direction: 'top' };
           }
-          tooltip = (pts[i].earlywood) ? tooltip += ', early' : tooltip += ', late';
+          // When measuring forwards, tooltip is attached to the line behind the marker.
+          // When measuring backwards, tooltip is attached to the line infront of the marker.
+          tooltip = (ew && backward) ? pts[i].year : pts[i].year + 1;
+          ((ew && forward) || (!ew && backward)) ? tooltip += ', early' : tooltip += ', late';
           Lt.visualAsset.lines[i].bindTooltip(tooltip, options);
         }
       });
     }
 
     if (window.name.includes('popout') == false) {
-      if (Lt.measurementOptions.subAnnual) {
-        create_tooltips_subAnnual();
-      } else {
-        create_tooltips_annual();
-      };
+      (Lt.measurementOptions.subAnnual) ? create_tooltips_subAnnual() : create_tooltips_annual();
     }
 
   }
@@ -1070,17 +1113,7 @@ function VisualAsset (Lt) {
     let marker;
 
     if (pts[i].start) { //check if index is the start point
-      // when measuring backwards, the start point should appear as a regular point
-      // in order to maintain consitancy between the two measuring modes.
-      if (Lt.measurementOptions.forwardDirection) {
-        marker = getMarker(leafLatLng, 'white_start', Lt.basePath, draggable);
-      } else {
-        if (pts[i + 1] && pts[i + 1].year && pts[i + 1].year % 10 == 0) {
-          marker = getMarker(leafLatLng, 'light_red', Lt.basePath, draggable);
-        } else {
-          marker = getMarker(leafLatLng, 'dark_blue', Lt.basePath, draggable);
-        }
-      }
+      marker = getMarker(leafLatLng, 'white_start', Lt.basePath, draggable);
     } else if (pts[i].break) { //check if point is a break
       marker = getMarker(leafLatLng, 'white_break', Lt.basePath, draggable);
     } else if (Lt.measurementOptions.subAnnual) { //check if point subAnnual
@@ -1104,12 +1137,6 @@ function VisualAsset (Lt) {
         marker = getMarker(leafLatLng, 'light_blue', Lt.basePath, draggable);
       }
     };
-
-    // when measuring backwards, the end point should appear as a start point
-    // in order to maintain consitancy between the two measuring modes.
-    if (!Lt.measurementOptions.forwardDirection && i === pts.length - 1) {
-      marker = getMarker(leafLatLng, 'white_start', Lt.basePath, draggable);
-    }
 
     this.markers[i] = marker;   //add created marker to marker_list
 
