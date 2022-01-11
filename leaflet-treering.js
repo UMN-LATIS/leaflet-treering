@@ -285,26 +285,16 @@ function MeasurementData (dataObject, Lt) {
       this.points[this.index] = {'start': true, 'skip': false, 'break': false, 'latLng': latLng};
     } else {
       this.points[this.index] = {'start': false, 'skip': false, 'break': false, 'year': this.year, 'earlywood': this.earlywood, 'latLng': latLng};
-      if (measurementOptions.subAnnual) { // check if points alternate ew & lw
-        if (this.earlywood) {
-          this.earlywood = false;
-        } else {
-          this.earlywood = true;
-          if (direction == forwardInTime) {
-            this.year++;
-          } else if (direction == backwardInTime) {
-            this.year--;
-          };
-        }
-      } else {
+      // Change year value if lw point or annual measurements.
+      if ((measurementOptions.subAnnual && !this.earlywood) || !measurementOptions.subAnnual) {
         if (direction == forwardInTime) {
           this.year++;
         } else if (direction == backwardInTime) {
           this.year--;
         };
       };
+      this.earlywood = (measurementOptions.subAnnual) ? !this.earlywood : true;
     };
-
 
     this.index++;
 
@@ -408,11 +398,8 @@ function MeasurementData (dataObject, Lt) {
    * @function cut
    */
   MeasurementData.prototype.cut = function(i, j) {
-    function removeNulls (e) {
-      if (e != null) {
-        return e
-      };
-    };
+    var twoIncrements = Lt.measurementOptions.subAnnual;
+    var yearsAscending = Lt.measurementOptions.forwardDirection;
 
     if (i > j) {
       this.points.splice(j,i-j+1);
@@ -422,7 +409,7 @@ function MeasurementData (dataObject, Lt) {
       alert('You cannot select the same point');
     };
 
-    var trimmed_points = this.points.filter(removeNulls); // remove null points
+    var trimmed_points = this.points.filter(Boolean); // remove null points
     var k = 0;
     this.points = {};
     trimmed_points.map(e => {
@@ -437,47 +424,40 @@ function MeasurementData (dataObject, Lt) {
     this.index = k;
     this.points = trimmed_points;
 
-    //Correct years to delete gap in timeline
-    year = this.points[1].year;
-    second = false;
-    this.points.map(e=>{
-      if(e && !e.start && !e.break){
-        if(Lt.measurementOptions.subAnnual)
-        {
-          e.year = year;
-          if(second)
-          {
-            Lt.measurementOptions.forwardDirection? year++: year--;
-            e.earlywood = false;
-            second = false;
-          }
-          else{
-            e.earlywood = true;
-            second = true;
-          }
+    // Correct years to delete gap in timeline.
+    var year = this.points[1].year;
+    var second = this.points[1].earlywood;
+    var breakPt = false;
+    var c = (yearsAscending) ? 1 : -1;
+    this.points.map(e => {
+      if (e && !e.start && !e.break) { // If measurement point...
+        // Do not change year or increment type if there is a break in the measurement path.
+        if (breakPt) {
+          breakPt = false;
+        } else {
+          // Only change year if single increment or second point evaluated.
+          year = (second || !twoIncrements) ? year + c : year;
+          second = !second;
         }
-        else{
-          e.year = year;
-          Lt.measurementOptions.forwardDirection? year++: year--;
-        }
+        e.year = year;
+        e.earlywood = (twoIncrements) ? !second : true;
+      } else if (e.break) {
+        breakPt = true;
       }
     });
 
-    if(Lt.measurementOptions.subAnnual)
-    {
-      if(Lt.measurementOptions.forwardDirection && !this.points[this.points.length-1].earlywood)
-      {
-        this.year = this.points[this.points.length-1].year+1;
-        this.earlywood = true;
+    // Set current data so next measurement point correct.
+    var lastPt = this.points[this.points.length - 1];
+    if (twoIncrements) {
+      this.earlywood = !lastPt.earlywood;
+      // Only increment if previous point the last increment of that year.
+      if (yearsAscending && !lastPt.earlywood) {
+        this.year = lastPt.year + 1;
+      } else if (!yearsAscending && lastPt.earlywood) {
+        this.year = lastPt.year - 1;
       }
-      else if(!Lt.measurementOptions.forwardDirection && this.points[this.points.length-1].earlywood)
-      {
-        this.year = this.points[this.points.length-1].year-1;
-      }
-    }
-    else
-    {
-      this.year = Lt.measurementOptions.forwardDirection? this.points[this.points.length-1].year+1: this.points[this.points.length-1].year-1;
+    } else {
+      this.year = yearsAscending ? lastPt.year + 1 : lastPt.year - 1;
     }
 
     Lt.metaDataText.updateText(); // updates after points are cut
@@ -515,7 +495,8 @@ function MeasurementData (dataObject, Lt) {
         if (direction == forwardInTime) {
           year_adjusted = this.points[i - 1].year;
         } else if (direction == backwardInTime) {
-          year_adjusted = this.points[i].year;
+          // special case when next point is a break point
+          year_adjusted = (this.points[i].year) ? this.points[i].year : this.points[i - 1].year;
         };
 
       } else if (this.points[i - 1].start || this.points[i].start) { // case 2: previous or closest point is start
@@ -532,7 +513,8 @@ function MeasurementData (dataObject, Lt) {
         if (direction == forwardInTime) {
           year_adjusted = this.points[i - 1].year + 1;
         } else if (direction == backwardInTime) {
-          year_adjusted = this.points[i].year;
+          // special case when next point is a break point
+          year_adjusted = (this.points[i].year) ? this.points[i].year : this.points[i - 1].year - 1;
         };
       };
     } else {
@@ -987,10 +969,10 @@ function VisualAsset (Lt) {
    * @function reload
    */
   VisualAsset.prototype.reload = function() {
-    //erase the markers
+    // erase the markers
     this.markerLayer.clearLayers();
     this.markers = new Array();
-    //erase the lines
+    // erase the lines
     this.lineLayer.clearLayers();
     this.lines = new Array();
 
@@ -1076,6 +1058,8 @@ function VisualAsset (Lt) {
    * @param {Leaflet LatLng Object} latLng -
    */
   VisualAsset.prototype.newLatLng = function(pts, i, latLng) {
+    pts = pts.filter(Boolean);
+
     var leafLatLng = L.latLng(latLng);
 
     var draggable = false;
@@ -1086,38 +1070,31 @@ function VisualAsset (Lt) {
     let marker;
 
     if (pts[i].start) { //check if index is the start point
-      marker = getMarker(leafLatLng, 'white_start', Lt.basePath, draggable);
+      // when measuring backwards, the start point should appear as a regular point
+      // in order to maintain consitancy between the two measuring modes.
+      if (Lt.measurementOptions.forwardDirection) {
+        marker = getMarker(leafLatLng, 'white_start', Lt.basePath, draggable);
+      } else {
+        if (pts[i + 1] && pts[i + 1].year && pts[i + 1].year % 10 == 0) {
+          marker = getMarker(leafLatLng, 'light_red', Lt.basePath, draggable);
+        } else {
+          marker = getMarker(leafLatLng, 'dark_blue', Lt.basePath, draggable);
+        }
+      }
     } else if (pts[i].break) { //check if point is a break
       marker = getMarker(leafLatLng, 'white_break', Lt.basePath, draggable);
     } else if (Lt.measurementOptions.subAnnual) { //check if point subAnnual
         if (pts[i].earlywood) { //check if point is earlywood
           if (pts[i].year % 10 == 0) {
-            // which marker asset is used depends on measurement direction
-            if (Lt.measurementOptions.forwardDirection) { // check if years counting up
-              marker = getMarker(leafLatLng, 'pale_red', Lt.basePath, draggable);
-            } else { // otherwise years counting down & marker assets need to be flipped
-              marker = getMarker(leafLatLng, 'light_red', Lt.basePath, draggable);
-            };
+            marker = getMarker(leafLatLng, 'pale_red', Lt.basePath, draggable);
           } else {
-            if (Lt.measurementOptions.forwardDirection) {
-              marker = getMarker(leafLatLng, 'light_blue', Lt.basePath, draggable);
-            } else {
-              marker = getMarker(leafLatLng, 'dark_blue', Lt.basePath, draggable);
-            }
+            marker = getMarker(leafLatLng, 'light_blue', Lt.basePath, draggable);
           }
         } else { //otherwise it's latewood
             if (pts[i].year % 10 == 0) {
-              if (Lt.measurementOptions.forwardDirection) { // check if years counting up
-                marker = getMarker(leafLatLng, 'light_red', Lt.basePath, draggable);
-              } else { // otherwise years counting down
-                marker = getMarker(leafLatLng, 'pale_red', Lt.basePath, draggable);
-              };
+              marker = getMarker(leafLatLng, 'light_red', Lt.basePath, draggable);
             } else {
-              if (Lt.measurementOptions.forwardDirection) {
-                marker = getMarker(leafLatLng, 'dark_blue', Lt.basePath, draggable);
-              } else {
-                marker = getMarker(leafLatLng, 'light_blue', Lt.basePath, draggable);
-              }
+              marker = getMarker(leafLatLng, 'dark_blue', Lt.basePath, draggable);
             }
         }
     } else {
@@ -1128,6 +1105,12 @@ function VisualAsset (Lt) {
       }
     };
 
+    // when measuring backwards, the end point should appear as a start point
+    // in order to maintain consitancy between the two measuring modes.
+    if (!Lt.measurementOptions.forwardDirection && i === pts.length - 1) {
+      marker = getMarker(leafLatLng, 'white_start', Lt.basePath, draggable);
+    }
+
     this.markers[i] = marker;   //add created marker to marker_list
 
     //tell marker what to do when being dragged
@@ -1137,7 +1120,7 @@ function VisualAsset (Lt) {
         this.lines[i] =
             L.polyline([this.lines[i]._latlngs[0], e.target._latlng],
             { color: this.lines[i].options.color,
-              opacity: '.75', weight: '5'});
+              opacity: '.5', weight: '5'});
         this.lineLayer.addLayer(this.lines[i]);
       }
       if (this.lines[i + 1] !== undefined) {
@@ -1145,7 +1128,7 @@ function VisualAsset (Lt) {
         this.lines[i + 1] =
             L.polyline([e.target._latlng, this.lines[i + 1]._latlngs[1]],
             { color: this.lines[i + 1].options.color,
-              opacity: '.75',
+              opacity: '.5',
               weight: '5'
             });
         this.lineLayer.addLayer(this.lines[i + 1]);
@@ -1154,7 +1137,7 @@ function VisualAsset (Lt) {
         this.lines[i + 2] =
             L.polyline([e.target._latlng, this.lines[i + 2]._latlngs[1]],
             { color: this.lines[i + 2].options.color,
-              opacity: '.75',
+              opacity: '.5',
               weight: '5' });
         this.lineLayer.addLayer(this.lines[i + 2]);
       }
@@ -1228,7 +1211,9 @@ function VisualAsset (Lt) {
     if (pts[i - 1] != undefined && !pts[i].start) {
       var opacity = '.5';
       var weight = '5';
-      if (pts[i].earlywood || !Lt.measurementOptions.subAnnual ||
+      if ((Lt.measurementOptions.forwardDirection && pts[i].earlywood) ||   // Line color condition swaps when....
+          (!Lt.measurementOptions.forwardDirection && !pts[i].earlywood) || // ...measuring direction changes
+          !Lt.measurementOptions.subAnnual ||
           (!pts[i - 1].earlywood && pts[i].break)) {
         var color = '#17b0d4'; // original = #00BCD4 : actual = #5dbcd
       } else {
@@ -4334,11 +4319,7 @@ function ViewData(Lt) {
 
         Lt.data.points = [];
         Lt.data.year = 0;
-        if (Lt.measurementOptions.forwardDirection || Lt.measurementOptions.subAnnual == false) { // if years counting up or annual increments, need ew first
-          Lt.data.earlywood = true;
-        } else if (Lt.measurementOptions.forwardDirection == false){ // if year counting down, need lw first
-          Lt.data.earlywood = false;
-        };
+        Lt.data.earlywood = true;
         Lt.data.index = 0;
 
         Lt.visualAsset.reload();
@@ -4587,7 +4568,7 @@ MeasurementOptions.prototype.displayDialog = function () {
     document.getElementById("forward_radio").addEventListener('change', (event) => {
       if (event.target.checked == true) {
         this.forwardDirection = true;
-        Lt.data.earlywood = true; // swap which type of point is plotted first
+        Lt.data.earlywood = true;
         Lt.metaDataText.updateText(); // update text once selected
       };
     });
@@ -4595,7 +4576,7 @@ MeasurementOptions.prototype.displayDialog = function () {
     document.getElementById("backward_radio").addEventListener('change', (event) => {
       if (event.target.checked == true) {
         this.forwardDirection = false;
-        Lt.data.earlywood = false;
+        Lt.data.earlywood = true;
         Lt.metaDataText.updateText();
       };
     });
