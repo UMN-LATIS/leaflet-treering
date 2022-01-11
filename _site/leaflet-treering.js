@@ -4401,6 +4401,7 @@ function ImageAdjustment(Lt) {
     var edgeDetect = document.getElementById("edgeDetect-slider").value;
     var unsharpnessSlider = document.getElementById("unsharpness-slider").value;
     var boxBlurSlider = document.getElementById("boxBlur-slider").value;
+    var sobelSlider = document.getElementById("sobelY-slider").value;
     document.getElementsByClassName("leaflet-pane")[0].style.filter =
       "contrast(" + contrastSlider.value + "%) " +
       "brightness(" + brightnessSlider.value + "%) " +
@@ -4428,6 +4429,10 @@ function ImageAdjustment(Lt) {
         "name": "boxBlur",
         "strength": boxBlurSlider
       },
+      {
+        "name": "sobelY",
+        "strength": sobelSlider
+      }
     ]);
   };
 
@@ -4447,6 +4452,7 @@ function ImageAdjustment(Lt) {
     var edgeDetect = document.getElementById("edgeDetect-slider");
     var unsharpnessSlider = document.getElementById("unsharpness-slider");
     var boxBlurSlider = document.getElementById("boxBlur-slider")
+    var sobelSlider = document.getElementById("sobelY-slider");
     //Close view if user clicks anywhere outside of slider window
     $(Lt.viewer.getContainer()).click(e => {
       this.disable();
@@ -4469,6 +4475,7 @@ function ImageAdjustment(Lt) {
       $(edgeDetect).val(0);
       $(unsharpnessSlider).val(0);
       $(boxBlurSlider).val(0)
+      $(sobelSlider).val(0)
       this.updateFilters();
     });
     $("#invert-button").click(() => {
@@ -4499,6 +4506,8 @@ function ImageAdjustment(Lt) {
 */
 function AutoRingDetection(Lt) {
   this.originalZoom;
+  this.first;
+  this.second;
 
   this.active = false;
   this.btn = new Button(
@@ -4512,7 +4521,7 @@ function AutoRingDetection(Lt) {
     this.active = true;
     this.btn.state('active');
     Lt.viewer.getContainer().style.cursor = 'pointer';
-
+    this.tuneImage(false);
     this.selectPoints();
   }
 
@@ -4520,6 +4529,7 @@ function AutoRingDetection(Lt) {
     this.active = false;
     this.btn.state('inactive');
     Lt.viewer.getContainer().style.cursor = 'default';
+    this.tuneImage(true);
   }
 
   AutoRingDetection.prototype.selectPoints = function() {
@@ -4532,39 +4542,43 @@ function AutoRingDetection(Lt) {
     });
 
     var clickCount = 0;
-    var first, second, rgbArr, hsvArr;
     $(Lt.viewer.getContainer()).click(e => {
       clickCount++;
 
       switch (clickCount) {
         case 1: {
-          first = e;
+          this.first = e;
           break;
         }
         case 2: {
-          second = e;
-          this.originalZoom = Lt.viewer.getZoom();
-          Lt.viewer.setZoom(0);
-          // Wait for map to finish zooming out before ring detection occurs.
-          Lt.viewer.on('zoomend', this.action.bind(first, second));
+          this.second = e;
+          console.log(Lt.viewer.getZoom());
+          // TODO: Wait for map to finish zooming out before ring detection occurs.
+          //this.originalZoom = Lt.viewer.getZoom();
+          //Lt.viewer.setZoom(0, {animate: false});
+
+          this.action();
+
+          //Lt.viewer.on('zoomend', this.action);
           break;
         }
       }
     })
   }
 
-  AutoRingDetection.prototype.action = async function(first, second) {
+  AutoRingDetection.prototype.action = function() {
+    var rgbArr, hsvArr;
     Lt.autoRingDetection.tuneImage(false);
-    rgbArr = await Lt.autoRingDetection.createRGBArr(first, second);
+    rgbArr = Lt.autoRingDetection.createRGBArr();
     hsvArr = Lt.autoRingDetection.createHSVArr(rgbArr);
     Lt.autoRingDetection.detectRings(hsvArr);
     Lt.autoRingDetection.tuneImage(true);
     Lt.autoRingDetection.disable();
   }
 
-  AutoRingDetection.prototype.createRGBArr = async function(first, second) {
-    var firstLoc = Lt.viewer.mouseEventToLatLng(first);
-    var secondLoc = Lt.viewer.mouseEventToLatLng(second);
+  AutoRingDetection.prototype.createRGBArr = function() {
+    var firstLoc = Lt.viewer.mouseEventToLatLng(this.first);
+    var secondLoc = Lt.viewer.mouseEventToLatLng(this.second);
 
     var slope = (firstLoc.lat - secondLoc.lat) / (firstLoc.lng - secondLoc.lng);
     var intercept = firstLoc.lat - (slope * firstLoc.lng)
@@ -4576,11 +4590,11 @@ function AutoRingDetection(Lt) {
       rightMost = firstLoc
     }
     var arr = [];
-    for (var c = 0; leftMost.lng + c <= secondLoc.lng; c += 0.001) {
+    for (var c = 0; leftMost.lng + c <= secondLoc.lng; c += 0.0005) {
       var lng = leftMost.lng + c;
       var lat = (slope * lng) + intercept
       var latlng = L.latLng(lat, lng);
-      var color = await Lt.baseLayer['GL Layer'].getColor(latlng)
+      var color = Lt.baseLayer['GL Layer'].getColor(latlng)
       var colorObj = {
         'latlng': latlng,
         'value': color,
@@ -4592,8 +4606,6 @@ function AutoRingDetection(Lt) {
   }
 
   AutoRingDetection.prototype.tuneImage = function (reset) {
-    if (!reset) this.originalZoom = Lt.viewer.getZoom();
-
     var genSettings = {
       sharpness: 0,
       emboss: 0,
@@ -4606,18 +4618,18 @@ function AutoRingDetection(Lt) {
     var detectSettings = {
       sharpness: 0,
       emboss: 0,
-      edgeDetect: 0,
+      edgeDetect: 2,
       unsharpen: 0,
       boxBlur: 1,
-      sobel: 1,
+      sobel: 2,
     }
 
     var settings = (reset) ? genSettings : detectSettings;
 
     Lt.baseLayer['GL Layer'].setKernelsAndStrength([
       {
-			"name":"emboss",
-			"strength": settings.emboss,
+  			"name":"emboss",
+  			"strength": settings.emboss,
       },
       {
         "name":"edgeDetect3",
@@ -4640,8 +4652,6 @@ function AutoRingDetection(Lt) {
         "strength": settings.sobel,
       },
     ]);
-
-    Lt.viewer.setZoom(settings.zoom);
   }
 
   AutoRingDetection.prototype.createHSVArr = function (rgbArr) {
@@ -4725,20 +4735,20 @@ function AutoRingDetection(Lt) {
       return a.v - b.v;
     });
     var ringLimit;
-    var half = Math.round(locMaxima.length / 2);
+    var quantile = Math.round(locMaxima.length / 2);
     if (locMaxima.length % 2 === 0) {
-      ringLimit = (locMaxima[half - 1].v + locMaxima[half].v) / 2;
+      ringLimit = (locMaxima[quantile - 1].v + locMaxima[quantile].v) / 2;
     } else {
-      ringLimit = locMaxima[half].v;
+      ringLimit = locMaxima[quantile].v;
     }
 
-    // Reset zoom level before placing points so mouseline renders correctly.
-    Lt.viewer.removeEventListener('zoomend', this.action.bind(null, null));
-    Lt.viewer.setZoom(this.originalZoom);
+    // TODO: Reset zoom level before placing points so mouseline renders correctly.
+    // Lt.viewer.removeEventListener('zoomend', this.action);
+    // Lt.viewer.setZoom(this.originalZoom);
 
     var count = 0;
     for (var maximaObj of maximaCopy) {
-      if (maximaObj.v > ringLimit) {
+      if (maximaObj.v >= ringLimit) {
         Lt.data.newPoint(count++ < 1, maximaObj.latlng);
         Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, maximaObj.latlng);
       }
