@@ -982,6 +982,7 @@ function VisualAsset (Lt) {
 
     // plot the data back onto the map
     if (Lt.data.points !== undefined) {
+      Lt.data.points = Lt.data.points.filter(Boolean);
       Object.values(Lt.data.points).map((e, i) => {
         if (e != undefined) {
 
@@ -991,7 +992,7 @@ function VisualAsset (Lt) {
             e.earlywood = !e.earlywood
           }
 
-          this.newLatLng(Lt.data.points, i, e.latLng);
+          this.newLatLng(Lt.data.points, i, e.latLng, true);
 
           // Marker tool tips:
           // If measuring forward, point tooltips are "honest". For a start/break pair: start point says...
@@ -1100,7 +1101,7 @@ function VisualAsset (Lt) {
    * @param {int} i - index of points
    * @param {Leaflet LatLng Object} latLng -
    */
-  VisualAsset.prototype.newLatLng = function(pts, i, latLng) {
+  VisualAsset.prototype.newLatLng = function(pts, i, latLng, reload) {
     pts = pts.filter(Boolean);
 
     var leafLatLng = L.latLng(latLng);
@@ -1110,34 +1111,71 @@ function VisualAsset (Lt) {
       draggable = true;
     }
 
-    let marker;
-
-    if (pts[i].start) { //check if index is the start point
-      marker = getMarker(leafLatLng, 'white_start', Lt.basePath, draggable);
-    } else if (pts[i].break) { //check if point is a break
-      marker = getMarker(leafLatLng, 'white_break', Lt.basePath, draggable);
-    } else if (Lt.measurementOptions.subAnnual) { //check if point subAnnual
-        if (pts[i].earlywood) { //check if point is earlywood
-          if (pts[i].year % 10 == 0) {
-            marker = getMarker(leafLatLng, 'pale_red', Lt.basePath, draggable);
+    // When measuring backwards, marker color "lies". It will have the appearance...
+    // ... as if it was measured forwards. For example, start points look like measurement...
+    // ... points and measurement points look like start points (when appropriate.)
+    var color;
+    var forward = Lt.measurementOptions.forwardDirection;
+    var backward = !forward;
+    var annual = !Lt.measurementOptions.subAnnual;
+    var subAnnual = !annual;
+    // Start point icon:
+    if (pts[i].start) {
+      if (forward) {
+          color = 'white_start';
+      } else if (backward) {
+        if (pts[i - 1] && pts[i - 1].break) {
+          color = 'white_break';
+        // Start points and measurement points swap.
+      } else if (pts[i - 1]) {
+          if (pts[i - 1].year % 10 == 0) {
+            color = (annual) ? 'light_red' :
+                    (pts[i - 1].earlywood) ? 'pale_red' : 'light_red';
           } else {
-            marker = getMarker(leafLatLng, 'light_blue', Lt.basePath, draggable);
+            color = (annual) ? 'light_blue' :
+                    (pts[i - 1].earlywood) ? 'light_blue' : 'dark_blue';
           }
-        } else { //otherwise it's latewood
-            if (pts[i].year % 10 == 0) {
-              marker = getMarker(leafLatLng, 'light_red', Lt.basePath, draggable);
-            } else {
-              marker = getMarker(leafLatLng, 'dark_blue', Lt.basePath, draggable);
-            }
         }
+      }
+    // Break point icon:
+    } else if (pts[i].break) {
+      if (forward) {
+          color = 'white_break';
+      } else if (backward) {
+        color = 'white_start';
+      }
+    // Sub-annual icons:
+    } else if (subAnnual) {
+      if (pts[i].earlywood) {
+        // Decades are colored red.
+        color = (pts[i].year % 10 == 0) ? 'pale_red' : 'light_blue';
+      } else { // Otherwise, point is latewood.
+        color = (pts[i].year % 10 == 0) ? 'light_red' : 'dark_blue';
+      }
+
+      // Swap measurement path endings and start points.
+      if (backward && pts[i + 1] && pts[i + 1].start) {
+        color = 'white_start';
+      }
+    // Annual icons:
     } else {
-      if (pts[i].year % 10 == 0) {
-        marker = getMarker(leafLatLng, 'light_red', Lt.basePath, draggable);
-      } else {
-        marker = getMarker(leafLatLng, 'light_blue', Lt.basePath, draggable);
+      color = (pts[i].year % 10 == 0) ? 'light_red' : 'light_blue';
+
+      // Swap measurement path endings and start points.
+      if (backward && pts[i + 1] && pts[i + 1].start) {
+        color = 'white_start';
       }
     };
 
+    // Start and end points swapped when measuring backwards.
+    if (backward && i === 0) {
+      color = (annual) ? 'light_blue' : 'dark_blue';
+    // Only apply this when active measuring disabled.
+  } else if (backward && i === pts.length - 1 && reload) {
+      color = 'white_start';
+    }
+
+    var marker = getMarker(leafLatLng, color, Lt.basePath, draggable);
     this.markers[i] = marker;   //add created marker to marker_list
 
     //tell marker what to do when being dragged
@@ -1258,7 +1296,9 @@ function VisualAsset (Lt) {
       if (comparisonPt % 10 == 0 && !pts[i].break) {
         var opacity = '.6';
         var weight = '5';
-        if (Lt.measurementOptions.subAnnual && pts[i].earlywood) {
+        if (Lt.measurementOptions.subAnnual &&
+           ((Lt.measurementOptions.forwardDirection && pts[i].earlywood) ||
+            (!Lt.measurementOptions.forwardDirection && !pts[i].earlywood))) {
           var color = '#e06f4c' // actual pale_red = #FC9272
         } else {
           var color = '#db2314' // actual light_red = #EF3B2C
@@ -3221,6 +3261,7 @@ function CreatePoint(Lt) {
     Lt.mouseLine.disable();
     Lt.viewer.getContainer().style.cursor = 'default';
     this.startPoint = true;
+    Lt.visualAsset.reload();
   };
 }
 
