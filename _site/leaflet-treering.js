@@ -503,7 +503,7 @@ function MeasurementData (dataObject, Lt) {
           year_adjusted = this.points[i - 1].year;
         } else if (direction == backwardInTime) {
           // special case when next point is a break point
-          year_adjusted = (this.points[i].year) ? this.points[i].year : this.points[i - 1].year;
+          year_adjusted = (this.points[i].year) ? this.points[i].year : this.points[i - 1].year - 1;
         };
 
       } else if (this.points[i - 1].start || this.points[i].start) { // case 2: previous or closest point is start
@@ -521,7 +521,7 @@ function MeasurementData (dataObject, Lt) {
           year_adjusted = this.points[i - 1].year + 1;
         } else if (direction == backwardInTime) {
           // special case when next point is a break point
-          year_adjusted = (this.points[i].year) ? this.points[i].year : this.points[i - 1].year - 1;
+          year_adjusted = (this.points[i].year) ? this.points[i].year : this.points[i - 1].year;
         };
       };
     } else {
@@ -547,12 +547,10 @@ function MeasurementData (dataObject, Lt) {
       if (!e.start && !e.break) {
         if (measurementOptions.subAnnual) { // case 1: subAnnual enabled
           e.earlywood = !e.earlywood;
-          if (e.earlywood) {
-            if (direction == forwardInTime) {
-              e.year++;
-            } else if (direction == backwardInTime) {
-              e.year--;
-            };
+          if (e.earlywood && direction == forwardInTime) {
+            e.year++;
+          } else if (!e.earlywood && direction == backwardInTime) {
+            e.year--;
           };
 
         } else { // case 2: subAnnual disabled
@@ -1950,7 +1948,7 @@ function AnnotationAsset(Lt) {
   };
 
   AnnotationAsset.prototype.nearestYear = function (latLng) {
-    if (Lt.data.points.length < 1) { // No points to find closest year from.
+    if (Lt.data.points.length < 2) { // No points to find closest year from.
       return 0;
     }
 
@@ -1970,13 +1968,13 @@ function AnnotationAsset(Lt) {
       var previousPt = Lt.data.points[closestI - 1];
       var nextPt = Lt.data.points[closestI + 1];
 
-      if (!previousPt) { // case 2: inital start point
+      if (!previousPt && nextPt?.year) { // case 2: inital start point
         closestYear = nextPt.year
-      } else if (!nextPt) { // case 3: last point is a start point
+      } else if (!nextPt && previousPt?.year) { // case 3: last point is a start point
         closestYear = previousPt.year
-      } else if (nextPt && !nextPt.year) { // case 4: break point & next point is a start point
+      } else if (nextPt && !nextPt.year && Lt.data.points[closestI + 2]) { // case 4: break point & next point is a start point
         closestYear = Lt.data.points[closestI + 2].year;
-      } else if (!previousPt.year) { // case 5: start point & previous point is a break point
+      } else if (!previousPt?.year && Lt.data.points[closestI + 1]) { // case 5: start point & previous point is a break point
         closestYear = Lt.data.points[closestI + 1].year;
       } else { // case 6: start point in middle of point path
         var distanceToPreviousPt = Math.sqrt(Math.pow((closestPt.lng - previousPt.lng), 2) + Math.pow((closestPt.lat - previousPt.lat), 2));
@@ -3277,6 +3275,9 @@ function CreatePoint(Lt) {
    * @function disable
    */
   CreatePoint.prototype.disable = function() {
+    // If statement to reduce number of reloads.
+    if (this.active) Lt.visualAsset.reload();
+
     $(document).off('keyup');
     // turn off the mouse clicks from previous function
     $(Lt.viewer.getContainer()).off('click');
@@ -3285,7 +3286,6 @@ function CreatePoint(Lt) {
     Lt.mouseLine.disable();
     Lt.viewer.getContainer().style.cursor = 'default';
     this.startPoint = true;
-    Lt.visualAsset.reload();
   };
 }
 
