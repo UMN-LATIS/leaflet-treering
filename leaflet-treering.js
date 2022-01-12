@@ -362,12 +362,10 @@ function MeasurementData (dataObject, Lt) {
         if (e && !e.start && !e.break) {
           if (measurementOptions.subAnnual) {
             e.earlywood = !e.earlywood;
-            if (!e.earlywood) {
-              if (direction == forwardInTime) {
-                e.year--;
-              } else if (direction == backwardInTime) {
-                e.year++;
-              };
+            if (!e.earlywood && direction == forwardInTime) {
+              e.year--;
+            } else if (e.earlywood && direction == backwardInTime) {
+              e.year++;
             };
           } else {
             if (direction == forwardInTime) {
@@ -1290,9 +1288,9 @@ function VisualAsset (Lt) {
       var opacity = '.5';
       var weight = '5';
       if ((Lt.measurementOptions.forwardDirection && pts[i].earlywood) ||   // Line color condition swaps when....
-          (!Lt.measurementOptions.forwardDirection && !pts[i].earlywood) || // ...measuring direction changes
+         (!Lt.measurementOptions.forwardDirection && !pts[i].earlywood) || // ...measuring direction changes
           !Lt.measurementOptions.subAnnual ||
-          (!pts[i - 1].earlywood && pts[i].break)) {
+         (!Lt.measurementOptions.forwardDirection && pts[i - 1].earlywood && pts[i].break)) {
         var color = '#17b0d4'; // original = #00BCD4 : actual = #5dbcd
       } else {
         var color = '#026d75'; // original = #00838f : actual = #14848c
@@ -1306,12 +1304,16 @@ function VisualAsset (Lt) {
       };
 
       //mark decades with red line
-      if (comparisonPt % 10 == 0 && !pts[i].break) {
+      if (comparisonPt % 10 == 0) {
         var opacity = '.6';
         var weight = '5';
         if (Lt.measurementOptions.subAnnual &&
            ((Lt.measurementOptions.forwardDirection && pts[i].earlywood) ||
-            (!Lt.measurementOptions.forwardDirection && !pts[i].earlywood))) {
+            (!Lt.measurementOptions.forwardDirection && !pts[i].earlywood)) ||
+            (!Lt.measurementOptions.forwardDirection && pts[i - 1].earlywood && pts[i].break)) {
+              if (pts[i].break) {
+                console.log('hey')
+              }
           var color = '#e06f4c' // actual pale_red = #FC9272
         } else {
           var color = '#db2314' // actual light_red = #EF3B2C
