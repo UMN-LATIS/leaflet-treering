@@ -3082,12 +3082,23 @@ function Dating(Lt) {
    * @function action
    */
   Dating.prototype.action = function(i) {
-    if (Lt.data.points[i].year != undefined) {
+    if (Lt.data.points[i] != undefined) {
+      var year;
+
+      // Start points are "measurement" points when measuring backwards.
+      // Need to provide way for users to "re date" them.
+      if (!Lt.measurementOptions.forwardDirection && !Lt.data.points[i].year) {
+        year = (Lt.measurementOptions.subAnnual && Lt.data.points[i + 1]) ? Lt.data.points[i + 1].year : Lt.data.points[i + 1] + 1;
+      } else if (Lt.data.points[i].year) {
+        year = Lt.data.points[i].year;
+      } else {
+        return;
+      }
 
       // handlebars from templates.html
       let content = document.getElementById("dating-template").innerHTML;
       let template = Handlebars.compile(content);
-      let html = template({ date_year: Lt.data.points[i].year });
+      let html = template({ date_year: year });
 
       var popup = L.popup({closeButton: false})
           .setContent(html)
@@ -3115,7 +3126,7 @@ function Dating(Lt) {
           } else {
             Lt.undo.push();
 
-            var shift = new_year - Lt.data.points[i].year;
+            var shift = new_year - year;
 
             Object.values(Lt.data.points).map((e, i) => {
               if (Lt.data.points[i] && Lt.data.points[i].year != undefined) {
