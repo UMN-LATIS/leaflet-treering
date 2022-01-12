@@ -598,14 +598,12 @@ function MeasurementData (dataObject, Lt) {
     var annualIncrement = Lt.measurementOptions.subAnnual == false;
 
     // ensure correct inserted point order
+    var firstEWCheck = true;
+    var secondEWCheck = false;
     if (direction == forwardInTime) {
-      var firstEWCheck = true;
-      var secondEWCheck = false;
       var firstYearAdjusted = this.points[i].year + 1;
       var secondYearAdjusted = firstYearAdjusted;
     } else if (direction == backwardInTime) {
-      var firstEWCheck = false;
-      var secondEWCheck = true;
       var firstYearAdjusted = this.points[i].year;
       var secondYearAdjusted = this.points[i].year - 1;
       if (annualIncrement) {
@@ -1244,7 +1242,7 @@ function VisualAsset (Lt) {
         var yearsIncrease = Lt.measurementOptions.forwardDirection == true;
         var yearsDecrease = Lt.measurementOptions.forwardDirection == false;
 
-        if ((subAnnual && ((pointEW && yearsIncrease) || (pointLW && yearsDecrease)))
+        if ((subAnnual && pointEW)
             || pts[i].start || pts[i].break) {
               alert('Missing year can only be placed at the end of a year!');
         } else {
@@ -3330,14 +3328,11 @@ function CreateZeroGrowth(Lt) {
       var annualIncrement = Lt.measurementOptions.subAnnual == false;
 
       // ensure point only inserted at end of year
-      if (annualIncrement || (yearsIncrease && previousPointLW)) {
+      if (annualIncrement || previousPointLW) {
         var firstEWCheck = true;
         var secondEWCheck = false;
         var yearAdjustment = Lt.data.year;
-      } else if (yearsDecrease && previousPointEW) {
-        var firstEWCheck = false;
-        var secondEWCheck = true;
-        var yearAdjustment = Lt.data.year - 1;
+        if (yearsDecrease) yearAdjustment--;
       } else {
         alert('Must be inserted at end of year.');
         return;
@@ -3637,6 +3632,8 @@ function ConvertToStartPoint(Lt) {
   );
 
   ConvertToStartPoint.prototype.action = function (i) {
+    Lt.undo.push();
+
     var points = Lt.data.points;
     var previousYear = points[i].year || 0;
 
@@ -3659,23 +3656,22 @@ function ConvertToStartPoint(Lt) {
       var yearChange = -1;
     };
 
-    followingPoints.map((c) => { // c = current point, i = index, a = array
+    followingPoints.map((c) => {
       if (c && !c.start && !c.break) {
         if (Lt.measurementOptions.subAnnual) { // flip earlywood & latewood
-          if (c.earlywood) {
-            c.earlywood = false;
-          } else {
-            c.earlywood = true;
-          };
+          c.earlywood = !c.earlywood;
         };
 
         c.year = previousYear;
-        if (!(Lt.measurementOptions.subAnnual && c.earlywood)) { // only change year value if latewood or annual measurements
+        if (!Lt.measurementOptions.subAnnual ||
+           (Lt.measurementOptions.forwardDirection && !c.earlywood) ||
+           (!Lt.measurementOptions.forwardDirection && c.earlywood)) { // only change year value if latewood or annual measurements
           previousYear += yearChange;
         };
       };
     });
-    Lt.data.year = Lt.measurementOptions.forwardDirection? points[points.length-1].year+1: points[points.length-1].year-1;
+
+    Lt.data.year = Lt.measurementOptions.forwardDirection ? points[points.length-1].year + 1: points[points.length-1].year - 1;
     Lt.visualAsset.reload();
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
