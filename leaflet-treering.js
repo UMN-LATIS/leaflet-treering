@@ -201,6 +201,9 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       // load the save information in buttom left corner
       this.saveCloud.displayDate();
     };
+    if (this.popoutPlots.win) {
+      this.popoutPlots.sendData();
+    }
     this.metaDataText.updateText();
   };
 
@@ -1173,7 +1176,7 @@ function VisualAsset (Lt) {
 
     // Start and end points swapped when measuring backwards.
     if (backward && i === 0) {
-      color = (pts[i + 1].year % 10 == 0) ? 'light_red' :
+      color = (pts[i + 1] && pts[i + 1].year % 10 == 0) ? 'light_red' :
               (annual) ? 'light_blue' : 'dark_blue';
     // Only apply this when active measuring disabled.
   } else if (backward && i === pts.length - 1 && reload) {
@@ -5346,18 +5349,6 @@ function Helper(Lt) {
 
    // reformatting done in seperate for-statements for code clarity/simplicity
 
-   if (pref.subAnnual) { // subannual earlywood and latewood values swap cycle
-     for (i = 0; i < pts.length; i++) {
-       if (pts[i]) {
-         if (pts[i].earlywood) {
-           pts[i].earlywood = false;
-         } else {
-           pts[i].earlywood = true;
-         };
-       };
-     };
-   };
-
    for (i = 0; i < pts.length; i++) { // swap start & break point cycle
      if (pts[i + 1] && pts[i]) {
        if (pts[i].break && pts[i + 1].start) {
@@ -5447,23 +5438,41 @@ function Helper(Lt) {
      });
 
      if (Lt.measurementOptions.subAnnual) {
-       disObj.lw = { x: yearArray, y: lwWidthArray, name: Lt.meta.assetName + '_lw' };
-
-       // when measuring backwards, the earliest earlywood point may be missing due to the point placement pattern
-       // this point would always be present if measuring forwards thus visual issues occur with plotting tool
-       // account for this by removing the year which would be associated with this
-       yearArray = (yearArray.length != ewWidthArray.length) ? yearArray.slice(1) : yearArray;
-       disObj.ew = { x: yearArray, y: ewWidthArray, name: Lt.meta.assetName + '_ew' };
-
-      // need to adjust tw calculation when measuring backwards b/c ew value may be missing thus tw cannot be found
-       let c = (!Lt.measurementOptions.forwardDirection) ? lwWidthArray.length - yearArray.length : 0;
-       for (let i = 0; i < yearArray.length; i++) {
-         let width = ewWidthArray[i] + lwWidthArray[i + c];
-         twWidthArray.push(parseFloat(width.toFixed(5)));
+       var forward = Lt.measurementOptions.forwardDirection;
+       // Year array should not have excess.
+       // For measuring backwards, excess is at beginning.
+       // For measuring forwards, excess is at end.
+       var lwYears = yearArray.slice();
+       if (lwWidthArray.length < yearArray.length) {
+         (forward) ? lwYears.pop()  : lwYears.shift();
        }
+
+       var ewYears = yearArray.slice();
+       if (ewWidthArray.length < yearArray.length) {
+         (forward) ? ewYears.pop() : ewYears.shift();
+       }
+
+       disObj.lw = { x: lwYears, y: lwWidthArray, name: Lt.meta.assetName + '_lw' };
+       disObj.ew = { x: ewYears, y: ewWidthArray, name: Lt.meta.assetName + '_ew' };
+
+       // When measuring with two increments, one increment may be ahead of the other.
+       // If the increments are of uneven length, total width can only be as long as the shorter one.
+       // Account for this by create tw array from beginning when measuring forwards...
+       // ... and from end when measuring backwards.
+       var length = Math.min(ewYears.length, lwYears.length);
+       var j, k, width;
+       for (var i = 0; i < length; i++) {
+         j = (forward) ? i : ewYears.length - 1 - i;
+         k = (forward) ? i : lwYears.length - 1 - i;
+         width = parseFloat((ewWidthArray[j] + lwWidthArray[k]).toFixed(5));
+         (forward) ? twWidthArray.push(width) : twWidthArray.unshift(width);
+       }
+
+       yearArray = (ewYears.length < lwYears.length) ? ewYears : lwYears;
      }
 
      disObj.tw = { x: yearArray, y: twWidthArray, name: Lt.meta.assetName + '_tw' }
+     console.log(disObj);
 
      return disObj
    }
