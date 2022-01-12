@@ -285,8 +285,10 @@ function MeasurementData (dataObject, Lt) {
       this.points[this.index] = {'start': true, 'skip': false, 'break': false, 'latLng': latLng};
     } else {
       this.points[this.index] = {'start': false, 'skip': false, 'break': false, 'year': this.year, 'earlywood': this.earlywood, 'latLng': latLng};
-      // Change year value if lw point or annual measurements.
-      if ((measurementOptions.subAnnual && !this.earlywood) || !measurementOptions.subAnnual) {
+      // Change year value if lw point (forward) or ew point (backwards) or annual measurements.
+      if ((measurementOptions.subAnnual && (direction == forwardInTime && !this.earlywood) ||
+                                           (direction == backwardInTime && this.earlywood)) ||
+          !measurementOptions.subAnnual) {
         if (direction == forwardInTime) {
           this.year++;
         } else if (direction == backwardInTime) {
@@ -435,8 +437,8 @@ function MeasurementData (dataObject, Lt) {
         if (breakPt) {
           breakPt = false;
         } else {
-          // Only change year if single increment or second point evaluated.
-          year = (second || !twoIncrements) ? year + c : year;
+          // Only change year if single increment or second point evaluated when proper (lw for forward, ew for backward).
+          year = ((second && yearsAscending) || (!second && !yearsAscending) || !twoIncrements) ? year + c : year;
           second = !second;
         }
         e.year = year;
@@ -455,6 +457,8 @@ function MeasurementData (dataObject, Lt) {
         this.year = lastPt.year + 1;
       } else if (!yearsAscending && lastPt.earlywood) {
         this.year = lastPt.year - 1;
+      } else {
+        this.year = lastPt.year;
       }
     } else {
       this.year = yearsAscending ? lastPt.year + 1 : lastPt.year - 1;
@@ -978,7 +982,7 @@ function VisualAsset (Lt) {
 
     var swap = (!Lt.measurementOptions.forwardDirection &&
                  Lt.measurementOptions.subAnnual &&
-                !Lt.data.points[0].earlywood);
+                 (Lt.data.points[1] && !Lt.data.points[1].earlywood));
 
     // plot the data back onto the map
     if (Lt.data.points !== undefined) {
@@ -1000,7 +1004,7 @@ function VisualAsset (Lt) {
           // If measuring backwards, point tooltips "lie". Tooltips will have the text as if the specimin was...
           // ...measured forwards. For a start/break pair: start point says Break, break point says Start.
           var tooltip = "";
-          if (Lt.data.points[i].year) {
+          if (Lt.data.points[i].year || Lt.data.points[i].year === 0) {
             var desc = (!Lt.measurementOptions.subAnnual) ? '' :
                        (Lt.data.points[i].earlywood) ? ', early' : ', late';
             tooltip = String(Lt.data.points[i].year) + desc;
@@ -1028,7 +1032,7 @@ function VisualAsset (Lt) {
             }
 
             // First point is treated as a measurement point, not a start point.
-            if (i === 0) {
+            if (i === 0 && Lt.data.points[i + 1]) {
               var desc = (!Lt.measurementOptions.subAnnual) ? '' : ', late';
               var c = (!Lt.measurementOptions.subAnnual) ? 1 : 0;
               tooltip = String(Lt.data.points[i + 1].year + c) + desc;
@@ -1169,7 +1173,8 @@ function VisualAsset (Lt) {
 
     // Start and end points swapped when measuring backwards.
     if (backward && i === 0) {
-      color = (annual) ? 'light_blue' : 'dark_blue';
+      color = (pts[i + 1].year % 10 == 0) ? 'light_red' :
+              (annual) ? 'light_blue' : 'dark_blue';
     // Only apply this when active measuring disabled.
   } else if (backward && i === pts.length - 1 && reload) {
       color = 'white_start';
@@ -1262,7 +1267,14 @@ function VisualAsset (Lt) {
     // && !Lt.createPoint.active
     this.markers[i].on('mouseover', e => {
       if (Lt.popoutPlots.win && !Lt.createPoint.active) {
-        Lt.popoutPlots.highlightYear(pts[i].year)
+        // Do not highlight end point when measuring backward, but highlight start point.
+        if (forward || (backward && i < pts.length - 1)) {
+          var year = pts[i].year;
+          if (backward && i === 0) {
+            year = (annual && pts[i + 1]) ? pts[i + 1].year + 1 : pts[i + 1].year;
+          }
+          Lt.popoutPlots.highlightYear(year);
+        }
       }
     })
 
@@ -1304,6 +1316,11 @@ function VisualAsset (Lt) {
           var color = '#db2314' // actual light_red = #EF3B2C
         };
       };
+
+      // Special case: start points much look to next point to determine line color.
+      if (!Lt.measurementOptions.forwardDirection && pts[i - 1].start && pts[i].year % 10 == 0) {
+        var color = '#db2314' // actual light_red = #EF3B2C
+      }
 
       this.lines[i] = L.polyline([pts[i - 1].latLng, leafLatLng], {color: color, opacity: opacity, weight: weight});
       this.lineLayer.addLayer(this.lines[i]);
@@ -1930,6 +1947,10 @@ function AnnotationAsset(Lt) {
   };
 
   AnnotationAsset.prototype.nearestYear = function (latLng) {
+    if (Lt.data.points.length < 1) { // No points to find closest year from.
+      return 0;
+    }
+
     var closestI = Lt.helper.closestPointIndex(latLng);
     if ((Lt.measurementOptions.forwardDirection == false) || (closestI == Lt.data.points.length)) {
      // correct index when measuring backwards or if closest point is last point
