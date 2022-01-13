@@ -1005,6 +1005,10 @@ function VisualAsset (Lt) {
             var desc = (!Lt.measurementOptions.subAnnual) ? '' :
                        (Lt.data.points[i].earlywood) ? ', early' : ', late';
             tooltip = String(Lt.data.points[i].year) + desc;
+            // !!! Start points after break points are visually shown as break points. !!!
+            // !!! Refactor so break point is placed instead of start point !!!
+          } else if (Lt.data.points[i].start && Lt.data.points[i - 1] && Lt.data.points[i - 1].break) {
+            tooltip = 'Break';
           } else if (Lt.data.points[i].start) {
             tooltip = 'Start';
           } else if (Lt.data.points[i].break) {
@@ -1018,7 +1022,7 @@ function VisualAsset (Lt) {
               tooltip = 'Break';
             // Break point pair: break point
             } else if (Lt.data.points[i + 1] && Lt.data.points[i + 1].start && Lt.data.points[i].break) {
-              tooltip = 'Start';
+              tooltip = 'Break';
             // Start point has year value, previous actual start point has Start tooltip.
             } else if (Lt.data.points[i - 1] && Lt.data.points[i].start) {
               var desc = (!Lt.measurementOptions.subAnnual) ? '' :
@@ -1121,14 +1125,20 @@ function VisualAsset (Lt) {
     var annual = !Lt.measurementOptions.subAnnual;
     var subAnnual = !annual;
     // Start point icon:
+    // !!! Start points after break points are visually shown as break points. !!!
+    // !!! Refactor so break point is placed instead of start point !!!
     if (pts[i].start) {
       if (forward) {
+        if (pts[i - 1] && pts[i - 1].break) {
+          color = 'white_break';
+        } else {
           color = 'white_start';
+        }
       } else if (backward) {
         if (pts[i - 1] && pts[i - 1].break) {
           color = 'white_break';
-        // Start points and measurement points swap.
-      } else if (pts[i - 1]) {
+        // Start points and measurement points swap when measuring backwards.
+        } else if (pts[i - 1]) {
           if (pts[i - 1].year % 10 == 0) {
             color = (annual) ? 'light_red' :
                     (pts[i - 1].earlywood) ? 'pale_red' : 'light_red';
@@ -1143,7 +1153,7 @@ function VisualAsset (Lt) {
       if (forward) {
           color = 'white_break';
       } else if (backward) {
-        color = 'white_start';
+        color = 'white_break';
       }
     // Sub-annual icons:
     } else if (subAnnual) {
@@ -4913,6 +4923,7 @@ function SaveCloud(Lt) {
  */
 function MetaDataText (Lt) {
   this.speciesID = Lt.meta.assetName; // empty string defaults to N/A
+  Lt.viewer.on('zoomend', () => Lt.metaDataText.updateText());
 
   MetaDataText.prototype.initialize = function () {
     if (window.name.includes('popout')) {
@@ -4967,35 +4978,37 @@ function MetaDataText (Lt) {
         }
       };
 
-      this.years = '';
+      var years = '';
       if ((startYear || startYear == 0) && (endYear || endYear == 0)) {
-        this.years = ' &nbsp;|&nbsp; ' + String(startYear) + ' — ' + String(endYear);
+        years = ' &nbsp;|&nbsp; ' + String(startYear) + ' — ' + String(endYear);
       };
 
       var branding = ' &nbsp;|&nbsp; DendroElevator developed at the <a href="http://z.umn.edu/treerings" target="_blank"> University of Minnesota </a>';
 
-      this.saveText = '';
+      var saveText = '';
       if (Lt.meta.savePermission) {
-        this.saveText = Lt.saveCloud.saveText;
+        saveText = Lt.saveCloud.saveText;
       };
 
       if (window.name.includes('popout')) {
         if (Lt.measurementOptions.subAnnual) { // if 2 increments per year
-          this.increment = 'sub-annual increments';
+          var increment = 'sub-annual increments';
         } else { // otherwise 1 increment per year
-          this.increment  = 'annual increments';
+          var increment  = 'annual increments';
         };
-
+``
         if (Lt.measurementOptions.forwardDirection) { // if years counting up
-          this.direction = 'Measuring forward, ';
+          var direction = 'Measuring forward, ';
         } else { // otherwise years counting down
-          this.direction = 'Measuring backward, '
+          var direction = 'Measuring backward, '
         };
 
-        document.getElementById("meta-data-top-text").innerHTML = this.direction + this.increment + this.saveText;
+        var zoom = ' &nbsp;|&nbsp; Zoom level ' + (Lt.viewer.getZoom()).toFixed(1);
+
+        document.getElementById("meta-data-top-text").innerHTML = direction + increment + zoom + saveText;
       };
 
-      document.getElementById("meta-data-bottom-text").innerHTML = this.speciesID + this.years + branding;
+      document.getElementById("meta-data-bottom-text").innerHTML = this.speciesID + years + branding;
   };
 };
 
@@ -5218,7 +5231,7 @@ function KeyboardShortCutDialog (Lt) {
       this.dialog.close();
     };
 
-    let anchor = this.anchor || [1, 400];
+    let anchor = this.anchor || [1, 442];
 
     this.dialog = L.control.dialog ({
       'size': [310, 300],
@@ -5253,6 +5266,10 @@ function KeyboardShortCutDialog (Lt) {
       {
        'key': 'Ctrl-a',
        'use': 'Create new annotation',
+      },
+      {
+       'key': 'Ctrl-b',
+       'use': 'Create new break section',
       },
       {
        'key': 'Ctrl-s',
