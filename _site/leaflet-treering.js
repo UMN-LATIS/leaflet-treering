@@ -5021,7 +5021,8 @@ function MetaDataText (Lt) {
           var direction = 'Measuring backward, '
         };
 
-        var zoom = ' &nbsp;|&nbsp; Zoom level ' + (Lt.viewer.getZoom()).toFixed(1);
+        var zoomPercentage = 100 * ((Lt.viewer.getZoom() - Lt.viewer.getMinZoom()) / (Lt.viewer.getMaxZoom() - Lt.viewer.getMinZoom()));
+        var zoom = ' &nbsp;|&nbsp; Zoom ' + (zoomPercentage).toFixed(1) + '%';
 
         document.getElementById("meta-data-top-text").innerHTML = direction + increment + zoom + saveText;
       };
