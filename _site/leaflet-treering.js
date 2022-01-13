@@ -3654,10 +3654,16 @@ function ConvertToStartPoint(Lt) {
   );
 
   ConvertToStartPoint.prototype.action = function (i) {
-    Lt.undo.push();
-
     var points = Lt.data.points;
     var previousYear = points[i].year || 0;
+
+    // cannot convert a point that is already a start point
+    // start points are camouflage when measuring backwards.
+    if (points[i].start || (!Lt.measurementOptions.forwardDirection && points[i + 1] && points[i + 1].start)) {
+      return;
+    }
+
+    Lt.undo.push();
 
     // convert to start point by changing properties
     points[i].start = true;
