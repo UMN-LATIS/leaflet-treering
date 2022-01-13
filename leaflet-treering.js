@@ -414,9 +414,10 @@ function MeasurementData (dataObject, Lt) {
 
     var trimmed_points = this.points.filter(Boolean); // remove null points
     var k = 0;
-    this.points = {};
+    this.points = [];
     trimmed_points.map(e => {
-      if (!k) {
+      // Set first point as start point.
+      if (k === 0) {
         this.points[k] = {'start': true, 'skip': false, 'break': false,
           'latLng': e.latLng};
       } else {
@@ -425,8 +426,13 @@ function MeasurementData (dataObject, Lt) {
       k++;
     });
     this.index = k;
-    this.points = trimmed_points;
 
+    // If all point except first start point removed, "reset" points.
+    if (!this.points[1]) {
+      this.earlywood = true;
+      this.year = 0;
+      return
+    }
     // Correct years to delete gap in timeline.
     var year = this.points[1].year;
     var second = this.points[1].earlywood;
@@ -434,18 +440,11 @@ function MeasurementData (dataObject, Lt) {
     var c = (yearsAscending) ? 1 : -1;
     this.points.map(e => {
       if (e && !e.start && !e.break) { // If measurement point...
-        // Do not change year or increment type if there is a break in the measurement path.
-        if (breakPt) {
-          breakPt = false;
-        } else {
-          // Only change year if single increment or second point evaluated when proper (lw for forward, ew for backward).
-          year = ((second && yearsAscending) || (!second && !yearsAscending) || !twoIncrements) ? year + c : year;
-          second = !second;
-        }
+        // Only change year if single increment or second point evaluated when proper (lw for forward, ew for backward).
+        year = ((second && yearsAscending) || (!second && !yearsAscending) || !twoIncrements) ? year + c : year;
+        second = !second;
         e.year = year;
         e.earlywood = (twoIncrements) ? !second : true;
-      } else if (e.break) {
-        breakPt = true;
       }
     });
 
@@ -508,8 +507,11 @@ function MeasurementData (dataObject, Lt) {
           year_adjusted = this.points[i].year;
           if (this.points[i - 2] && this.points[i - 2].earlywood && measurementOptions.subAnnual && direction == forwardInTime) {
             earlywood_adjusted = false;
-          } else if (this.points[i - 2] && !this.points[i - 2].earlywood && measurementOptions.subAnnual && direction == backwardInTime) {
+          } else if (this.points[i - 2] && !this.points[i - 2].break && !this.points[i - 2].start &&
+                    !this.points[i - 2].earlywood && measurementOptions.subAnnual && direction == backwardInTime) {
             earlywood_adjusted = true;
+          } else if ((this.points[i - 2].break || !this.points[i - 2].start) && measurementOptions.subAnnual && direction == backwardInTime) {
+            earlywood_adjusted = !this.points[i - 3].earlywood || false;
           } else if (direction == backwardInTime) {
             earlywood_adjusted = false;
           };
@@ -3398,7 +3400,9 @@ function CreateBreak(Lt) {
      if (e.keyCode == 66 && e.getModifierState("Control") && window.name.includes('popout')) { // 66 refers to 'b'
        e.preventDefault();
        e.stopPropagation();
+       Lt.disableTools();
        this.enable();
+       Lt.mouseLine.from(Lt.data.points[Lt.data.index - 1].latLng);
      };
   });
 
