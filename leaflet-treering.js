@@ -3394,6 +3394,14 @@ function CreateBreak(Lt) {
     () => { this.disable }
   );
 
+  L.DomEvent.on(window, 'keydown', (e) => {
+     if (e.keyCode == 66 && e.getModifierState("Control") && window.name.includes('popout')) { // 66 refers to 'b'
+       e.preventDefault();
+       e.stopPropagation();
+       this.enable();
+     };
+  });
+
   /**
    * Enable adding a break point from the last point
    * @function enable
@@ -4646,7 +4654,7 @@ MeasurementOptions.prototype.displayDialog = function () {
   let content = document.getElementById("measurement-options-dialog-template").innerHTML;
 
   return L.control.dialog({
-     'size': [510, 420],
+     'size': [510, 320],
      'anchor': [50, 5],
      'initOpen': false
    }).setContent(content).addTo(Lt.viewer);
@@ -5269,7 +5277,7 @@ function KeyboardShortCutDialog (Lt) {
       },
       {
        'key': 'Ctrl-b',
-       'use': 'Create new break section',
+       'use': 'Create within-year break',
       },
       {
        'key': 'Ctrl-s',
