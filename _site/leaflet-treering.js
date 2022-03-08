@@ -4679,6 +4679,13 @@ function AutoRingDetection(Lt) {
       switch (clickCount) {
         case 1: {
           this.first = e;
+          var latlng = Lt.viewer.mouseEventToLatLng(this.first);
+          // Place start point as visual indicator
+          Lt.data.newPoint(true, latlng);
+          Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, latlng);
+
+          Lt.mouseLine.enable();
+          Lt.mouseLine.from(latlng);
           break;
         }
         case 2: {
@@ -4688,7 +4695,7 @@ function AutoRingDetection(Lt) {
           //Lt.viewer.setZoom(0, {animate: false});
 
           this.action();
-
+          Lt.mouseLine.disable();
           //Lt.viewer.on('zoomend', this.action);
           break;
         }
@@ -4754,8 +4761,6 @@ function AutoRingDetection(Lt) {
         sumR += color[0];
         sumG += color[1];
         sumB += color[2];
-        // Lt.data.newPoint(true, latlng);
-        // Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, latlng);
         // Main line equals parallel line when b3 = 0, place points here
         if (b3 == 0) {
           aveLatlng = L.latLng(lat, lng)
@@ -4863,7 +4868,6 @@ function AutoRingDetection(Lt) {
     var threshold = lightnessOnlyArr[thresholdIndex];
 
     var count = 0;
-    var start = true;
     var out2 = "";
     for (var i = 0; i < arr.length; i++) {
       var obj = arr[i];
@@ -4879,10 +4883,9 @@ function AutoRingDetection(Lt) {
         count++;
       } else if (count) {
         // LW
-        Lt.data.newPoint(start, obj.latlng);
+        Lt.data.newPoint(false, obj.latlng);
         Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, obj.latlng);
         count = 0
-        start = false
       }
     }
     console.log(out2);
