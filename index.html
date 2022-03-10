@@ -4,235 +4,102 @@
     <link rel="stylesheet" href="assets/font-awesome/css/font-awesome.css">
 
     <style>
-
-    body {
-      height: 100%;
-      margin: 0;
-      overflow-y: hidden;
-    }
-
-    #tabs-div {
-      margin: auto;
-      margin-top: 1%;
-      margin-bottom: 2%;
-      width: 99%;
-      height: 5%;
-    }
-
-    .tabBtns {
-    	float: left;
-    	border: none;
-    	outline: none;
-    	cursor: pointer;
-    	padding: 1% 3%;
-      font-family: Arial;
-    	font-size: 16px;
-    	font-weight: bold;
-    	background-color: #e8e8e8;
-    	color: #636363;
-    	width: 20%;
-    }
-
-    button:hover {
-      background-color: #d1d1d1 !important;
-    }
-
-    #left-btn {
-      border-top-left-radius: 10px;
-	    border-bottom-left-radius: 10px;
-    }
-
-    #right-btn {
-      border-top-right-radius: 10px;
-	    border-bottom-right-radius: 10px;
-    }
-
-    #instructions-div {
-      display: inline-block;
-      width: 30%;
-      height: 100%;
-    }
-
-    #popout-btn {
-      border-top-left-radius: 10px;
-      border-bottom-left-radius: 10px;
-      margin-left: 10%;
-      width: 40%;
-    }
-
-    #reset-btn {
-      float: left;
-      margin: 0;
-      border-top-right-radius: 10px;
-      border-bottom-right-radius: 10px;
-      width: 40%;
-    }
-
-    #iframe-description-parent-div {
-      float: right;
-      width: 70%;
-      height: 100%;
-    }
-
-    #iframe-div {
-      margin-right: 1%;
-      height: 80%;
-    }
-
-    iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-      border-radius: 6px;
-    }
-
-    #description-div {
-      height: 20%;
-    }
-
-    p {
-      font-size: 16px;
-      font-family: sans-serif;
-    }
-
-    </style>
-    <style id='instructions-style'>
-      #instructions {
-        margin-left: 2%;
-        margin-top: 50px;
-      }
-
-      #instructions h3 {
-        font-family: Arial;
+      body {
         margin: 0;
-        margin-top: 6px;
+        height: 100%;
+        overflow-y: hidden;
+        background-color: #d9dfe2;
       }
 
-      #instructions input {
-        margin-left: 10px;
+      #iframe-div {
+        margin: auto;
+        margin-top: 10px;
+        height: 90%;
+        width: 100%;
       }
 
-      #instructions label {
-        font-family: Arial;
-        font-size: 14px;
-        display: inline-block;
-      }
-
-      .type-checkbox {
-        margin: 0 2px;
-      }
-
-      #instructions p {
-        margin: 0;
-        color: #8c8c8c;
-        font-family: Arial;
-        font-size: 14px;
-      }
-
-      #instructions button {
+      iframe {
+        width: 100%;
+        height: 100%;
         border: none;
-        background-color: inherit;
+      }
+
+      #tabs-div {
+        margin: auto;
+        margin-top: 10px;
+        width: 95%;
+        height: 5%;
+        border: 2px #636363 solid;
+        border-radius: 12px;
+      }
+
+      .tabBtns {
+      	float: left;
+      	border: none;
+      	outline: none;
+      	cursor: pointer;
+      	padding: 4px 6px;
+        margin: 0;
+        font-family: Arial;
+      	font-size: 12px;
+      	font-weight: bold;
+      	background-color: #e8e8e8;
+      	color: #636363;
+      	width: 20%;
+        height: 100%;
+      }
+
+      button:hover {
+        color: #e8e8e8 !important;
+        background-color: #8a8a8a !important;
+      }
+
+      #left-btn {
+        border-top-left-radius: 10px;
+  	    border-bottom-left-radius: 10px;
+      }
+
+      #right-btn {
+        border-top-right-radius: 10px;
+  	    border-bottom-right-radius: 10px;
       }
     </style>
 
   </head>
   <body>
 
+    <div id='iframe-div'></div>
+
     <div id='tabs-div'>
-      <button class='tabBtns' id='left-btn' onclick='openTab(event, "CCS130A")'>CCS130A</button>
-      <button class='tabBtns' onclick='openTab(event, "SpRln07c1")'>SpRln07c1</button>
-      <button class='tabBtns' onclick='openTab(event, "CCS134A")'>CCS134A</button>
-      <button class='tabBtns' onclick='openTab(event, "BSK06")'>BSK06</button>
-      <button class='tabBtns' id='right-btn' onclick='openTab(event, "CCL01A")'>CCL01A</button>
-    </div>
-
-    <div id='instructions-div'>
-      <button id='popout-btn' class='tabBtns' onclick='openInstructions()'>Popout Instructions</button>
-      <button id='reset-btn' class='tabBtns' onclick='resetBoxes(false)'>Reset Instructions</button>
-
-      <div id='instructions'>
-        <h3>Annotations</h3>
-          <input type="checkbox" id="item1">
-          <label for="item1"> Create an annotation</label><br>
-          <input type="checkbox" id="item2">
-          <label for="item2"> Add text</label><br>
-          <input type="checkbox" id="item3">
-          <label for="item3"> Create and select attributes</label><br>
-          <input type="checkbox" id="item4">
-          <label for="item4"> Change color</label><br>
-          <input type="checkbox" id="item5">
-          <label for="item5"> Drag an annotation</label><br>
-          <input type="checkbox" id="item6">
-          <label for="item6"> Edit an annotation by clicking it then selecting the ‘Edit’ tab</label><br>
-          <input type="checkbox" id="item7">
-          <label for="item7"> Delete an annotation</label><br>
-          <input type="checkbox" id="item8">
-          <label for="item8"> Check hover text to see if it aligns with inputted annotation</label><br>
-          <input type="checkbox" id="item9">
-          <label for="item9"> Use GeoLink in ‘Summary’ annotation location in another window</label><br>
-        <h3>Change date of end year</h3>
-          <input type="checkbox" id="item8">
-          <label for="item8"> Check if it changed rest of core</label><br>
-          <input type="checkbox" id="item9">
-          <label for="item9"> Check if it changed the associated years of the annotations </label><br>
-        <h3 style='display:inline;'>Create measurements in all types</h3>
-          <!-- 4 checkboxes for each measurement type (forward / backward) (annual / subannual) -->
-          <button onclick='resetBoxes(true)'><i class="fa fa-refresh" aria-hidden="true"></i></button>
-          <input class='type-checkbox' type='checkbox'><input class='type-checkbox' type='checkbox'><input class='type-checkbox' type='checkbox'><input class='type-checkbox' type='checkbox'>
-          <br>
-          <p> Measure forward/backward annually/subannually </p>
-          <!-- options -->
-          <input type="checkbox" id="item10" class='measurement-checkbox'>
-          <label for="item10"> Create measurement line</label><br>
-          <input type="checkbox" id="item11" class='measurement-checkbox'>
-          <label for="item11"> Create zero growth year</label><br>
-          <input type="checkbox" id="item12" class='measurement-checkbox'>
-          <label for="item12"> Create breakpoint</label><br>
-        <h3>Edit measurements</h3>
-          <input type="checkbox" id="item19">
-          <label for="item19"> Delete point</label><br>
-          <input type="checkbox" id="item20">
-          <label for="item20"> Cut section of points</label><br>
-          <input type="checkbox" id="item21">
-          <label for="item21"> Add point</label><br>
-          <input type="checkbox" id="item22">
-          <label for="item22"> Add zero growth year</label><br>
-          <input type="checkbox" id="item23">
-          <label for="item23"> Check if it changed the associated years of the annotations</label>
-      </div>
-
-    </div>
-
-    <div id='iframe-description-parent-div'>
-      <div id='iframe-div'>
-      </div>
-
-      <div id='description-div'>
-      </div>
+      <button class='tabBtns' id='left-btn' onclick='openTab(event, "BSK06")'>BSK06</button>
+      <button class='tabBtns' onclick='openTab(event, "FER25A")'>FER25A</button>
+      <button class='tabBtns' onclick='openTab(event, "PIN13A")'>PIN13A</button>
+      <button class='tabBtns' onclick='openTab(event, "CHC07A")'>CHC07A</button>
+      <button class='tabBtns' id='right-btn' onclick='openTab(event, "MPS06C")'>MPS06C</button>
     </div>
 
     <script>
 
     const coreArray = [
-      {'assetName': 'CCS130A',
-       'src': 'coreassets/ccs130a.html',
-       'description': 'Core with no measurements or annotations.',
-      },
-      {'assetName': 'SpRln07c1',
-       'src': 'coreassets/sprln07c1.html',
-       'description': 'Core measured forward annually.',
-      },
-      {'assetName': 'CCS134A',
-       'src': 'coreassets/ccs134a.html',
-       'description': 'Core measured backwards annually.',
-      },
       {'assetName': 'BSK06',
-       'src': 'coreassets/bsk060-copy.html',
-       'description': 'Core measure forward subannually.',
+       'src': 'coreassets/bsk06-empty.html',
+       'description': '',
       },
-      {'assetName': 'CCL01A',
-       'src': 'coreassets/ccl01a.html',
-       'description': 'Core measured backwards subannually.',
+      {'assetName': 'FER25A',
+       'src': 'coreassets/fer25a.html',
+       'description': '',
+      },
+      {'assetName': 'PIN13A',
+       'src': 'coreassets/pin13a.html',
+       'description': '',
+      },
+      {'assetName': 'CHC07A',
+       'src': 'coreassets/chc07a.html',
+       'description': '',
+      },
+      {'assetName': 'MPS06C',
+       'src': 'coreassets/mps06c.html',
+       'description': '',
       },
     ];
 
@@ -242,17 +109,17 @@
       let i = 0;
       for (i; i < tabClass.length; i++) {
         tabClass[i].style.backgroundColor = '#e8e8e8';
+        tabClass[i].style.color = '#636363';
       };
 
       // change tab color to show it was selected
-      e.currentTarget.style.backgroundColor = '#d1d1d1';
+      e.currentTarget.style.backgroundColor = '#636363';
+      e.currentTarget.style.color = '#e8e8e8';
 
       var iframeDiv = document.getElementById('iframe-div');
-      var descriptionDiv = document.getElementById('description-div');
 
-      // reset iframe & description
+      // reset iframe
       iframeDiv.innerHTML = '';
-      descriptionDiv.innerHTML = '';
 
       // find clicked core to
       for (let core of coreArray) {
@@ -260,43 +127,12 @@
           var newiFrame = document.createElement('iframe');
           newiFrame.src = core.src;
           iframeDiv.appendChild(newiFrame);
-
-          var newDescription = document.createElement('p');
-          newDescription.innerHTML = core.description;
-          descriptionDiv.appendChild(newDescription);
-
           return;
         };
       };
     };
 
-    </script>
-    <script id='instructions-script'>
-
-    function resetBoxes(measurementBoxes) {
-      if (measurementBoxes) {
-        var checkboxes = document.getElementsByClassName('measurement-checkbox');
-      } else {
-        var checkboxes = document.getElementsByTagName('input');
-      };
-
-      for (let i = 0; i < checkboxes.length; i++) {
-        checkboxes[i].checked = false;
-      };
-    };
-
-    function openInstructions() {
-      var instructionsDiv = document.getElementById('instructions').outerHTML;
-      var newWindow = window.open('', '', 'width=600, height=600');
-      var stylesheet = document.getElementById('instructions-style').outerHTML;
-      var script = document.getElementById('instructions-script').outerHTML;
-      newWindow.document.open();
-      newWindow.document.write(stylesheet);
-      newWindow.document.write('<link rel="stylesheet" href="assets/font-awesome/css/font-awesome.css">');
-      newWindow.document.write(instructionsDiv);
-      newWindow.document.write(script);
-    };
-
+    // open left core by default
     document.getElementById('left-btn').click();
 
     </script>

@@ -4660,7 +4660,15 @@ function AutoRingDetection(Lt) {
     this.active = false;
     this.btn.state('inactive');
     Lt.viewer.getContainer().style.cursor = 'default';
+    $(Lt.viewer.getContainer()).off('click');
+    Lt.mouseLine.disable();
     this.tuneImage(true);
+    // Remove start point if placed.
+    if (Lt.data.points[Lt.data.points.length - 1]?.start) {
+      Lt.data.points.pop();
+      Lt.data.index--;
+      Lt.visualAsset.reload();
+    }
   }
 
   AutoRingDetection.prototype.selectPoints = function() {
@@ -4691,12 +4699,8 @@ function AutoRingDetection(Lt) {
         case 2: {
           this.second = e;
           // TODO: Wait for map to finish zooming out before ring detection occurs.
-          //this.originalZoom = Lt.viewer.getZoom();
-          //Lt.viewer.setZoom(0, {animate: false});
-
           this.action();
           Lt.mouseLine.disable();
-          //Lt.viewer.on('zoomend', this.action);
           break;
         }
       }
@@ -4704,81 +4708,135 @@ function AutoRingDetection(Lt) {
   }
 
   AutoRingDetection.prototype.action = function() {
-    var rgbArr, hsvArr;
-    Lt.autoRingDetection.tuneImage(false);
-    blueArr = Lt.autoRingDetection.createBlueArr();
-    // lightnessArr = Lt.autoRingDetection.createLightnessArr(rgbArr);
-    Lt.autoRingDetection.detectRings(blueArr);
-    Lt.autoRingDetection.tuneImage(true);
-    Lt.autoRingDetection.disable();
+    var [colorObjs, m, b] = this.getColorData();
+    var [boundaryEstimates, threshold] = this.estimateBoundaries(colorObjs);
+    var actualBoundaries = this.findBoundaries(boundaryEstimates, m, b, threshold);
+    this.disable();
   }
 
-  AutoRingDetection.prototype.createBlueArr = function() {
+  AutoRingDetection.prototype.getColorData = function() {
     var firstLoc = Lt.viewer.mouseEventToLatLng(this.first);
     var secondLoc = Lt.viewer.mouseEventToLatLng(this.second);
+    var zoom = 0.5 * Lt.viewer.getMaxZoom();
 
-    /* https://www.cuemath.com/geometry/intersection-of-two-lines/
-      Let the line formed by the 2 points selected by user be defined as:
-        y1 = m1(x) + b1   (main)
+    const m = (firstLoc.lat - secondLoc.lat) / (firstLoc.lng - secondLoc.lng);
+    const b = firstLoc.lat - (m * firstLoc.lng)
 
-      Let its perpendicular and parallel lines be defined as:
-        y2 = -(x)/m1 + b2 (perpendicular)
-        y3 = y1 + b3      (parallel)
+    const start = Math.min(firstLoc.lng, secondLoc.lng);
+    const end = Math.max(firstLoc.lng, secondLoc.lng);
+    const step = 0.0001;
 
-      Cramer's rule dicates the intersection of the perpendicular and parallel
-      lines are found with:
-        x = (b2 - b1 - b3) / (m1 - m2)
-        y = (((b1 + b3) * m2) - (b2 * m1)) / (m2 - m1)
-
-      Incrementing b2 moves along the main line.
-      Incrementing b3 moves along the perpendicular line.
-
-      At each b2 increment, a vertical average will be taken at 10 b3 increments.
-    */
-    const m1 = (firstLoc.lat - secondLoc.lat) / (firstLoc.lng - secondLoc.lng);
-    const m2 = -1 / m1;
-    const b1 = firstLoc.lat - (m1 * firstLoc.lng)
-
-    const b2First = firstLoc.lat - (m2 * firstLoc.lng)
-    const b2Second = secondLoc.lat - (m2 * secondLoc.lng)
-    const start = Math.min(b2First, b2Second);
-    const end = Math.max(b2First, b2Second);
-    const step = 0.0002;
-
-    var arr = [];
-    var sumR, sumG, sumB, lat, lng, latlng, color, aveLatlng, aveColor, colorObj, n;
-    // Increment along main line
-    for (var b2 = start; b2 < end; b2 += step) {
-      sumB = 0;
-      n = 0;
-      // Increment along perpendicular line. Averaging on 2 parallel lines on either side on main line.
-      for (var b3 = -2 * step; b3 <= 2 * step; b3 += step) {
-        n++;
-        lng = (b2 - b1 - b3) / (m1 - m2);
-        lat = (((b1 + b3) * m2) - (b2 * m1)) / (m2 - m1);
-        latlng = L.latLng(lat, lng);
-        color = Lt.baseLayer['GL Layer'].getColor(latlng);
-        sumB += color[2];
-        // Main line equals parallel line when b3 = 0, place points here
-        if (b3 == 0) {
-          mainLatlng = L.latLng(lat, lng)
-        };
-      }
-      // aveColor = [sumR / 5, sumB / 5, sumG / 5]
-      // Only average blue channel as a test
-      console.log(n)
+    var baseData = [];
+    var lat, lng, latlng, color, colorObj;
+    for (lng = start; lng < end; lng += step) {
+      lat = (m * lng) + b
+      latlng = L.latLng(lat, lng);
+      color = Lt.baseLayer['GL Layer'].getColor(latlng, zoom);
       colorObj = {
-        'latlng': mainLatlng,
-        'value': sumB / n,
+        "latlng": latlng,
+        "value": color[2],
       }
-      if (m1 > 0) {
-        arr.push(colorObj)
-      } else {
-        arr.unshift(colorObj)
+
+      //Lt.data.newPoint(true, latlng);
+      //Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, latlng);
+      baseData.push(colorObj)
+    }
+
+    // use n point moving average to eliminate horizontal noise
+    var n = 3;
+    var aveArr = [];
+    var sum;
+    for (i = n; i < baseData.length; i++) {
+      sum  = 0;
+      for (j  = 0; j < n; j++) {
+        sum += baseData[i - j].value;
+      }
+      aveArr.push({"latlng": baseData[i].latlng, "value": sum / n})
+    }
+
+    return [aveArr, m, b];
+  }
+
+  AutoRingDetection.prototype.estimateBoundaries = function(colorObjs) {
+    var arr = [];
+
+    // pth percentile of the lightness values determines threshold
+    var p = 0.25;
+    var colorArr = colorObjs.map(e => { return e.value });
+    colorArr.sort( (a, b) => {return a - b} )
+    var thresholdIndex = Math.round(colorArr.length * p);
+    var threshold = colorArr[thresholdIndex];
+
+    var curr, prev;
+    for (var i = 1; i < colorObjs.length; i++) {
+      curr = colorObjs[i];
+      prev = colorObjs[i - 1];
+      if (prev.value <= threshold && curr.value > threshold) {
+        arr.push(prev);
       }
     }
 
-    return arr
+    return [arr, threshold]
+  }
+
+  AutoRingDetection.prototype.findBoundaries = function(estimates, m1, b1, threshold) {
+    const m2 = -1 / m1;
+    const stepPara = (m1 / Math.abs(m1)) * 0.00015;
+    const stepPerp = 0.0003;
+    var zoom = 0.5 * Lt.viewer.getMaxZoom();
+
+    var mid, start, end;
+    var lat, lng, latlng, mainLatlng, color, median, half;
+
+    var arr = [];
+    var colors, lwLatlng, cur, prev1, prev2;
+
+    for (var est of estimates) {
+      lwLatlng = false;
+      colors = [];
+      mid = est.latlng.lat - (m2 * est.latlng.lng);
+      start = mid - (5 * stepPara);
+      end = Math.abs(mid + (5 * stepPara));
+
+      // Increment along main line orientation
+      for (var b2 = start; Math.abs(b2) < end; b2 += stepPara) {
+        median = [];
+        // Increment perpendicular to main line.
+        for (var b3 = -3 * stepPerp; b3 <= 3 * stepPerp; b3 += stepPerp) {
+          lng = (b2 - b1 - b3) / (m1 - m2);
+          lat = (((b1 + b3) * m2) - (b2 * m1)) / (m2 - m1);
+          latlng = L.latLng(lat, lng);
+          color = Lt.baseLayer['GL Layer'].getColor(latlng, zoom);
+          median.push(color[2]);
+        }
+
+        lng = (b2 - b1) / (m1 - m2);
+        lat = ((b1 * m2) - (b2 * m1)) / (m2 - m1);
+        mainLatlng = L.latLng(lat, lng);
+
+        median.sort( (a, b) => {return a - b} )
+        half = Math.floor(median.length / 2);
+        colors.push({"latlng": mainLatlng, "value": median[half],})
+      }
+
+      for (var i = 2; i < colors.length; i++) {
+        prev2 = colors[i - 1].value;
+        prev1 = colors[i - 1].value;
+        curr = colors[i].value;
+        if (curr > threshold && prev1 <= threshold && prev1 <= threshold) {
+          lwLatlng = colors[i - 1].latlng;
+        }
+      }
+      if (lwLatlng) {
+        Lt.data.newPoint(false, lwLatlng);
+        Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, lwLatlng);
+      } else if (curr <= threshold && prev1 <= threshold && prev1 <= threshold) {
+        Lt.data.newPoint(false, colors[colors.length - 1].latlng);
+        Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, colors[colors.length - 1].latlng);
+      }
+    }
+
+    Lt.undo.push();
   }
 
   AutoRingDetection.prototype.tuneImage = function (reset) {
@@ -4828,91 +4886,6 @@ function AutoRingDetection(Lt) {
         "strength": settings.sobel,
       },
     ]);
-  }
-
-  AutoRingDetection.prototype.createLightnessArr = function (rgbArr) {
-    var r, g, b, h, s, v, c;
-    var outR = "";
-    var outG = "";
-    var outB = ""
-    var lightnessArr = rgbArr.map(rgbObj => {
-      r = rgbObj.value[0] / 255;
-      g = rgbObj.value[1] / 255;
-      b = rgbObj.value[2] / 255;
-
-      l = (Math.max(r, g, b) + Math.min(r, g, b)) / 2;
-      outR += rgbObj.value[0] + "\n";
-      outG += rgbObj.value[1] + "\n";
-      outB += rgbObj.value[2] + "\n";
-
-      return {
-        'latlng': rgbObj.latlng,
-        'value': l,
-      };
-    });
-
-    // console.log(outR)
-    // console.log(outG)
-    // console.log(outB)
-    return lightnessArr;
-  }
-
-  AutoRingDetection.prototype.detectRings = function (arr) {
-    /* Base lightness
-    var out = "";
-    for (obj of arr) {
-      out += obj.value + "\n";
-    }
-    console.log(out);
-    */
-
-    // pth percentile of the lightness values determines threshold
-    var p = 0.15;
-    var colorArr = []
-    for (obj of arr) {
-      colorArr.push(obj.value)
-    }
-    colorArr.sort( (a, b) => {return a - b} )
-    // console.log(colorArr)
-    var thresholdIndex = Math.round(colorArr.length * p);
-    var threshold = colorArr[thresholdIndex];
-    console.log(threshold);
-
-    var count = 0;
-    var out2 = "";
-    for (var i = 0; i < arr.length; i++) {
-      var obj = arr[i];
-      var ratio = obj.value / threshold;
-      // console.log(ratio)
-      out2 += ratio + "\n";
-      if (Math.round(ratio) <= 1) {
-        // console.log(obj.value, ratio)
-        if (!count && Lt.measurementOptions.subAnnual) {
-          // EW
-          Lt.data.newPoint(false, obj.latlng);
-          Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, obj.latlng);
-        }
-        count++;
-      } else if (count) {
-        // LW
-        Lt.data.newPoint(false, obj.latlng);
-        Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, obj.latlng);
-        count = 0
-      }
-    }
-    //console.log(out2);
-
-    /* Difference approach
-    for (var i = 1; i < arr.length; i++) {
-      var obj = arr[i]
-      var diff = obj.value - arr[i - 1].value
-      if (diff > 0.2) {
-        Lt.data.newPoint(false, obj.latlng);
-        Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, obj.latlng);
-      }
-    }
-    */
-
   }
 
 }

@@ -17,7 +17,7 @@ var corePath = "bsk06";
 var initialData = {"SaveDate":{},"year":0,"forwardDirection":true,"subAnnual":false,"earlywood":true,"index":0,"points":[],"attributesObjectArray":[{"title":"Anatomical Anomaly","options":[{"title":"Fire Scar","code":"FS","uniqueNum":"000000"},{"title":"Frost Ring","code":"FR","uniqueNum":"000001"},{"title":"Intra-Annual Density Fluctuation","code":"IADF","uniqueNum":"000002"},{"title":"Tramatic Resin Duct","code":"TRD","uniqueNum":"000003"}]},{"title":"Location","options":[{"title":"Earlywood","code":"EW","uniqueNum":"000010"},{"title":"Latewood","code":"LW","uniqueNum":"000020"},{"title":"Dormant","code":"D","uniqueNum":"000030"}]}],"annotations":{},"ptWidths":{"tw":{"x":[],"y":[],"name":"BSK06_tw"}}};
 
 var coreData = {'savePermission': true, 'saveURL': '/test', 'ppm':
-    468, 'popoutUrl': "bsk060-copy.html", 'assetName': "BSK06", 'hasLatewood': true,
+    468, 'popoutUrl': "bsk06-empty.html", 'assetName': "BSK06", 'hasLatewood': true,
     'initialData': initialData};
 
 </script>

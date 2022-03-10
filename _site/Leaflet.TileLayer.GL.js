@@ -820,12 +820,14 @@ nextHighestPowerOfTwo: function(x) {
 	},
 
   // Returns RBG data at a specified coordinate
-  getColor: function(latlng) {
+  getColor: function(latlng, zoom) {
     var size = this.getTileSize();
     var point = this._map.project(latlng, this._tileZoom).floor();
     var coords = point.unscaleBy(size).floor();
     var offset = point.subtract(coords.scaleBy(size));
     coords.z = this._tileZoom;
+    //coords.z = zoom;
+    console.log(coords.z);
     var tile = this._tiles[this._tileCoordsToKey(coords)];
     if (!tile || !tile.loaded) return null;
     try {
