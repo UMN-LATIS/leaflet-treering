@@ -4708,16 +4708,16 @@ function AutoRingDetection(Lt) {
   }
 
   AutoRingDetection.prototype.action = function() {
-    var [colorObjs, m, b] = this.getColorData();
-    var [boundaryEstimates, threshold] = this.estimateBoundaries(colorObjs);
-    var actualBoundaries = this.findBoundaries(boundaryEstimates, m, b, threshold);
+    //var [colorObjs, m, b] = this.getColorData();
+    //var [boundaryEstimates, threshold] = this.estimateBoundaries(colorObjs);
+    //var actualBoundaries = this.findBoundaries(boundaryEstimates, m, b, threshold);
+    this.dataOutput();
     this.disable();
   }
 
   AutoRingDetection.prototype.getColorData = function() {
     var firstLoc = Lt.viewer.mouseEventToLatLng(this.first);
     var secondLoc = Lt.viewer.mouseEventToLatLng(this.second);
-    var zoom = 0.5 * Lt.viewer.getMaxZoom();
 
     const m = (firstLoc.lat - secondLoc.lat) / (firstLoc.lng - secondLoc.lng);
     const b = firstLoc.lat - (m * firstLoc.lng)
@@ -4726,21 +4726,24 @@ function AutoRingDetection(Lt) {
     const end = Math.max(firstLoc.lng, secondLoc.lng);
     const step = 0.0001;
 
+    //var out = "";
     var baseData = [];
     var lat, lng, latlng, color, colorObj;
     for (lng = start; lng < end; lng += step) {
       lat = (m * lng) + b
       latlng = L.latLng(lat, lng);
-      color = Lt.baseLayer['GL Layer'].getColor(latlng, zoom);
+      color = Lt.baseLayer['GL Layer'].getColor(latlng);
       colorObj = {
         "latlng": latlng,
         "value": color[2],
       }
+      //out += color[0] + "\t" + color[1] + "\t" + color[2] + "\n";
 
       //Lt.data.newPoint(true, latlng);
       //Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, latlng);
       baseData.push(colorObj)
     }
+    //console.log(out);
 
     // use n point moving average to eliminate horizontal noise
     var n = 3;
@@ -4779,17 +4782,73 @@ function AutoRingDetection(Lt) {
     return [arr, threshold]
   }
 
+  AutoRingDetection.prototype.dataOutput = function() {
+    var firstLoc = Lt.viewer.mouseEventToLatLng(this.first);
+    var secondLoc = Lt.viewer.mouseEventToLatLng(this.second);
+
+    const m1 = (firstLoc.lat - secondLoc.lat) / (firstLoc.lng - secondLoc.lng);
+    const m2 = -1 / m1;
+    const b1 = firstLoc.lat - (m1 * firstLoc.lng)
+
+    const b2First = firstLoc.lat - (m2 * firstLoc.lng)
+    const b2Second = secondLoc.lat - (m2 * secondLoc.lng)
+    const start = Math.min(b2First, b2Second);
+    const end = Math.max(b2First, b2Second);
+    const stepPara = 0.0002;
+    const stepPerp = 0.0003;
+
+    var outR = "";
+    var outG = "";
+    var outB = "";
+    var outL = "";
+    var n = 5;
+
+    // Increment along main line orientation
+    for (var b2 = start; b2 < end; b2 += stepPara) {
+      // Increment perpendicular to main line.
+      for (var b3 = -n * stepPerp; b3 <= n * stepPerp; b3 += stepPerp) {
+        var lng = (b2 - b1 - b3) / (m1 - m2);
+        var lat = (((b1 + b3) * m2) - (b2 * m1)) / (m2 - m1);
+        var latlng = L.latLng(lat, lng);
+        var color = Lt.baseLayer['GL Layer'].getColor(latlng);
+
+        //Lt.data.newPoint(true, latlng);
+        //Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, latlng);
+
+        outR += color[0] + "\t";
+        outG += color[1] + "\t";
+        outB += color[2] + "\t";
+        outL += ((Math.max(color[0], color[1], color[2]) + Math.min(color[0], color[1], color[2])) / 2) + "\t";
+      }
+      outR += "\n";
+      outG += "\n";
+      outB += "\n";
+      outL += "\n";
+    }
+    console.log("Red:")
+    //console.log(outR);
+    console.log("Green:")
+    //console.log(outG);
+    console.log("Blue:")
+    //console.log(outB);
+    console.log("Light:")
+    console.log(outL);
+  }
+
   AutoRingDetection.prototype.findBoundaries = function(estimates, m1, b1, threshold) {
     const m2 = -1 / m1;
     const stepPara = (m1 / Math.abs(m1)) * 0.00015;
     const stepPerp = 0.0003;
-    var zoom = 0.5 * Lt.viewer.getMaxZoom();
 
     var mid, start, end;
     var lat, lng, latlng, mainLatlng, color, median, half;
 
     var arr = [];
     var colors, lwLatlng, cur, prev1, prev2;
+
+    var outR = "";
+    var outG = "";
+    var outB = "";
 
     for (var est of estimates) {
       lwLatlng = false;
@@ -4806,9 +4865,16 @@ function AutoRingDetection(Lt) {
           lng = (b2 - b1 - b3) / (m1 - m2);
           lat = (((b1 + b3) * m2) - (b2 * m1)) / (m2 - m1);
           latlng = L.latLng(lat, lng);
-          color = Lt.baseLayer['GL Layer'].getColor(latlng, zoom);
+          color = Lt.baseLayer['GL Layer'].getColor(latlng);
           median.push(color[2]);
+
+          outR += color[0] + "\t";
+          outG += color[0] + "\t";
+          outB += color[0] + "\t";
         }
+        outR += "\n";
+        outG += "\n";
+        outB += "\n";
 
         lng = (b2 - b1) / (m1 - m2);
         lat = ((b1 * m2) - (b2 * m1)) / (m2 - m1);
@@ -4818,7 +4884,13 @@ function AutoRingDetection(Lt) {
         half = Math.floor(median.length / 2);
         colors.push({"latlng": mainLatlng, "value": median[half],})
       }
+      console.log("Red:")
+      console.log(outR);
+      console.log("Green:")
+      console.log(outG);
+      console.log("Blue", outB);
 
+      /*
       for (var i = 2; i < colors.length; i++) {
         prev2 = colors[i - 1].value;
         prev1 = colors[i - 1].value;
@@ -4837,6 +4909,8 @@ function AutoRingDetection(Lt) {
     }
 
     Lt.undo.push();
+    */
+    }
   }
 
   AutoRingDetection.prototype.tuneImage = function (reset) {
