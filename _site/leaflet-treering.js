@@ -3092,29 +3092,28 @@ function Dating(Lt) {
    */
   Dating.prototype.action = function(i) {
     if (Lt.data.points[i] != undefined) {
-      var year;
-
       // Start points are "measurement" points when measuring backwards.
-      // Need to provide way for users to "re date" them.
-      if (!Lt.measurementOptions.forwardDirection && !Lt.data.points[i].year) {
-        year = (Lt.measurementOptions.subAnnual && Lt.data.points[i + 1]) ? Lt.data.points[i + 1].year : Lt.data.points[i + 1] + 1;
-      } else if (Lt.data.points[i].year) {
-        year = Lt.data.points[i].year;
-      } else {
-        return;
+      // Need to provide way for users to "re-date" them.
+      if (i == 0) {
+        alert("Cannot date first point. Select a different point to adjust dating.")
+        return
+      } else if (Lt.data.points[i].start) {
+        i--;
       }
 
-      // handlebars from templates.html
+      // Handlebars from templates.html
+      let year;
       let content = document.getElementById("dating-template").innerHTML;
       let template = Handlebars.compile(content);
       let html = template({ date_year: year });
 
-      var popup = L.popup({closeButton: false})
+      let popup = L.popup({closeButton: false})
           .setContent(html)
           .setLatLng(Lt.data.points[i].latLng)
           .openOn(Lt.viewer);
 
-      document.getElementById('year_input').select();
+      let input = document.getElementById('year_input');
+      input.select();
 
       $(Lt.viewer.getContainer()).click(e => {
         popup.remove(Lt.viewer);
@@ -3124,24 +3123,30 @@ function Dating(Lt) {
       $(document).keypress(e => {
         var key = e.which || e.keyCode;
         if (key === 13) {
-          var new_year = parseInt(document.getElementById('year_input').value);
+          var new_year = parseInt(input.value);
           popup.remove(Lt.viewer);
 
           var date = new Date();
           var max = date.getFullYear();
 
           if (new_year > max) {
-            alert('Year cannot exceed ' + max + '!');
+            alert('Year cannot exceed ' + max + '.');
           } else {
             Lt.undo.push();
 
-            var shift = new_year - year;
+            let shift = new_year - year;
+            let pts_before = Lt.data.points.slice(0, i - 1);
+            let pts_after = Lt.data.points.slice(i + 1);
+            let dir_constant = (Lt.measurementOptions.forwardDirection) ? 1 : -1;
 
-            Object.values(Lt.data.points).map((e, i) => {
-              if (Lt.data.points[i] && Lt.data.points[i].year != undefined) {
-                Lt.data.points[i].year += shift;
-              }
-            });
+            pts_before.map((e, j) => {
+              e.year = new_year - dir_constant * (i - j);
+            })
+
+            pts_after.map((e, k) => {
+              e.year = new_year + dir_constant * (i - k);
+            })
+
             Lt.data.year += shift;
             Lt.visualAsset.reload();
           }
