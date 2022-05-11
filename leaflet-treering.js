@@ -3094,7 +3094,7 @@ function Dating(Lt) {
     if (Lt.data.points[i] != undefined) {
       // Start points are "measurement" points when measuring backwards.
       // Need to provide way for users to "re-date" them.
-      if (i == 0) {
+      if (i == 0 || !Lt.data.points[i - 1]) {
         alert("Cannot date first point. Select a different point to adjust dating.")
         return
       } else if (Lt.data.points[i].start) {
@@ -3102,17 +3102,17 @@ function Dating(Lt) {
       }
 
       // Handlebars from templates.html
-      let year;
+      let year = Lt.data.points[i].year;
       let content = document.getElementById("dating-template").innerHTML;
       let template = Handlebars.compile(content);
       let html = template({ date_year: year });
 
-      let popup = L.popup({closeButton: false})
+      var popup = L.popup({closeButton: false})
           .setContent(html)
           .setLatLng(Lt.data.points[i].latLng)
           .openOn(Lt.viewer);
 
-      let input = document.getElementById('year_input');
+      let input = document.getElementById('year_input')
       input.select();
 
       $(Lt.viewer.getContainer()).click(e => {
@@ -3135,16 +3135,20 @@ function Dating(Lt) {
             Lt.undo.push();
 
             let shift = new_year - year;
-            let pts_before = Lt.data.points.slice(0, i - 1);
+            let pts_before = Lt.data.points.slice(0, i + 1);
             let pts_after = Lt.data.points.slice(i + 1);
             let dir_constant = (Lt.measurementOptions.forwardDirection) ? 1 : -1;
 
-            pts_before.map((e, j) => {
-              e.year = new_year - dir_constant * (i - j);
+            pts_before.map((pb, j) => {
+              if (pb.year) {
+                pb.year = new_year - dir_constant * (i - j);
+              }
             })
 
-            pts_after.map((e, k) => {
-              e.year = new_year + dir_constant * (i - k);
+            pts_after.map((pa, k) => {
+              if (pa.year) {
+                pa.year = new_year + (dir_constant * k + 1);
+              }
             })
 
             Lt.data.year += shift;
