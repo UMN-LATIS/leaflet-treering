@@ -963,7 +963,6 @@ function VisualAsset (Lt) {
   this.lines = new Array();
   this.markerLayer = L.layerGroup().addTo(Lt.viewer);
   this.lineLayer = L.layerGroup().addTo(Lt.viewer);
-  this.previousLatLng = undefined;
 
   /**
    * Reload all visual assets on the viewer
@@ -1291,54 +1290,70 @@ function VisualAsset (Lt) {
       }
     })
 
-    //drawing the line if the previous point exists
-    if (pts[i - 1] != undefined && !pts[i].start) {
-      var opacity = '.5';
-      var weight = '5';
-      if ((Lt.measurementOptions.forwardDirection && pts[i].earlywood) ||   // Line color condition swaps when....
-         (!Lt.measurementOptions.forwardDirection && !pts[i].earlywood) || // ...measuring direction changes
-          !Lt.measurementOptions.subAnnual ||
-         (!Lt.measurementOptions.forwardDirection && pts[i - 1].earlywood && pts[i].break)) {
-        var color = '#17b0d4'; // original = #00BCD4 : actual = #5dbcd
+    // Draw connecting line if the previous point exists
+    // Line color depends on measurment direction, early-/latewood value & year value.
+    //   - Light blue: #17b0d4
+    //   - Dark blue: #026d75
+    //   - Light red: #e06f4c
+    //   - Dark red: #db2314
+    // For measuring forward in time:
+    //   Line is light shade (blue if non decade, red if decade):
+    //     1) Annual measurements (assigned dark shade if decade)
+    //     2) Point is earlywood
+    //     3) Point is a break and previous point is latewood
+    //  Line is dark shade:
+    //     1) Point is latewood
+    //     2) Point is a break and previous point is earlywood
+    // For measuring backward in time:
+    //    Adjust year & use same decade logic as above. Light v. dark logic flipped.
+    if (pts[i - 1] && !pts[i].start) {
+      let forward = Lt.measurementOptions.forwardDirection;
+      let annual = !Lt.measurementOptions.subAnnual;
+
+      let opacity = "0.5";
+      let weight = "5";
+      let color = "FFF"; // White is debug color.
+      // Blue by default.
+      let light = "#17b0d4";
+      let dark = "#026d75";
+      // Red if decade.
+      let year = (forward) ? pts[i].year : ((!pts[i].earlywood) ? pts[i].year + 1 : pts[i].year);
+      if (year % 10 == 0) {
+        light = (annual) ? "#db2314" : "#e06f4c";
+        dark = "#db2314";
+      }
+      // Check if break in middle of decade measurment.
+      if (pts[i].break && i + 2 < pts.length) {
+        year = (forward) ? pts[i + 2].year : ((pts[i + 2].earlywood) ? pts[i + 2].year : pts[i + 2].year + 1);
+        if (year % 10 == 0) {
+          light = (annual) ? "#db2314" : "#e06f4c";
+          dark = "#db2314";
+        }
+      }
+
+      if (annual) {
+        color = light;
       } else {
-        var color = '#026d75'; // original = #00838f : actual = #14848c
-      };
-
-      var comparisonPt = null;
-      if (Lt.measurementOptions.forwardDirection) { // years counting up
-        comparisonPt = pts[i].year
-      } else { // years counting down
-        comparisonPt = pts[i - 1].year;
-      };
-
-      //mark decades with red line
-      if (comparisonPt % 10 == 0) {
-        var opacity = '.6';
-        var weight = '5';
-        if (Lt.measurementOptions.subAnnual &&
-           ((Lt.measurementOptions.forwardDirection && pts[i].earlywood) ||
-            (!Lt.measurementOptions.forwardDirection && !pts[i].earlywood)) ||
-            (!Lt.measurementOptions.forwardDirection && pts[i - 1].earlywood && pts[i].break)) {
-              if (pts[i].break) {
-                console.log('hey')
-              }
-          var color = '#e06f4c' // actual pale_red = #FC9272
+        // Light & dark conditions swap when measuring forwards v. backward in time.
+        if (forward) {
+          if (pts[i].earlywood || (pts[i].break && !pts[i - 1]?.earlywood)) {
+            color = light;
+          } else if (!pts[i].earlywood || (pts[i].break && pts[i - 1]?.earlywood)) {
+            color = dark;
+          }
         } else {
-          var color = '#db2314' // actual light_red = #EF3B2C
-        };
-      };
-
-      // Special case: start points much look to next point to determine line color.
-      if (!Lt.measurementOptions.forwardDirection && pts[i - 1].start && pts[i].year % 10 == 0) {
-        var color = '#db2314' // actual light_red = #EF3B2C
+          if (!pts[i].earlywood || (pts[i].break && pts[i - 1]?.earlywood)) {
+            color = light;
+          } else if (pts[i].earlywood || (pts[i].break && !pts[i - 1]?.earlywood)) {
+            color = dark;
+          }
+        }
       }
 
       this.lines[i] = L.polyline([pts[i - 1].latLng, leafLatLng], {color: color, opacity: opacity, weight: weight});
       this.lineLayer.addLayer(this.lines[i]);
-
     }
 
-    this.previousLatLng = leafLatLng;
     //add the marker to the marker layer
     this.markerLayer.addLayer(this.markers[i]);
   };
