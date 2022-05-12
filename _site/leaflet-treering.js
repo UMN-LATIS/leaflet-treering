@@ -3094,11 +3094,13 @@ function Dating(Lt) {
     if (Lt.data.points[i] != undefined) {
       // Start points are "measurement" points when measuring backwards.
       // Need to provide way for users to "re-date" them.
+      let pt_forLocation = Lt.data.points[i];
       if (i == 0 || !Lt.data.points[i - 1]) {
         alert("Cannot date first point. Select a different point to adjust dating.")
         return
       } else if (Lt.data.points[i].start) {
         i--;
+        if (!Lt.measurementOptions.forwardDirection) pt_forLocation = Lt.data.points[i + 1];
       }
 
       // Handlebars from templates.html
@@ -3109,7 +3111,7 @@ function Dating(Lt) {
 
       var popup = L.popup({closeButton: false})
           .setContent(html)
-          .setLatLng(Lt.data.points[i].latLng)
+          .setLatLng(pt_forLocation.latLng)
           .openOn(Lt.viewer);
 
       let input = document.getElementById('year_input')
@@ -3125,35 +3127,42 @@ function Dating(Lt) {
         if (key === 13) {
           var new_year = parseInt(input.value);
           popup.remove(Lt.viewer);
+          
+          Lt.undo.push();
 
-          var date = new Date();
-          var max = date.getFullYear();
-
-          if (new_year > max) {
-            alert('Year cannot exceed ' + max + '.');
-          } else {
-            Lt.undo.push();
-
-            let shift = new_year - year;
-            let pts_before = Lt.data.points.slice(0, i + 1);
-            let pts_after = Lt.data.points.slice(i + 1);
-            let dir_constant = (Lt.measurementOptions.forwardDirection) ? 1 : -1;
-
-            pts_before.map((pb, j) => {
-              if (pb.year) {
-                pb.year = new_year - dir_constant * (i - j);
-              }
-            })
-
-            pts_after.map((pa, k) => {
-              if (pa.year) {
-                pa.year = new_year + (dir_constant * k + 1);
-              }
-            })
-
-            Lt.data.year += shift;
-            Lt.visualAsset.reload();
+          function incrementYear(pt) {
+            // Increment year if annual,                 latewood when measuring forward in time,                 or earlywood when measuring backward in time
+            return (!Lt.measurementOptions.subAnnual || (Lt.measurementOptions.forwardDirection && !pt.earlywood) || (!Lt.measurementOptions.forwardDirection && pt.earlywood));
           }
+
+          let shift = new_year - year;
+          let pts_before = Lt.data.points.slice(0, i + 1);
+          let year_diff = pts_before.filter(pb => pb.year && incrementYear(pb)).length;
+          let pts_after = Lt.data.points.slice(i + 1);
+          let dir_constant = (Lt.measurementOptions.forwardDirection) ? 1 : -1;
+
+          let delta = (Lt.measurementOptions.forwardDirection) ? 1 : 0;
+          pts_before.map((pb, j) => {
+            if (pb.year) {
+              pb.year = new_year - dir_constant * (year_diff - delta);
+              if (incrementYear(pb)) {
+                delta++;
+              }
+            }
+          })
+
+          delta = (Lt.measurementOptions.forwardDirection) ? 1 : 0;
+          pts_after.map((pa, k) => {
+            if (pa.year) {
+              pa.year = new_year + dir_constant * (delta);
+              if (incrementYear(pa)) {
+                delta++;
+              }
+            }
+          })
+
+          Lt.data.year += shift;
+          Lt.visualAsset.reload();
           this.disable();
         }
       });
