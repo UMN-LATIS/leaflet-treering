@@ -3127,7 +3127,7 @@ function Dating(Lt) {
         if (key === 13) {
           var new_year = parseInt(input.value);
           popup.remove(Lt.viewer);
-          
+
           Lt.undo.push();
 
           function incrementYear(pt) {
@@ -3141,7 +3141,7 @@ function Dating(Lt) {
           let pts_after = Lt.data.points.slice(i + 1);
           let dir_constant = (Lt.measurementOptions.forwardDirection) ? 1 : -1;
 
-          let delta = (Lt.measurementOptions.forwardDirection) ? 1 : 0;
+          let delta = (!Lt.measurementOptions.forwardDirection && Lt.measurementOptions.subAnnual) ? 0 : 1;
           pts_before.map((pb, j) => {
             if (pb.year) {
               pb.year = new_year - dir_constant * (year_diff - delta);
@@ -3151,7 +3151,7 @@ function Dating(Lt) {
             }
           })
 
-          delta = (Lt.measurementOptions.forwardDirection) ? 1 : 0;
+          delta = (!Lt.measurementOptions.forwardDirection && Lt.measurementOptions.subAnnual) ? 0 : 1;
           pts_after.map((pa, k) => {
             if (pa.year) {
               pa.year = new_year + dir_constant * (delta);
