@@ -3143,7 +3143,7 @@ function Dating(Lt) {
 
           let delta = (!Lt.measurementOptions.forwardDirection && Lt.measurementOptions.subAnnual) ? 0 : 1;
           pts_before.map((pb, j) => {
-            if (pb.year) {
+            if (pb.year || pb.year == 0) {
               pb.year = new_year - dir_constant * (year_diff - delta);
               if (incrementYear(pb)) {
                 delta++;
@@ -3153,7 +3153,7 @@ function Dating(Lt) {
 
           delta = (!Lt.measurementOptions.forwardDirection && Lt.measurementOptions.subAnnual) ? 0 : 1;
           pts_after.map((pa, k) => {
-            if (pa.year) {
+            if (pa.year || pb.year == 0) {
               pa.year = new_year + dir_constant * (delta);
               if (incrementYear(pa)) {
                 delta++;
