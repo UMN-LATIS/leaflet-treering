@@ -1310,25 +1310,34 @@ function VisualAsset (Lt) {
       let forward = Lt.measurementOptions.forwardDirection;
       let annual = !Lt.measurementOptions.subAnnual;
 
-      let opacity = "0.5";
-      let weight = "5";
+      let opacity = "0.6";
+      let weight = "6";
       let color = "FFF"; // White is debug color.
+
       // Blue by default.
       let light = "#17b0d4";
       let dark = "#026d75";
-      // Red if decade.
+
+      // Shift evaluated year if measuring backward in time.
       let year = (forward) ? pts[i].year : ((!pts[i].earlywood) ? pts[i].year + 1 : pts[i].year);
+
+      // Check if break in middle of decade measurment.
+      if (pts[i].break) {
+        closest_prevPt = pts.slice(0, i).reverse().find(e => !e.start && !e.break && e.year);
+        if (annual) {
+          year = (forward) ? closest_prevPt.year + 1 : closest_prevPt.year;
+        } else {
+          if (forward) {
+            year = (closest_prevPt.earlywood) ? closest_prevPt.year : closest_prevPt.year + 1;
+          } else {
+            year = closest_prevPt.year;
+          }
+        }
+      }
+      // Red if point is at decade.
       if (year % 10 == 0) {
         light = (annual) ? "#db2314" : "#e06f4c";
         dark = "#db2314";
-      }
-      // Check if break in middle of decade measurment.
-      if (pts[i].break && i + 2 < pts.length) {
-        year = (forward) ? pts[i + 2].year : ((pts[i + 2].earlywood) ? pts[i + 2].year : pts[i + 2].year + 1);
-        if (year % 10 == 0) {
-          light = (annual) ? "#db2314" : "#e06f4c";
-          dark = "#db2314";
-        }
       }
 
       if (annual) {
