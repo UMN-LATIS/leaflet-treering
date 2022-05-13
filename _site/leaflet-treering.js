@@ -532,9 +532,13 @@ function MeasurementData (dataObject, Lt) {
       return;
     };
 
+    coord = Lt.viewer.latLngToLayerPoint(latLng)
+    new_coord = Lt.visualAsset.lines[k].closestLayerPoint(coord)
+    new_latLng = Lt.viewer.layerPointToLatLng(new_coord)
+
     new_points[k] = {'start': false, 'skip': false, 'break': false,
       'year': year_adjusted, 'earlywood': earlywood_adjusted,
-      'latLng': latLng};
+      'latLng': new_latLng};
 
     var tempK = k;
 
