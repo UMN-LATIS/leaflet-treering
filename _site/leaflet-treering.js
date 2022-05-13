@@ -1225,6 +1225,9 @@ function VisualAsset (Lt) {
       Lt.undo.push();
       pts[i].latLng = e.target._latlng;
       Lt.annotationAsset.reloadAssociatedYears();
+      if (Lt.popoutPlots.win) {
+        Lt.popoutPlots.sendData();
+      }
     });
 
     //tell marker what to do when clicked
@@ -5451,23 +5454,21 @@ function Helper(Lt) {
      var lwWidthArray = [];
      var twWidthArray = [];
 
-     var breakDis = 0;
+     var disToBreak = 0;
      var prevPt = null;
      pts.map((e, i) => {
        if (!e) {
          return
        }
        if (e.start) {
-         if (!pts[i - 1] || !pts[i - 1].break) {
-           prevPt = e;
-         } else if (pts[i - 1].break) {
-           breakDis = Lt.helper.trueDistance(prevPt.latLng, e.latLng);
-         }
+         prevPt = e;
+       } else if (e.break) {
+         disToBreak = Lt.helper.trueDistance(prevPt.latLng, e.latLng);
        } else if (e.year || e.year == 0) {
          if (!yearArray.includes(e.year)) {
             yearArray.push(parseInt(e.year));
          }
-         var width = Lt.helper.trueDistance(prevPt.latLng, e.latLng) - breakDis;
+         var width = Lt.helper.trueDistance(prevPt.latLng, e.latLng) + disToBreak;
          width = parseFloat(width.toFixed(5));
          if (e.earlywood && Lt.measurementOptions.subAnnual) {
            ewWidthArray.push(width);
@@ -5476,7 +5477,7 @@ function Helper(Lt) {
          } else {
            twWidthArray.push(width)
          }
-         breakDis = 0;
+         disToBreak = 0;
          prevPt = e;
        }
      });
