@@ -479,119 +479,70 @@ function MeasurementData (dataObject, Lt) {
     let direction = directionCheck();
     var disList = [];
 
-    // closest point index
     var i = Lt.helper.closestPointIndex(latLng);
     if (!i && i != 0) {
       alert('New point must be within existing points. Use the create toolbar to add new points to the series.');
       return;
     };
 
-    var new_points = this.points;
-    var second_points = this.points.slice().splice(i);
-    var k = i;
+    var new_points = JSON.parse(JSON.stringify(this.points));
+    var second_points = (direction == forwardInTime) ? JSON.parse(JSON.stringify(this.points)).slice(0, i) : JSON.parse(JSON.stringify(this.points)).slice(i);
     var year_adjusted;
     var earlywood_adjusted = true;
 
+    if (0 < i && i < this.points.length) {
+      nearest_prevPt = this.points.slice(0, i).reverse().find(e => !e.start && !e.break && e.year);
+      nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && e.year);
 
-    if (this.points[i - 1] && this.points[i]) {
-      if (this.points[i - 1].earlywood && measurementOptions.subAnnual) { // case 1: subAnnual enabled & previous point ew
-        earlywood_adjusted = false;
-        if (direction == forwardInTime) {
-          year_adjusted = this.points[i - 1].year;
-        } else if (direction == backwardInTime) {
-          // special case when next point is a break point
-          year_adjusted = (this.points[i].year) ? this.points[i].year : this.points[i - 1].year - 1;
-        };
+      year_adjusted = (direction == forwardInTime) ? nearest_prevPt.year : nearest_nextPt.year;
+      // If nearest previous point is the first start point, must infer year from next point.
+      if (!year_adjusted) {
+        year_adjusted = (measurementOptions.subAnnual) ? nearest_nextPt.year : nearest_nextPt.year - 1;
+      }
 
-      } else if (this.points[i - 1].start || this.points[i].start) { // case 2: previous or closest point is start
-          year_adjusted = this.points[i].year;
-          if (this.points[i - 2] && this.points[i - 2].earlywood && measurementOptions.subAnnual && direction == forwardInTime) {
-            earlywood_adjusted = false;
-          } else if (this.points[i - 2] && !this.points[i - 2].break && !this.points[i - 2].start &&
-                    !this.points[i - 2].earlywood && measurementOptions.subAnnual && direction == backwardInTime) {
-            earlywood_adjusted = true;
-          } else if ((this.points[i - 2].break || !this.points[i - 2].start) && measurementOptions.subAnnual && direction == backwardInTime) {
-            earlywood_adjusted = !this.points[i - 3].earlywood || false;
-          } else if (direction == backwardInTime) {
-            earlywood_adjusted = false;
-          };
-
-      } else { // case 3: subAnnual disabled or previous point lw
-        if (direction == forwardInTime) {
-          year_adjusted = this.points[i - 1].year + 1;
-        } else if (direction == backwardInTime) {
-          // special case when next point is a break point
-          year_adjusted = (this.points[i].year) ? this.points[i].year : this.points[i - 1].year;
-        };
-      };
+      if (measurementOptions.subAnnual) {
+        earlywood_adjusted = (direction == forwardInTime) ? nearest_prevPt.earlywood : nearest_nextPt.earlywood;
+      }
     } else {
       alert('Please insert new point closer to connecting line.')
+      return
     };
 
-    if (year_adjusted === undefined) {
-      return;
-    };
-
+    // Snap inserted point to nearest polyline.
     coord = Lt.viewer.latLngToLayerPoint(latLng)
-    new_coord = Lt.visualAsset.lines[k].closestLayerPoint(coord)
+    new_coord = Lt.visualAsset.lines[i].closestLayerPoint(coord)
     new_latLng = Lt.viewer.layerPointToLatLng(new_coord)
+    new_pt = {'start': false, 'skip': false, 'break': false,
+              'year': year_adjusted, 'earlywood': earlywood_adjusted,
+              'latLng': new_latLng};
+    new_points.splice(i, 0, new_pt);
 
-    new_points[k] = {'start': false, 'skip': false, 'break': false,
-      'year': year_adjusted, 'earlywood': earlywood_adjusted,
-      'latLng': new_latLng};
-
-    var tempK = k;
-
-    k++;
-
-    second_points.map(e => {
-      if(!e) {
-       return;
-      }
+    index_adjustment = (direction == forwardInTime) ? 0 : i + 1;
+    second_points.map((e, k) => {
+      if (!e) return;
       if (!e.start && !e.break) {
-        if (measurementOptions.subAnnual) { // case 1: subAnnual enabled
-          e.earlywood = !e.earlywood;
-          if (e.earlywood && direction == forwardInTime) {
-            e.year++;
-          } else if (!e.earlywood && direction == backwardInTime) {
-            e.year--;
-          };
-
-        } else { // case 2: subAnnual disabled
-          if (direction == forwardInTime) {
-            e.year++;
-          } else if (direction == backwardInTime) {
-            e.year--;
-          };
-        };
+        if (measurementOptions.subAnnual) ? e.earlywood = !e.earlywood;
+        if (!e.earlywood || !measurementOptions.subAnnual) e.year--;
       };
-      new_points[k] = e;
-      k++;
+      new_points[index_adjustment + k] = e;
     });
 
     this.points = new_points;
-    this.index = k;
-    if (measurementOptions.subAnnual) {
-      this.earlywood = !this.earlywood;
-    };
-    if (!this.points[this.index - 1].earlywood || !measurementOptions.subAnnual) { // add year if forward
-      if (direction == forwardInTime) {
-        this.year++
-      } else {
-        this.year--
-      };
-    };
+    this.index = new_points.length;
+    if (measurementOptions.subAnnual) this.earlywood = !this.earlywood;
+    if (direction == backwardInTime && (!this.points[this.index - 1].earlywood || !measurementOptions.subAnnual)) this.year--;
 
-    Lt.metaDataText.updateText(); // updates after a single point is inserted
+    // Update other features after point inserted.
+    Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.popoutPlots.win) {
       Lt.popoutPlots.sendData();
     }
-    return tempK;
+    return i;
   };
 
   /**
-   * insert a zero growth year in the middle of the measurement data
+   * Insert a zero growth year in the middle of the measurement data
    * @function insertZeroGrowth
    */
   MeasurementData.prototype.insertZeroGrowth = function(i, latLng) {
@@ -603,7 +554,7 @@ function MeasurementData (dataObject, Lt) {
     var subAnnualIncrement = Lt.measurementOptions.subAnnual == true;
     var annualIncrement = Lt.measurementOptions.subAnnual == false;
 
-    // ensure correct inserted point order
+    // Ensure correct inserted point order
     var firstEWCheck = true;
     var secondEWCheck = false;
     if (direction == forwardInTime) {
@@ -629,7 +580,7 @@ function MeasurementData (dataObject, Lt) {
       k++;
     }
 
-    var tempK = k-1;
+    var tempK = k - 1;
 
     second_points.map(e => {
       if (e && !e.start && !e.break) {
