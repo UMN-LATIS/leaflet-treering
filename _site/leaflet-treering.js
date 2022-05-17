@@ -485,23 +485,30 @@ function MeasurementData (dataObject, Lt) {
       return;
     };
 
-    var new_points = JSON.parse(JSON.stringify(this.points));
-    var second_points = (direction == forwardInTime) ? JSON.parse(JSON.stringify(this.points)).slice(0, i) : JSON.parse(JSON.stringify(this.points)).slice(i);
-    var year_adjusted;
-    var earlywood_adjusted = true;
+    // Adjustment area (inner v. outer) determines which section of points is adjusted.
+    // If the user was measuring forward in time & wanted to shift earlier in time (inner) points, ...
+    // ... need to change first half of points array.
+    // If the user was measuring forward in time & wanted to shift later in time (outer) points, ...
+    // ... need to change second half of points array.
+    // Logic swaps for measuring backwards.
+    let tempDirection = (Lt.insertPoint.adjustOuter) ? backwardInTime : forwardInTime;
+    let new_points = JSON.parse(JSON.stringify(this.points));
+    let second_points = (direction == tempDirection) ? JSON.parse(JSON.stringify(this.points)).slice(0, i) : JSON.parse(JSON.stringify(this.points)).slice(i);
+    let year_adjusted;
+    let earlywood_adjusted = true;
 
     if (0 < i && i < this.points.length) {
       nearest_prevPt = this.points.slice(0, i).reverse().find(e => !e.start && !e.break && e.year);
       nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && e.year);
 
-      year_adjusted = (direction == forwardInTime) ? nearest_prevPt.year : nearest_nextPt.year;
+      year_adjusted = (direction == tempDirection) ? nearest_prevPt.year : nearest_nextPt.year;
       // If nearest previous point is the first start point, must infer year from next point.
       if (!year_adjusted) {
         year_adjusted = (measurementOptions.subAnnual) ? nearest_nextPt.year : nearest_nextPt.year - 1;
       }
 
       if (measurementOptions.subAnnual) {
-        earlywood_adjusted = (direction == forwardInTime) ? nearest_prevPt.earlywood : nearest_nextPt.earlywood;
+        earlywood_adjusted = (direction == tempDirection) ? nearest_prevPt.earlywood : nearest_nextPt.earlywood;
       }
     } else {
       alert('Please insert new point closer to connecting line.')
@@ -517,12 +524,13 @@ function MeasurementData (dataObject, Lt) {
               'latLng': new_latLng};
     new_points.splice(i, 0, new_pt);
 
-    index_adjustment = (direction == forwardInTime) ? 0 : i + 1;
+    let year_adjustment = (Lt.insertPoint.adjustOuter) ? 1 : -1;
+    let index_adjustment = (direction == tempDirection) ? 0 : i + 1;
     second_points.map((e, k) => {
       if (!e) return;
       if (!e.start && !e.break) {
-        if (measurementOptions.subAnnual) ? e.earlywood = !e.earlywood;
-        if (!e.earlywood || !measurementOptions.subAnnual) e.year--;
+        if (measurementOptions.subAnnual) e.earlywood = !e.earlywood;
+        if (!e.earlywood || !measurementOptions.subAnnual) e.year = e.year + year_adjustment;
       };
       new_points[index_adjustment + k] = e;
     });
@@ -3522,6 +3530,13 @@ function Cut(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function InsertPoint(Lt) {
+  this.act = "Insert points along path between existing points";
+  this.optA = "Adjust outer portion: shift dating of later years forward in time"
+  this.optB = "Adjust inner portion: shift dating of earlier years back in time"
+  this.adjustOuter = true;
+  this.selectedAdjustment = false;
+  this.maintainAdjustment = false;
+
   this.active = false;
   this.btn = new Button(
     'add_circle_outline',
@@ -3541,28 +3556,37 @@ function InsertPoint(Lt) {
   }, this);
 
   /**
-   * Insert a point on click event
-   * @function action
+   * Open dialog for user to choose shift direction
+   * @function openDialog
    */
-  InsertPoint.prototype.action = function() {
+  InsertPoint.prototype.openDialog = function() {
     Lt.viewer.getContainer().style.cursor = 'pointer';
 
     $(Lt.viewer.getContainer()).click(e => {
-      var latLng = Lt.viewer.mouseEventToLatLng(e);
-
-      Lt.undo.push();
-
-      var k = Lt.data.insertPoint(latLng);
-      if (k != null) {
-        Lt.visualAsset.newLatLng(Lt.data.points, k, latLng);
-        Lt.visualAsset.reload();
+      if (this.maintainAdjustment) {
+        this.action(Lt.viewer.mouseEventToLatLng(e));
+      } else {
+        Lt.helper.createEditToolDialog(e, "insertPoint");
       }
-
-      //Uncommenting line below will disable tool after one use
-      //Currently it will stay enabled until user manually disables tool
-      //this.disable();
     });
   };
+
+  /**
+   * Insert a point on click event
+   * @function action
+   */
+  InsertPoint.prototype.action = function(latLng) {
+    Lt.undo.push();
+    let k = Lt.data.insertPoint(latLng);
+    if (k != null) {
+      Lt.visualAsset.newLatLng(Lt.data.points, k, latLng);
+      Lt.visualAsset.reload();
+    }
+
+    // Uncommenting line below will disable tool after one use.
+    // Currently it will stay enabled until user manually disables tool.
+    //this.disable();
+  }
 
   /**
    * Enable inserting points
@@ -3570,7 +3594,8 @@ function InsertPoint(Lt) {
    */
   InsertPoint.prototype.enable = function() {
     this.btn.state('active');
-    this.action();
+    this.selectedAdjustment = false;
+    this.openDialog();
     this.active = true;
   };
 
@@ -3588,6 +3613,11 @@ function InsertPoint(Lt) {
 
     $(Lt.viewer.getContainer()).off('click');
     this.btn.state('inactive');
+    this.selectedAdjustment = false;
+    if (Lt.helper.dialog) {
+      Lt.helper.dialog.destroy();
+      delete Lt.helper.dialog
+    }
     this.active = false;
     Lt.viewer.getContainer().style.cursor = 'default';
   };
@@ -5309,8 +5339,70 @@ function KeyboardShortCutDialog (Lt) {
 /**
  * Hosts all global helper functions
  * @function
+ * @param {leaflet object} - Lt
  */
 function Helper(Lt) {
+
+  /**
+   * Creates dialog box for edit tools. Allows user to decide which direction points are shifted.
+   * @function createEditToolDialog
+   * @param {click event} e
+   * @param {string to access tool} tool
+   **/
+  Helper.prototype.createEditToolDialog = function(e, tool) {
+    if (this.dialog) {
+      $(this.dialog._map).off("dialog:closed");
+      this.dialog.destroy();
+      delete this.dialog
+    }
+
+    let latLng = Lt.viewer.mouseEventToLatLng(e);
+    // Only create dialog window for user to choose which direction to shift points...
+    // ... if choice not previously made since tool enabled and if user has not...
+    // ... disabled adjustment choice.
+    if (!this.dialog && !Lt[tool].selectedAdjustment) {
+      // Handlebars from templates.html.
+      let content = document.getElementById("edit-tools-shifting-dialog-template").innerHTML;
+      let template = Handlebars.compile(content);
+      let html = template({
+        action: Lt[tool].act,
+        optionA: Lt[tool].optA,
+        optionB: Lt[tool].optB,
+      });
+      let anchor = [e.clientY, e.clientX];
+      this.dialog = L.control.dialog({
+        'size': [450, 120],
+        'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+        'anchor': anchor,
+        'initOpen': true
+      }).setContent(html).addTo(Lt.viewer);
+      // Default selection consistent with previous choice.
+      document.getElementById("shift-radioA").checked = Lt[tool].adjustOuter;
+      document.getElementById("shift-radioB").checked = !Lt[tool].adjustOuter;
+
+      $(this.dialog._map).on("dialog:resizeend", () => { console.log(this.dialog) });
+      $(this.dialog._map).on("dialog:closed", () => {
+        if (this.dialog) {
+          // Only have user select adjustment once per activation.
+          Lt[tool].selectedAdjustment = true;
+          Lt[tool].adjustOuter = document.getElementById("shift-radioA").checked;
+          // If set to true, user maintains adjustment until page reloaded.
+          Lt[tool].maintainAdjustment = document.getElementById("shift-checkbox").checked;
+
+          // Need to remove event listener to update latlng used.
+          // Otherwise, points become stuck at one location.
+          $(this.dialog._map).off("dialog:closed");
+          this.dialog.destroy();
+          delete this.dialog
+
+          Lt[tool].action(latLng);
+        }
+      });
+    // Additional points only placed if dialog window not visible.
+    } else if (!this.dialog) {
+      Lt[tool].action(latLng);
+    }
+  }
 
   /**
    * Reverses points data structure so points ascend in time.
@@ -5592,9 +5684,9 @@ function Helper(Lt) {
   /**
    * returns the correct colors for points in a measurement path
    * @function
-   * @param {leaflet object} - Lt
+   * @param
    */
-   Helper.prototype.assignRowColor = function (e,y,Lt, lengthAsAString)
+   Helper.prototype.assignRowColor = function (e, y, Lt, lengthAsAString)
    {
      var stringContent;
      if (Lt.measurementOptions.subAnnual) {

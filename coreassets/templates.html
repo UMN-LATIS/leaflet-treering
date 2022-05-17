@@ -1,3 +1,15 @@
+<script id="edit-tools-shifting-dialog-template" type="text/x-handlebars-template">
+  <div class="shift-container">
+    <p id="shift-header"> {{action}} </p>
+    <input type="radio" name="shift-choice" id="shift-radioA">
+    <label for="shift-radioA"> {{optionA}} </label><br>
+    <input type="radio" name="shift-choice" id="shift-radioB">
+    <label for="shift-radioB"> {{optionB}} </label><br>
+    <input type="checkbox" id="shift-checkbox">
+    <label for="shift-checkbox"> Maintain adjustment preference for this editing tool until page is reloaded </label><br>
+  </div>
+</script>
+
 <script id="annotation-dialog-window-template" type="text/x-handlebars-template">
   <div id="tab" class="tab">
     <button class="tabLinks" id="summary-btn">Summary</button>
