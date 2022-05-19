@@ -194,19 +194,19 @@ th {
 }
 
 /* increment shift dialog */
-.shift-container p {
+#shift-container p {
 	font-size: 14px;
 	font-weight: bold;
 	color: black;
 	margin: 0;
 }
 
-.shift-container input {
+#shift-container input {
 	width: 10px;
 	height: 10px;
 }
 
-.shift-container label {
+#shift-container label {
 	font-size: 12px;
 	font-weight: normal;
 	color: black;

@@ -1562,6 +1562,11 @@ function AnnotationAsset(Lt) {
       'initOpen': true
     }).setContent(content).addTo(Lt.viewer);
 
+    // Set dialog close button to a check mark instead of X.
+    let control_dialog_inner_parent = document.getElementById("tab").parentElement.parentElement;
+    let control_dialog_close = control_dialog_inner_parent.getElementsByClassName("leaflet-control-dialog-close")[0];
+    control_dialog_close.innerHTML = '<i class="fa fa-check" aria-hidden="true"></i>';
+
     // remember annotation size/location each times its resized/moved
     $(this.dialogAnnotationWindow._map).on('dialog:resizeend', () => { this.annotationDialogSize = this.dialogAnnotationWindow.options.size } );
     $(this.dialogAnnotationWindow._map).on('dialog:moveend', () => { this.annotationDialogAnchor = this.dialogAnnotationWindow.options.anchor } );
@@ -1642,6 +1647,11 @@ function AnnotationAsset(Lt) {
       'anchor': anchor,
       'initOpen': true
     }).setContent(content).addTo(Lt.viewer);
+
+    // Set dialog close button to a check mark instead of X.
+    let control_dialog_inner_parent = document.getElementById("attributes-options").parentElement.parentElement;
+    let control_dialog_close = control_dialog_inner_parent.getElementsByClassName("leaflet-control-dialog-close")[0];
+    control_dialog_close.innerHTML = '<i class="fa fa-check" aria-hidden="true"></i>';
 
     // remember annotation size/location each times its resized/moved
     $(this.dialogAttributesWindow._map).on('dialog:resizeend', () => { this.attributesDialogSize = this.dialogAttributesWindow.options.size; console.log(this.attributesDialogSize);} );
@@ -5460,6 +5470,11 @@ function Helper(Lt) {
         'anchor': anchor,
         'initOpen': true
       }).setContent(html).addTo(Lt.viewer);
+      // Set dialog close button to a check mark instead of X.
+      let control_dialog_inner_parent = document.getElementById("shift-container").parentElement.parentElement;
+      let control_dialog_close = control_dialog_inner_parent.getElementsByClassName("leaflet-control-dialog-close")[0];
+      control_dialog_close.innerHTML = '<i class="fa fa-check" aria-hidden="true"></i>';
+
       // Default selection consistent with previous choice.
       document.getElementById("shift-radioA").checked = Lt[tool].adjustOuter;
       document.getElementById("shift-radioB").checked = !Lt[tool].adjustOuter;
