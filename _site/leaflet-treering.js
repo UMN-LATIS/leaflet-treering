@@ -382,7 +382,7 @@ function MeasurementData (dataObject, Lt) {
       });
 
       this.points = new_points;
-      this.index = new_points.length - 1;
+      this.index = (new_points.length - 1 > 0) ? new_points.length - 1 : 0;
       let lastIndex = new_points.length - 1;
       // If only a start point exists, reset data.
       if (!this.points[lastIndex].year) {
@@ -411,72 +411,86 @@ function MeasurementData (dataObject, Lt) {
   };
 
   /**
-   * remove a range of points from the measurement data
+   * Remove a range of points from the measurement data.
    * @function cut
    */
   MeasurementData.prototype.cut = function(i, j) {
-    var twoIncrements = Lt.measurementOptions.subAnnual;
-    var yearsAscending = Lt.measurementOptions.forwardDirection;
+    let direction = directionCheck();
+    let lower = Math.min(i, j)
+    let upper = Math.max(i, j);
 
-    if (i > j) {
-      this.points.splice(j,i-j+1);
-    } else if (i < j) {
-      this.points.splice(i,j-i+1);
-    } else {
-      alert('You cannot select the same point');
-    };
+    // If cut includes a break, include all break segement points in cut.
+    if (this.points[lower].start && this.points[lower - 1] && this.points[lower - 1].break) lower--;
+    else if (this.points[upper].break && this.points[upper + 1] && this.points[upper + 1].start) upper++;
 
-    var trimmed_points = this.points.filter(Boolean); // remove null points
-    var k = 0;
-    this.points = [];
-    trimmed_points.map(e => {
-      // Set first point as start point.
-      if (k === 0) {
-        this.points[k] = {'start': true, 'skip': false, 'break': false,
-          'latLng': e.latLng};
-      } else {
-        this.points[k] = e;
-      }
-      k++;
+    let tempDirection = (Lt.cut.adjustOuter) ? backwardInTime : forwardInTime;
+    let new_points = JSON.parse(JSON.stringify(this.points));
+    second_points = (direction == tempDirection) ? JSON.parse(JSON.stringify(this.points)).slice(0, lower) : JSON.parse(JSON.stringify(this.points)).slice(upper + 1);
+
+    let num_non_pts = this.points.slice(lower, upper + 1).filter(e => !e.year).length;
+    // When measuring subincrements, years recorded are half of number of points plotted.
+    let pt_delta = (measurementOptions.subAnnual) ? Math.floor((upper - lower) / 2) : upper - lower;
+    let non_pt_delta = (measurementOptions.subAnnual) ? Math.round(num_non_pts / 2) : num_non_pts;
+    let year_delta = pt_delta - non_pt_delta + 1;
+
+    // Only need to swap earlywood latewood if selected points the same thus a full year is not removed.
+    let need_swap = (this.points[lower].earlywood == this.points[upper].earlywood);
+    let year_adjustment = (Lt.cut.adjustOuter) ? -1 * year_delta : year_delta;
+    let index_adjustment = (direction == tempDirection) ? 0 : upper + 1;
+
+    second_points.map((e, k) => {
+      if (!e) return;
+      if (!e.start && !e.break) {
+        if (measurementOptions.subAnnual && need_swap) e.earlywood = !e.earlywood;
+        e.year = e.year + year_adjustment;
+        // When partial cuts taken (need_swap = true), need to "shimmey" years along. EX:
+        // ORG: S -> 1E -> 1L -> 2E -> 2L -> 3E -> 3L
+        // Cuts:     /\          /\
+        // NEW: S ->                   1E -> 1L -> 2E
+        // Year Delta:                 1     2     1
+        // Earlywood/latewood points need to be bumped up for outer/inner, respectively.
+        if (need_swap) {
+          if (Lt.cut.adjustOuter && e.earlywood) e.year++;
+          else if (!Lt.cut.adjustOuter && !e.earlywood) e.year--;
+        }
+      };
+      new_points[index_adjustment + k] = e;
     });
-    this.index = k;
 
-    // If all point except first start point removed, "reset" points.
+    new_points.splice(lower, upper - lower + 1);
+    new_points = new_points.filter(Boolean);
+
+    this.points = new_points;
+    this.index = new_points.length
+
+    // If all points or all except first start point removed, "reset" points.
     if (!this.points[1]) {
       this.earlywood = true;
       this.year = 0;
       return
     }
-    // Correct years to delete gap in timeline.
-    var year = this.points[1].year;
-    var second = this.points[1].earlywood;
-    var breakPt = false;
-    var c = (yearsAscending) ? 1 : -1;
-    this.points.map(e => {
-      if (e && !e.start && !e.break) { // If measurement point...
-        // Only change year if single increment or second point evaluated when proper (lw for forward, ew for backward).
-        year = ((second && yearsAscending) || (!second && !yearsAscending) || !twoIncrements) ? year + c : year;
-        second = !second;
-        e.year = year;
-        e.earlywood = (twoIncrements) ? !second : true;
-      }
-    });
 
-    // Set current data so next measurement point correct.
-    var lastPt = this.points[this.points.length - 1];
-    if (twoIncrements) {
-      this.earlywood = !lastPt.earlywood;
-      // Only increment if previous point the last increment of that year.
-      if (yearsAscending && !lastPt.earlywood) {
-        this.year = lastPt.year + 1;
-      } else if (!yearsAscending && lastPt.earlywood) {
-        this.year = lastPt.year - 1;
-      } else {
-        this.year = lastPt.year;
-      }
+    let lastIndex = new_points.length - 1;
+    // If only a start point exists, reset data.
+    if (!this.points[lastIndex].year) {
+      this.year = 0;
+      this.earlywood = true;
     } else {
-      this.year = yearsAscending ? lastPt.year + 1 : lastPt.year - 1;
+      // Determine next measurement point by last existing point.
+      if (measurementOptions.subAnnual) {
+        this.earlywood = !(this.points[lastIndex].earlywood)
+        if (direction == forwardInTime) {
+          this.year = (this.points[lastIndex].earlywood) ? this.points[lastIndex].year : this.points[lastIndex].year + 1;
+        } else if (direction == backwardInTime) {
+          this.year = (this.points[lastIndex].earlywood) ? this.points[lastIndex].year - 1 : this.points[lastIndex].year;
+        }
+      } else {
+        this.year = (direction == forwardInTime) ? this.points[lastIndex].year + 1 : this.points[lastIndex].year - 1;
+      }
     }
+
+    // If first start point removed, create new one.
+    if (!this.points[0].start) this.points[0] =  {'start': true, 'skip': false, 'break': false, 'latLng': this.points[0].latLng};
 
     Lt.metaDataText.updateText(); // updates after points are cut
     Lt.annotationAsset.reloadAssociatedYears();
@@ -512,8 +526,8 @@ function MeasurementData (dataObject, Lt) {
     let earlywood_adjusted = true;
 
     if (0 < i && i < this.points.length) {
-      nearest_prevPt = this.points.slice(0, i).reverse().find(e => !e.start && !e.break && e.year);
-      nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && e.year);
+      let nearest_prevPt = this.points.slice(0, i).reverse().find(e => !e.start && !e.break && e.year);
+      let nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && e.year);
 
       year_adjusted = (direction == tempDirection) ? nearest_prevPt.year : nearest_nextPt.year;
 
@@ -1265,7 +1279,7 @@ function VisualAsset (Lt) {
 
       if (Lt.cut.active) {
         if (Lt.cut.point != -1) {
-          Lt.cut.action(i);
+          Lt.cut.openDialog(e, i);
         } else {
           Lt.cut.fromPoint(i);
         };
@@ -3559,6 +3573,13 @@ function DeletePoint(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function Cut(Lt) {
+  this.act = "Delete series of consecutive points by selecting first and last point to delete:";
+  this.optA = "Adjust outer portion: shift dating of later years back in time"
+  this.optB = "Adjust inner portion: shift dating of earlier years forward in time"
+  this.adjustOuter = true;
+  this.selectedAdjustment = false;
+  this.maintainAdjustment = false;
+
   this.active = false;
   this.point = -1;
   this.btn = new Button(
@@ -3592,12 +3613,31 @@ function Cut(Lt) {
   };
 
   /**
+   * Open dialog for user to choose shift direction
+   * @function openDialog
+   */
+  Cut.prototype.openDialog = function(e, i) {
+    if (i == this.point) {
+      alert('You cannot select the same point');
+      this.disable()
+      return;
+    }
+
+    if (this.maintainAdjustment) {
+      this.action(i);
+    } else {
+      Lt.helper.createEditToolDialog(e.containerPoint.x, e.containerPoint.y, i, "cut");
+    }
+  };
+
+  /**
    * Enable cutting
    * @function enable
    */
   Cut.prototype.enable = function() {
     this.btn.state('active');
     this.active = true;
+    this.selectedAdjustment = false;
     Lt.viewer.getContainer().style.cursor = 'pointer';
     this.point = -1;
   };
@@ -3610,6 +3650,7 @@ function Cut(Lt) {
     $(Lt.viewer.getContainer()).off('click');
     this.btn.state('inactive');
     this.active = false;
+    this.selectedAdjustment = false;
     Lt.viewer.getContainer().style.cursor = 'default';
     this.point = -1;
   };
@@ -5465,7 +5506,7 @@ function Helper(Lt) {
       });
       let anchor = [y, x];
       this.dialog = L.control.dialog({
-        'size': [450, 120],
+        'size': [470, 150],
         'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
         'anchor': anchor,
         'initOpen': true
