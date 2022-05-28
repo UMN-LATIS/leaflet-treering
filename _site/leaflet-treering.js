@@ -620,7 +620,7 @@ function MeasurementData (dataObject, Lt) {
     // New points:  --- | --- | --- | --- || | --- | --- | --- | ---
     // Increments:      e     l     e     le l     e     l     e
     // Years:           0     1     1     12 2     3     3     4
-    // Indices:        i-5   i-4   i-3   i-1 i    i+1   i+3   i+4 
+    // Indices:        i-5   i-4   i-3   i-1 i    i+1   i+3   i+4
     //                                   i-2
 
     let direction = directionCheck();
@@ -828,6 +828,10 @@ function MarkerIcon(color, imagePath) {
     'empty'      : { 'path': imagePath + 'images/Empty.png',
                      'size': [0, 0] },
   };
+
+  if (!colors[color]?.path) {
+    console.log("Color path error: ", color);
+  }
 
   return L.icon({
     iconUrl : colors[color].path,
@@ -1078,7 +1082,6 @@ function VisualAsset (Lt) {
           } else if (Lt.data.points[i + 1] && Lt.data.points[i + 1].start) {
             tooltip = 'Start';
           }
-
           // First point is treated as a measurement point, not a start point.
           if (i === 0 && Lt.data.points[i + 1]) {
             var desc = (!Lt.measurementOptions.subAnnual) ? '' : ', late';
@@ -1197,16 +1200,12 @@ function VisualAsset (Lt) {
       }
     // Break point icon:
     } else if (pts[i].break) {
-      if (forward) {
-          color = 'break';
-      } else if (backward) {
-        color = 'break';
-      }
+      color = 'break';
     // Zero growth point icon:
     } else if (zero ||
               (forward && pts[i - 1] && pts[i].latLng.lat == pts[i - 1].latLng.lat && pts[i].latLng.lng == pts[i - 1].latLng.lng) ||
               (backward && pts[i + 1] && pts[i].latLng.lat == pts[i + 1].latLng.lat && pts[i].latLng.lng == pts[i + 1].latLng.lng)) {
-      color = 'zero'
+      color = 'zero';
     // Sub-annual icons:
     } else if (subAnnual) {
       if (pts[i].earlywood) {
@@ -1233,11 +1232,25 @@ function VisualAsset (Lt) {
     // Start and end points swapped when measuring backwards.
     // Only apply this when active measuring disabled.
     if (backward && i === 0) {
-      color = (pts[i + 1] && pts[i + 1].year % 10 == 0) ? 'dark_red' :
-              (annual) ? 'light_blue' : 'dark_blue';
-  } else if (backward && i === pts.length - 1 && reload) {
-      color = 'start';
-  }
+      if (pts[i + 1]) {
+        if (subAnnual) {
+          if (pts[i + 1].earlywood) {
+            // Decades are colored red.
+            color = (pts[i + 1].year % 10 == 0) ? 'light_red' : 'dark_blue';
+          } else { // Otherwise, point is latewood.
+            color = (pts[i + 1].year % 10 == 0) ? 'pale_red' : 'light_blue';
+          }
+        } else {
+          color = (pts[i + 1].year % 10 == 0) ? 'light_red' : 'light_blue';
+        }
+      } else {
+        color = (annual) ? 'light_blue' : 'dark_blue';
+      }
+    // Only apply this when active measuring disabled.
+    } else if (backward && i === pts.length - 1 && reload) {
+        color = 'start';
+    }
+
   if (!color) color = 'empty';
   var marker = getMarker(leafLatLng, color, Lt.basePath, draggable);
   this.markers[i] = marker;

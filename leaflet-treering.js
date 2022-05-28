@@ -620,7 +620,7 @@ function MeasurementData (dataObject, Lt) {
     // New points:  --- | --- | --- | --- || | --- | --- | --- | ---
     // Increments:      e     l     e     le l     e     l     e
     // Years:           0     1     1     12 2     3     3     4
-    // Indices:        i-5   i-4   i-3   i-1 i    i+1   i+3   i+4 
+    // Indices:        i-5   i-4   i-3   i-1 i    i+1   i+3   i+4
     //                                   i-2
 
     let direction = directionCheck();
@@ -828,6 +828,10 @@ function MarkerIcon(color, imagePath) {
     'empty'      : { 'path': imagePath + 'images/Empty.png',
                      'size': [0, 0] },
   };
+
+  if (!colors[color]?.path) {
+    console.log("Color path error: ", color);
+  }
 
   return L.icon({
     iconUrl : colors[color].path,
@@ -1196,12 +1200,12 @@ function VisualAsset (Lt) {
       }
     // Break point icon:
     } else if (pts[i].break) {
-      color = 'white_break';
+      color = 'break';
     // Zero growth point icon:
     } else if (zero ||
               (forward && pts[i - 1] && pts[i].latLng.lat == pts[i - 1].latLng.lat && pts[i].latLng.lng == pts[i - 1].latLng.lng) ||
               (backward && pts[i + 1] && pts[i].latLng.lat == pts[i + 1].latLng.lat && pts[i].latLng.lng == pts[i + 1].latLng.lng)) {
-      color = 'zero'
+      color = 'zero';
     // Sub-annual icons:
     } else if (subAnnual) {
       if (pts[i].earlywood) {
@@ -1244,7 +1248,7 @@ function VisualAsset (Lt) {
       }
     // Only apply this when active measuring disabled.
     } else if (backward && i === pts.length - 1 && reload) {
-        color = 'white_start';
+        color = 'start';
     }
 
   if (!color) color = 'empty';
