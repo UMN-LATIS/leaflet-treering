@@ -505,7 +505,6 @@ function MeasurementData (dataObject, Lt) {
    */
   MeasurementData.prototype.insertPoint = function(latLng) {
     let direction = directionCheck();
-    var disList = [];
 
     var i = Lt.helper.closestPointIndex(latLng);
     if (!i && i != 0) {
@@ -602,76 +601,114 @@ function MeasurementData (dataObject, Lt) {
    * @function insertZeroGrowth
    */
   MeasurementData.prototype.insertZeroGrowth = function(i, latLng) {
+    // Example of action with sub-anual increments, annual increments need not...
+    // ... account for inserting 2 points (much simpiler):
+
+    // Old points: --- | --- | --- | --- | --- | --- | --- | ---
+    // Increments:     e     l     e     l     e     l     e
+    // Years:          1     1     2     2     3     3     4
+    // Indices:       i-3   i-2   i-1    i    i+1   i+2   i+3
+
+    // Shift outer:
+    // New points:  --- | --- | --- | --- | || --- | --- | --- | ---
+    // Increments:      e     l     e     l el     e     l     e
+    // Years:           1     1     2     2 33     4     4     5
+    // Indices:        i-3   i-2   i-1    i i+1   i+3   i+4   i+5
+    //                                      i+2
+
+    // Shift inner:
+    // New points:  --- | --- | --- | --- || | --- | --- | --- | ---
+    // Increments:      e     l     e     le l     e     l     e
+    // Years:           0     1     1     12 2     3     3     4
+    // Indices:        i-5   i-4   i-3   i-1 i    i+1   i+3   i+4 
+    //                                   i-2
+
     let direction = directionCheck();
-    var new_points = this.points;
-    var second_points = this.points.slice().splice(i + 1, this.index - 1);
-    var k = i + 1;
+    let tempDirection = (Lt.insertZeroGrowth.adjustOuter) ? backwardInTime : forwardInTime;
+    let new_points = JSON.parse(JSON.stringify(this.points));
 
-    var subAnnualIncrement = Lt.measurementOptions.subAnnual == true;
-    var annualIncrement = Lt.measurementOptions.subAnnual == false;
+    // Index to splice new points in array depends on shifting direction.
+    let k = (direction == tempDirection) ? i : i + 1;
+    let earlywoodAdjusted = true;
 
-    // Ensure correct inserted point order
-    var firstEWCheck = true;
-    var secondEWCheck = false;
-    if (direction == forwardInTime) {
-      var firstYearAdjusted = this.points[i].year + 1;
-      var secondYearAdjusted = firstYearAdjusted;
-    } else if (direction == backwardInTime) {
-      var firstYearAdjusted = this.points[i].year;
-      var secondYearAdjusted = this.points[i].year - 1;
-      if (annualIncrement) {
-        var firstEWCheck = true;
-        var firstYearAdjusted = secondYearAdjusted;
+    if (Lt.measurementOptions.subAnnual) {
+      // See above for how years & indices decided.
+      let yearA = (Lt.insertZeroGrowth.adjustOuter) ? this.points[i].year + 1 : this.points[i].year;
+      let yearB = (Lt.insertZeroGrowth.adjustOuter) ? this.points[i].year + 1 : this.points[i].year - 1;
+
+      let indexA, indexB;
+      if (direction == forwardInTime) {
+        indexA = (Lt.insertZeroGrowth.adjustOuter) ? i + 1 : i;
+        indexB = (Lt.insertZeroGrowth.adjustOuter) ? i + 2 : i;
+      } else {
+        indexA = (Lt.insertZeroGrowth.adjustOuter) ? i : i + 1;
+        indexB = (Lt.insertZeroGrowth.adjustOuter) ? i : i + 2;
       }
-    }
 
-    new_points[k] = {'start': false, 'skip': false, 'break': false,
-      'year': firstYearAdjusted, 'earlywood': firstEWCheck, 'latLng': latLng};
-
-    k++;
-
-    if (subAnnualIncrement) {
-      new_points[k] = {'start': false, 'skip': false, 'break': false,
-        'year': secondYearAdjusted, 'earlywood': secondEWCheck, 'latLng': latLng};
-      k++;
-    }
-
-    var tempK = k - 1;
-
-    second_points.map(e => {
-      if (e && !e.start && !e.break) {
-        if (direction == forwardInTime) {
-          e.year++;
-        } else if (direction == backwardInTime) {
-          e.year--;
-        };
+      let pt_A = {
+        'start': false, 'skip': false, 'break': false,
+        'year': yearA, 'earlywood': true, 'latLng': latLng
       };
-      new_points[k] = e;
-      k++;
+      new_points.splice(indexA, 0, pt_A);
+
+      let pt_B = {
+        'start': false, 'skip': false, 'break': false,
+        'year': yearB, 'earlywood': false, 'latLng': latLng
+      };
+      new_points.splice(indexB, 0, pt_B);
+      (direction == tempDirection) ? k-- : k++;
+    } else {
+      let yearAdjusted = (Lt.insertZeroGrowth.adjustOuter) ? this.points[i].year + 1 : this.points[i].year - 1;
+      let new_pt = {
+        'start': false, 'skip': false, 'break': false,
+        'year': yearAdjusted, 'earlywood': true, 'latLng': latLng
+      };
+      new_points.splice(k, 0, new_pt);
+    }
+
+    let year_adjustment = (Lt.insertZeroGrowth.adjustOuter) ? 1 : -1;
+    let index_adjustment = (direction == tempDirection) ? 0 : k;
+    // When inserting a sub-annual zero growth point, must slice after the second inserted point.
+    let slice_indexA = (Lt.measurementOptions.subAnnual) ? i : i - 1;
+    let slice_indexB = (Lt.measurementOptions.subAnnual) ? i : i + 1;
+    let second_points = (direction == tempDirection) ? JSON.parse(JSON.stringify(this.points)).slice(0, slice_indexA) :
+                                                       JSON.parse(JSON.stringify(this.points)).slice(slice_indexB);
+
+    second_points.map((e, j) => {
+      if (!e) return;
+      if (!e.start && !e.break) e.year = e.year + year_adjustment;
+      new_points[index_adjustment + j] = e;
     });
 
     this.points = new_points;
-    this.index = k;
+    this.index = new_points.length;
+    let lastIndex = new_points.length - 1;
+    if (measurementOptions.subAnnual) {
+      this.earlywood = !(this.points[lastIndex].earlywood)
+      if (direction == forwardInTime) {
+        this.year = (this.points[lastIndex].earlywood) ? this.points[lastIndex].year : this.points[lastIndex].year + 1;
+      } else if (direction == backwardInTime) {
+        this.year = (this.points[lastIndex].earlywood) ? this.points[lastIndex].year - 1 : this.points[lastIndex].year;
+      }
+    } else {
+      this.year = (direction == forwardInTime) ? this.points[lastIndex].year + 1 : this.points[lastIndex].year - 1;
+    }
 
-    if (direction == forwardInTime) {
-      this.year++;
-    } else if (direction == backwardInTime) {
-      this.year--;
-    };
-
-    Lt.metaDataText.updateText(); // updates after a single point is inserted
+    // Update other features after point inserted.
+    Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.popoutPlots.win) {
       Lt.popoutPlots.sendData();
     }
-    return tempK;
+
+    return k;
   };
 
   /**
    * remove any entries in the data
    * @function clean
    */
-  MeasurementData.prototype.clean =function() {
+  MeasurementData.prototype.clean = function() {
     for (var i in this.points) {
       if (this.points[i] === null || this.points[i] === undefined) {
         delete this.points[i];
@@ -1286,17 +1323,10 @@ function VisualAsset (Lt) {
       };
 
       if (Lt.insertZeroGrowth.active) {
-        var subAnnual = Lt.measurementOptions.subAnnual;
-        var pointEW = pts[i].earlywood == true;
-        var pointLW = pts[i].earlywood == false;
-        var yearsIncrease = Lt.measurementOptions.forwardDirection == true;
-        var yearsDecrease = Lt.measurementOptions.forwardDirection == false;
-
-        if ((subAnnual && pointEW)
-            || pts[i].start || pts[i].break) {
-              alert('Missing year can only be placed at the end of a year!');
+        if ((Lt.measurementOptions.subAnnual && pts[i].earlywood) || pts[i].start || pts[i].break) {
+          alert('Missing year can only be placed at the end of a year!');
         } else {
-          Lt.insertZeroGrowth.action(i);
+          Lt.insertZeroGrowth.openDialog(e, i);
         }
       }
 
@@ -3853,6 +3883,13 @@ function ConvertToStartPoint(Lt) {
  * @param {Ltrering} Lt - Leaflet treering object
  */
 function InsertZeroGrowth(Lt) {
+  this.act = "Insert increment with zero width:";
+  this.optA = "Adjust outer portion: shift dating of later years forward in time"
+  this.optB = "Adjust inner portion: shift dating of earlier years back in time"
+  this.adjustOuter = true;
+  this.selectedAdjustment = false;
+  this.maintainAdjustment = false;
+
   this.active = false;
   this.btn = new Button(
     'exposure_zero',
@@ -3873,12 +3910,22 @@ function InsertZeroGrowth(Lt) {
 
     var k = Lt.data.insertZeroGrowth(i, latLng);
     if (k !== null) {
-      if (Lt.measurementOptions.subAnnual) Lt.visualAsset.newLatLng(Lt.data.points, k-1, latLng);
-      Lt.visualAsset.newLatLng(Lt.data.points, k, latLng);
       Lt.visualAsset.reload();
     }
 
     this.disable();
+  };
+
+  /**
+   * Open dialog for user to choose shift direction
+   * @function openDialog
+   */
+  InsertZeroGrowth.prototype.openDialog = function(e, i) {
+    if (this.maintainAdjustment) {
+      this.action(i);
+    } else {
+      Lt.helper.createEditToolDialog(e.containerPoint.x, e.containerPoint.y, i, "insertZeroGrowth");
+    }
   };
 
   /**
@@ -3888,6 +3935,7 @@ function InsertZeroGrowth(Lt) {
   InsertZeroGrowth.prototype.enable = function() {
     this.btn.state('active');
     this.active = true;
+    this.selectedAdjustment = false;
     Lt.viewer.getContainer().style.cursor = 'pointer';
   };
 
@@ -3900,6 +3948,7 @@ function InsertZeroGrowth(Lt) {
     this.btn.state('inactive');
     Lt.viewer.getContainer().style.cursor = 'default';
     this.active = false;
+    this.selectedAdjustment = false;
     Lt.viewer.dragging.enable();
     Lt.mouseLine.disable();
   };
