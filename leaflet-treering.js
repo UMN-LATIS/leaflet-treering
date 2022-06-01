@@ -669,8 +669,8 @@ function MeasurementData (dataObject, Lt) {
     let year_adjustment = (Lt.insertZeroGrowth.adjustOuter) ? 1 : -1;
     let index_adjustment = (direction == tempDirection) ? 0 : k;
     // When inserting a sub-annual zero growth point, must slice after the second inserted point.
-    let slice_indexA = (Lt.measurementOptions.subAnnual) ? i : i - 1;
-    let slice_indexB = (Lt.measurementOptions.subAnnual) ? i : i + 1;
+    let slice_indexA = (!Lt.measurementOptions.subAnnual) ? i : i - 1;
+    let slice_indexB = i;
     let second_points = (direction == tempDirection) ? JSON.parse(JSON.stringify(this.points)).slice(0, slice_indexA) :
                                                        JSON.parse(JSON.stringify(this.points)).slice(slice_indexB);
 
@@ -1236,12 +1236,12 @@ function VisualAsset (Lt) {
         if (subAnnual) {
           if (pts[i + 1].earlywood) {
             // Decades are colored red.
-            color = (pts[i + 1].year % 10 == 0) ? 'light_red' : 'dark_blue';
+            color = (pts[i + 1].year % 10 == 0) ? 'dark_red' : 'dark_blue';
           } else { // Otherwise, point is latewood.
-            color = (pts[i + 1].year % 10 == 0) ? 'pale_red' : 'light_blue';
+            color = (pts[i + 1].year % 10 == 0) ? 'light_red' : 'light_blue';
           }
         } else {
-          color = (pts[i + 1].year % 10 == 0) ? 'light_red' : 'light_blue';
+          color = ((pts[i + 1].year + 1) % 10 == 0) ? 'dark_red' : 'light_blue';
         }
       } else {
         color = (annual) ? 'light_blue' : 'dark_blue';
@@ -1401,7 +1401,7 @@ function VisualAsset (Lt) {
       let dark = "#026d75";
 
       // Shift evaluated year if measuring backward in time.
-      let year = (forward) ? pts[i].year : ((!pts[i].earlywood) ? pts[i].year + 1 : pts[i].year);
+      let year = (forward) ? pts[i].year : ((!pts[i].earlywood || !Lt.measurementOptions.subAnnual) ? pts[i].year + 1 : pts[i].year);
 
       // Check if break in middle of decade measurment.
       if (pts[i].break) {
@@ -3244,6 +3244,11 @@ function Dating(Lt) {
           var new_year = parseInt(input.value);
           popup.remove(Lt.viewer);
 
+          if (!new_year && new_year != 0) {
+            alert("Entered year must be a number.");
+            return
+          }
+
           Lt.undo.push();
 
           function incrementYear(pt) {
@@ -3257,7 +3262,12 @@ function Dating(Lt) {
           let pts_after = Lt.data.points.slice(i + 1);
           let dir_constant = (Lt.measurementOptions.forwardDirection) ? 1 : -1;
 
-          let delta = (!Lt.measurementOptions.forwardDirection && Lt.measurementOptions.subAnnual) ? 0 : 1;
+          // Delta is the starting count value. Need "jump start" value if...
+          // ... expected to increment on next value. Special case if any ...
+          // values before point are 0, then do not "jump start".
+          let delta = 0;
+          if (pts_before.filter(e => e.year === 0).length) delta = 0;
+          else if (year != 0 && incrementYear(Lt.data.points[i])) delta = 1;
           pts_before.map((pb, j) => {
             if (pb.year || pb.year == 0) {
               pb.year = new_year - dir_constant * (year_diff - delta);
@@ -3267,9 +3277,11 @@ function Dating(Lt) {
             }
           })
 
-          delta = (!Lt.measurementOptions.forwardDirection && Lt.measurementOptions.subAnnual) ? 0 : 1;
+          // Special case does no apply to after points.
+          delta = 0;
+          if (incrementYear(Lt.data.points[i])) delta = 1;
           pts_after.map((pa, k) => {
-            if (pa.year || pb.year == 0) {
+            if (pa.year || pa.year == 0) {
               pa.year = new_year + dir_constant * (delta);
               if (incrementYear(pa)) {
                 delta++;
