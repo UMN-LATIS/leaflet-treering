@@ -597,6 +597,85 @@ function MeasurementData (dataObject, Lt) {
   };
 
   /**
+   * Convert a point to a start point
+   * @function convertToStartPoint
+   */
+  MeasurementData.prototype.convertToStartPoint = function(i) {
+    let direction = directionCheck();
+    // Points are lagged when measuring backwards, need to account for.
+    if (direction == backwardInTime) i++;
+    let tempDirection = (Lt.convertToStartPoint.adjustOuter) ? backwardInTime : forwardInTime;
+
+    var points = Lt.data.points;
+    var previousYear = points[i].year || 0;
+
+    // Convert to start point by changing properties.
+    points[i].start = true;
+    let tempYear = points[i].year;
+    delete points[i].year;
+    delete points[i].earlywood;
+
+    // Remove orphanned start points.
+    if (points[i - 1]?.start) {
+      delete points[i - 1];
+    }
+    if (points[i + 1]?.start) {
+      delete points[i];
+    }
+
+    let new_points = JSON.parse(JSON.stringify(this.points));
+    let second_points = (direction == tempDirection) ? JSON.parse(JSON.stringify(this.points)).slice(0, i) : JSON.parse(JSON.stringify(this.points)).slice(i + 1);
+
+    let year_adjustment = (Lt.convertToStartPoint.adjustOuter) ? -1 : 1;
+    let index_adjustment = (direction == tempDirection) ? 0 : i + 1;
+    second_points.map((e, k) => {
+      if (!e) return;
+      if (!e.start && !e.break) {
+        if (measurementOptions.subAnnual) e.earlywood = !e.earlywood;
+        if (
+            (Lt.convertToStartPoint.adjustOuter && !e.earlywood) || // When adjusting outer portion, change year at latewood instance.
+            (!Lt.convertToStartPoint.adjustOuter && e.earlywood) || // When adjusting inner portion, change year at earlywood instance.
+            !measurementOptions.subAnnual
+           ) {
+          e.year = e.year + year_adjustment;
+        }
+      };
+      new_points[index_adjustment + k] = e;
+    });
+
+    new_points = new_points.filter(Boolean);
+    this.points = new_points;
+    // Removes orphanned end point.
+    if (this.points[new_points.length - 1]?.start) this.points.pop();
+    this.index = (new_points.length - 1 > 0) ? new_points.length : 0;
+
+    let lastIndex = new_points.length - 1;
+    // If only a start point exists, reset data.
+    if (!this.points[lastIndex].year) {
+      this.year = 0;
+      this.earlywood = true;
+    } else {
+      // Determine next measurement point by last existing point.
+      if (measurementOptions.subAnnual) {
+        this.earlywood = !(this.points[lastIndex].earlywood)
+        if (direction == forwardInTime) {
+          this.year = (this.points[lastIndex].earlywood) ? this.points[lastIndex].year : this.points[lastIndex].year + 1;
+        } else if (direction == backwardInTime) {
+          this.year = (this.points[lastIndex].earlywood) ? this.points[lastIndex].year - 1 : this.points[lastIndex].year;
+        }
+      } else {
+        this.year = (direction == forwardInTime) ? this.points[lastIndex].year + 1 : this.points[lastIndex].year - 1;
+      }
+    }
+
+    Lt.metaDataText.updateText();
+    Lt.annotationAsset.reloadAssociatedYears();
+    if (Lt.popoutPlots.win) {
+      Lt.popoutPlots.sendData();
+    }
+  }
+
+  /**
    * Insert a zero growth year in the middle of the measurement data
    * @function insertZeroGrowth
    */
@@ -1322,7 +1401,7 @@ function VisualAsset (Lt) {
       };
 
       if (Lt.convertToStartPoint.active) {
-        Lt.convertToStartPoint.action(i);
+        Lt.convertToStartPoint.openDialog(e, i);
       };
 
       if (Lt.cut.active) {
@@ -3859,6 +3938,13 @@ function InsertPoint(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function ConvertToStartPoint(Lt) {
+  this.act = "Convert a measurement point to a start point";
+  this.optA = "shift dating of later years back in time"
+  this.optB = "shift dating of earlier years forward in time"
+  this.adjustOuter = true;
+  this.selectedAdjustment = false;
+  this.maintainAdjustment = false;
+
   this.active = false;
   this.btn = new Button(
     'change_circle',
@@ -3867,64 +3953,36 @@ function ConvertToStartPoint(Lt) {
     () => { this.disable() }
   );
 
-  ConvertToStartPoint.prototype.action = function (i) {
-    var points = Lt.data.points;
-    var previousYear = points[i].year || 0;
-
-    // cannot convert a point that is already a start point
-    // start points are camouflage when measuring backwards.
-    if (points[i].start || (!Lt.measurementOptions.forwardDirection && points[i + 1] && points[i + 1].start)) {
+  /**
+   * Open dialog for user to choose shift direction
+   * @function openDialog
+   */
+  ConvertToStartPoint.prototype.openDialog = function(e, i) {
+    // Cannot convert a point that is already a start point.
+    // Start points are camouflage when measuring backwards.
+    if (Lt.data.points[i].start || Lt.data.points[i].break ||
+        (!Lt.measurementOptions.forwardDirection && Lt.data.points[i + 1] && Lt.data.points[i + 1].start)) {
+      alert("Can only convert measurement points.")
       return;
     }
 
-    Lt.undo.push();
-
-    // convert to start point by changing properties
-    points[i].start = true;
-    delete points[i].year;
-    delete points[i].earlywood;
-
-    if (i - 1 == 0) { // if previous point is first start point
-      Lt.deletePoint.action(i - 1);
-    };
-
-    // re-assign years to following points
-    var previousPoints = points.slice(0, i);
-    var followingPoints = points.slice(i);
-
-    if (Lt.measurementOptions.forwardDirection) { // if measuring forward in time
-      var yearChange = 1;
-    } else { // if measuring backward in time
-      var yearChange = -1;
-    };
-
-    followingPoints.map((c) => {
-      if (c && !c.start && !c.break) {
-        if (Lt.measurementOptions.subAnnual) { // flip earlywood & latewood
-          c.earlywood = !c.earlywood;
-        };
-
-        c.year = previousYear;
-        if (!Lt.measurementOptions.subAnnual ||
-           (Lt.measurementOptions.forwardDirection && !c.earlywood) ||
-           (!Lt.measurementOptions.forwardDirection && c.earlywood)) { // only change year value if latewood or annual measurements
-          previousYear += yearChange;
-        };
-      };
-    });
-
-    Lt.data.year = Lt.measurementOptions.forwardDirection ? points[points.length-1].year + 1: points[points.length-1].year - 1;
-    Lt.visualAsset.reload();
-    Lt.metaDataText.updateText();
-    Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.sendData();
+    if (this.maintainAdjustment) {
+      this.action(i);
+    } else {
+      Lt.helper.createEditToolDialog(e.containerPoint.x, e.containerPoint.y, i, "convertToStartPoint");
     }
+  };
+
+  ConvertToStartPoint.prototype.action = function (i) {
+    Lt.undo.push();
+    Lt.data.convertToStartPoint(i);
+    Lt.visualAsset.reload();
   };
 
   ConvertToStartPoint.prototype.enable = function () {
     Lt.viewer.getContainer().style.cursor = 'pointer';
     this.btn.state('active');
+    this.selectedAdjustment = false;
     this.active = true;
   };
 
@@ -3938,6 +3996,7 @@ function ConvertToStartPoint(Lt) {
 
     $(Lt.viewer.getContainer()).off('click');
     this.btn.state('inactive');
+    this.selectedAdjustment = false;
     this.active = false;
     Lt.viewer.getContainer().style.cursor = 'default';
   };
