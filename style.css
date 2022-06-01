@@ -193,12 +193,19 @@ th {
 	margin-bottom: 0px;
 }
 
-/* increment shift dialog */
+/* increment shift dialog
+   Note: some inline CSS in template.html */
+#shift-container {
+	width: fit-content;
+	height: fit-content;
+}
+
 #shift-container p {
 	font-size: 14px;
 	font-weight: bold;
 	color: black;
 	margin: 0;
+	margin-bottom: 7px;
 }
 
 #shift-container input {

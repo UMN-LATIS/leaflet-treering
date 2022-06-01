@@ -3602,8 +3602,8 @@ function CreateBreak(Lt) {
  */
 function DeletePoint(Lt) {
   this.act = "Delete existing points:";
-  this.optA = "Adjust outer portion: shift dating of later years back in time"
-  this.optB = "Adjust inner portion: shift dating of earlier years forward in time"
+  this.optA = "shift dating of later years back in time"
+  this.optB = "shift dating of earlier years forward in time"
   this.adjustOuter = true;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -3670,8 +3670,8 @@ function DeletePoint(Lt) {
  */
 function Cut(Lt) {
   this.act = "Delete series of consecutive points by selecting first and last point to delete:";
-  this.optA = "Adjust outer portion: shift dating of later years back in time"
-  this.optB = "Adjust inner portion: shift dating of earlier years forward in time"
+  this.optA = "shift dating of later years back in time"
+  this.optB = "shift dating of earlier years forward in time"
   this.adjustOuter = true;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -3760,8 +3760,8 @@ function Cut(Lt) {
  */
 function InsertPoint(Lt) {
   this.act = "Insert points along path between existing points:";
-  this.optA = "Adjust outer portion: shift dating of later years forward in time"
-  this.optB = "Adjust inner portion: shift dating of earlier years back in time"
+  this.optA = "shift dating of later years forward in time"
+  this.optB = "shift dating of earlier years back in time"
   this.adjustOuter = true;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -3950,8 +3950,8 @@ function ConvertToStartPoint(Lt) {
  */
 function InsertZeroGrowth(Lt) {
   this.act = "Insert increment with zero width:";
-  this.optA = "Adjust outer portion: shift dating of later years forward in time"
-  this.optB = "Adjust inner portion: shift dating of earlier years back in time"
+  this.optA = "shift dating of later years forward in time"
+  this.optB = "shift dating of earlier years back in time"
   this.adjustOuter = true;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -5621,7 +5621,7 @@ function Helper(Lt) {
       });
       let anchor = [y, x];
       this.dialog = L.control.dialog({
-        'size': [470, 150],
+        'size': [345, 190],
         'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
         'anchor': anchor,
         'initOpen': true
