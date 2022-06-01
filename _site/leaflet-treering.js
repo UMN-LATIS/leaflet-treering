@@ -602,7 +602,7 @@ function MeasurementData (dataObject, Lt) {
    */
   MeasurementData.prototype.convertToStartPoint = function(i) {
     let direction = directionCheck();
-    // Points are lagged when measuring backwards, need to account for. 
+    // Points are lagged when measuring backwards, need to account for.
     if (direction == backwardInTime) i++;
     let tempDirection = (Lt.convertToStartPoint.adjustOuter) ? backwardInTime : forwardInTime;
 
@@ -616,11 +616,11 @@ function MeasurementData (dataObject, Lt) {
     delete points[i].earlywood;
 
     // Remove orphanned start points.
-    if (points[i - 1].start) {
-      Lt.deletePoint.action(i - 1);
-    };
-    if (points[i + 1].start) {
-      Lt.deletePoint.action(i);
+    if (points[i - 1]?.start) {
+      delete points[i - 1];
+    }
+    if (points[i + 1]?.start) {
+      delete points[i];
     }
 
     let new_points = JSON.parse(JSON.stringify(this.points));
@@ -643,8 +643,12 @@ function MeasurementData (dataObject, Lt) {
       new_points[index_adjustment + k] = e;
     });
 
+    new_points = new_points.filter(Boolean);
     this.points = new_points;
-    this.index = (new_points.length - 1 > 0) ? new_points.length - 1 : 0;
+    // Removes orphanned end point.
+    if (this.points[new_points.length - 1]?.start) this.points.pop();
+    this.index = (new_points.length - 1 > 0) ? new_points.length : 0;
+
     let lastIndex = new_points.length - 1;
     // If only a start point exists, reset data.
     if (!this.points[lastIndex].year) {
