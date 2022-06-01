@@ -1,12 +1,13 @@
 <script id="edit-tools-shifting-dialog-template" type="text/x-handlebars-template">
   <div id="shift-container">
     <p id="shift-header"> {{action}} </p>
-    <input type="radio" name="shift-choice" id="shift-radioA">
-    <label for="shift-radioA"> {{optionA}} </label><br>
-    <input type="radio" name="shift-choice" id="shift-radioB">
-    <label for="shift-radioB"> {{optionB}} </label><br>
-    <input type="checkbox" id="shift-checkbox">
-    <label for="shift-checkbox"> Maintain adjustment preference for this editing tool until page is reloaded </label><br>
+    <div style="width:48%; display:inline; float:left; margin-right:2%; border-right:2px double #cccccc;">
+      <label for="shift-radioA"> <input type="radio" name="shift-choice" id="shift-radioA"> <b>Adjust outer portion: </b> {{optionA}} </label>
+    </div>
+    <div style="width:50%; display:inline; float:right;">
+      <label for="shift-radioB"> <input type="radio" name="shift-choice" id="shift-radioB"> <b>Adjust inner portion: </b> {{optionB}} </label>
+    </div>
+    <label for="shift-checkbox" style="margin-top:5px;"> <input type="checkbox" id="shift-checkbox"> Maintain adjustment preference for this editing tool until page is reloaded </label><br>
   </div>
 </script>
 
