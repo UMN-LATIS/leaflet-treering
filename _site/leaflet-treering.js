@@ -990,12 +990,16 @@ function MouseLine (Lt) {
         newY = newCoordCalc(point.y, point.x, mousePoint.x);
         var bottomLeftPoint = Lt.viewer.layerPointToLatLng([newX, newY]);
 
-        //color for h-bar
-        var color;
-        if (Lt.data.earlywood || !Lt.measurementOptions.subAnnual) {
-          color = '#00BCD4';
-        } else {
-          color = '#00838f';
+        // Specs for h-bar. Color is Light blue by default.
+        let opacity = "0.75";
+        let color  = "#49c4d9";
+        let weight = "5";
+        // Switches to dark blue if measuring with two increments and the next point is latewood.
+        // Latewood point when measuring backwards is "hidden" as an earlywood point.
+        let lwForward = (Lt.measurementOptions.forwardDirection && !Lt.data.earlywood);
+        let lwBackward = (!Lt.measurementOptions.forwardDirection && Lt.data.earlywood);
+        if (Lt.measurementOptions.subAnnual && (lwForward || lwBackward)) {
+          color = "#18848c";
         }
 
         if (this.pathGuide) {
@@ -1044,26 +1048,26 @@ function MouseLine (Lt) {
 
           // path guide for point
           this.layer.addLayer(L.polyline([latLng, latLngOne],
-              {interactive: false, color: color, opacity: '.75',
-                weight: '5'}));
+              {interactive: false, color: color, opacity: opacity,
+                weight: weight}));
 
           // path guide for mouse
           this.layer.addLayer(L.polyline([mouseLatLng, latLngTwo],
-              {interactive: false, color: color, opacity: '.75',
-                weight: '5'}));
-
+              {interactive: false, color: color, opacity: opacity,
+                weight: weight}));
         };
 
         this.layer.addLayer(L.polyline([latLng, mouseLatLng],
-            {interactive: false, color: color, opacity: '.75',
-              weight: '5'}));
+            {interactive: false, color: color, opacity: opacity,
+              weight: weight}));
 
         this.layer.addLayer(L.polyline([topLeftPoint, bottomLeftPoint],
-            {interactive: false, color: color, opacity: '.75',
-              weight: '5'}));
+            {interactive: false, color: color, opacity: opacity,
+              weight: weight}));
+
         this.layer.addLayer(L.polyline([topRightPoint, bottomRightPoint],
-            {interactive: false, color: color, opacity: '.75',
-              weight: '5'}));
+            {interactive: false, color: color, opacity: opacity,
+              weight: weight}));
       }
     });
   }
@@ -1471,8 +1475,8 @@ function VisualAsset (Lt) {
       let forward = Lt.measurementOptions.forwardDirection;
       let annual = !Lt.measurementOptions.subAnnual;
 
-      let opacity = "0.6";
-      let weight = "6";
+      let opacity = "0.5";
+      let weight = "5";
       let color = "FFF"; // White is debug color.
 
       // Blue by default.
