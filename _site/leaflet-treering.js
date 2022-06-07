@@ -1722,7 +1722,8 @@ function AnnotationAsset(Lt) {
       'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
       'size': size,
       'anchor': anchor,
-      'initOpen': true
+      'initOpen': true,
+      'position': 'topleft'
     }).setContent(content).addTo(Lt.viewer);
 
     // Set dialog close button to a check mark instead of X.
@@ -1808,7 +1809,8 @@ function AnnotationAsset(Lt) {
       'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
       'size': size,
       'anchor': anchor,
-      'initOpen': true
+      'initOpen': true,
+      'position': 'topleft'
     }).setContent(content).addTo(Lt.viewer);
 
     // Set dialog close button to a check mark instead of X.
@@ -4219,10 +4221,7 @@ function ViewData(Lt) {
   // handlebars from templates.html
   let content = document.getElementById("view-data-default-template").innerHTML;
 
-  this.dialog = L.control.dialog({'size': [200, 235], 'anchor': [50, 0], 'initOpen': false})
-    .setContent(content)
-
-    .addTo(Lt.viewer);
+  this.dialog = L.control.dialog({'size': [200, 235], 'anchor': [50, 0], 'initOpen': false, 'position': 'topleft'}).setContent(content).addTo(Lt.viewer);
 
   /**
    * Format and download data in Dan's archaic format
@@ -4809,7 +4808,8 @@ function ImageAdjustment(Lt) {
   this.dialog = L.control.dialog({
     'size': [340, 280],
     'anchor': [50, 5],
-    'initOpen': false
+    'initOpen': false,
+    'position': 'topleft'
   }).setContent(content).addTo(Lt.viewer);
 
   /**
@@ -4962,7 +4962,8 @@ MeasurementOptions.prototype.displayDialog = function () {
   return L.control.dialog({
      'size': [510, 320],
      'anchor': [50, 5],
-     'initOpen': false
+     'initOpen': false,
+     'position': 'topleft'
    }).setContent(content).addTo(Lt.viewer);
   };
 
@@ -5551,7 +5552,8 @@ function KeyboardShortCutDialog (Lt) {
     this.dialog = L.control.dialog ({
       'size': [310, 300],
       'anchor': anchor,
-      'initOpen': true
+      'initOpen': true,
+      'position': 'topleft'
     }).addTo(Lt.viewer);
 
     // remember annotation location each times its moved
@@ -5687,7 +5689,8 @@ function Helper(Lt) {
         'size': [345, 190],
         'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
         'anchor': anchor,
-        'initOpen': true
+        'initOpen': true,
+        'position': 'topleft'
       }).setContent(html).addTo(Lt.viewer);
       // Set dialog close button to a check mark instead of X.
       let control_dialog_inner_parent = document.getElementById("shift-container").parentElement.parentElement;
