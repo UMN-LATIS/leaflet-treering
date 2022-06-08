@@ -531,7 +531,7 @@ function MeasurementData (dataObject, Lt) {
       year_adjusted = (direction == tempDirection) ? nearest_prevPt?.year : nearest_nextPt?.year;
 
       if (measurementOptions.subAnnual) {
-        earlywood_adjusted = (direction == tempDirection) ? nearest_prevPt.earlywood : nearest_nextPt.earlywood;
+        earlywood_adjusted = (direction == tempDirection) ? nearest_prevPt?.earlywood : nearest_nextPt?.earlywood;
         // If inserted point is a latewood point, must have same year as next inner earlywood point.
         if (!earlywood_adjusted) {
           year_adjusted = (direction == forwardInTime) ? nearest_prevPt?.year : nearest_nextPt?.year;
@@ -540,7 +540,7 @@ function MeasurementData (dataObject, Lt) {
 
       // If nearest previous point is the first start point, must infer year from next point.
       if (!year_adjusted) {
-        year_adjusted = (measurementOptions.subAnnual) ? nearest_nextPt?.year : nearest_nextPt?.year - 1;
+        year_adjusted = (measurementOptions.subAnnual && !nearest_nextPt?.earlywood) ? nearest_nextPt.year : nearest_nextPt.year - 1;
       }
     } else {
       alert('Please insert new point closer to connecting line.')
@@ -5275,27 +5275,32 @@ function MetaDataText (Lt) {
   MetaDataText.prototype.updateText = function () {
       var points = Lt.data.points;
 
-      var i;
+      var i, firstPt, firstYear, lastPt, lastYear;
       for (i = 0; i < points.length; i++) { // find 1st point w/ year value
         if (points[i] && (points[i].year || points[i].year == 0)) {
-          var firstYear = points[i].year;
+          firstPt = points[i];
           break;
         };
       };
+      firstYear = firstPt?.year;
 
       for (i = points.length - 1; i >= 0; i--) { //  find last point w/ year value
         if (points[i] && (points[i].year || points[i].year == 0)) {
-          var lastYear = points[i].year;
+          lastPt = points[i];
           break;
         };
       };
+      lastYear = lastPt?.year;
 
-      var startYear;
-      var endYear;
+      let startPt, startYear, endPt, endYear;
       if (firstYear <= lastYear) { // for measuring forward in time, smallest year value first in points array
+        startPt = firstPt;
         startYear = firstYear;
+        endPt = lastPt;
         endYear = lastYear;
       } else if (firstYear > lastYear) { // for measuring backward in time, largest year value first in points array
+        startPt = lastPt;
+        endPt = firstPt;
         startYear = lastYear + 1; // last point considered a start point when measuring backwards
         if (Lt.measurementOptions.subAnnual == false) {
           // add 1 to keep points consistent with measuring forwards
@@ -5307,8 +5312,17 @@ function MetaDataText (Lt) {
       };
 
       var years = '';
+      let startAddition = '';
+      let endAddition = '';
       if ((startYear || startYear == 0) && (endYear || endYear == 0)) {
-        years = ' &nbsp;|&nbsp; ' + String(startYear) + ' — ' + String(endYear);
+        if (Lt.measurementOptions.subAnnual) {
+          // Earlywood & latewood reverse when measuring backwards.
+          let ew = (Lt.measurementOptions.forwardDirection) ? "E" : "L";
+          let lw = (Lt.measurementOptions.forwardDirection) ? "L" : "E";
+          startAddition = (startPt.earlywood) ? " " + ew : " " + lw;
+          endAddition = (endPt.earlywood) ? " " + ew : " " + lw;
+        }
+        years = ' &nbsp;|&nbsp; ' + String(startYear) + startAddition + " — " + String(endYear) + endAddition;
       };
 
       var branding = ' &nbsp;|&nbsp; DendroElevator developed at the <a href="http://z.umn.edu/treerings" target="_blank"> University of Minnesota </a>';
