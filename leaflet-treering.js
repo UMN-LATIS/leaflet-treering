@@ -525,8 +525,8 @@ function MeasurementData (dataObject, Lt) {
     let earlywood_adjusted = true;
 
     if (0 < i && i < this.points.length) {
-      let nearest_prevPt = this.points.slice(0, i).reverse().find(e => !e.start && !e.break && e.year);
-      let nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && e.year);
+      let nearest_prevPt = this.points.slice(0, i).reverse().find(e => !e.start && !e.break && (e.year || e.year === 0));
+      let nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && (e.year || e.year === 0));
 
       year_adjusted = (direction == tempDirection) ? nearest_prevPt?.year : nearest_nextPt?.year;
 
