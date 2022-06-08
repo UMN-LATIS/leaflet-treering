@@ -532,15 +532,24 @@ function MeasurementData (dataObject, Lt) {
 
       if (measurementOptions.subAnnual) {
         earlywood_adjusted = (direction == tempDirection) ? nearest_prevPt?.earlywood : nearest_nextPt?.earlywood;
+        if (earlywood_adjusted === undefined) {
+          earlywood_adjusted = !nearest_nextPt.earlywood;
+        }
         // If inserted point is a latewood point, must have same year as next inner earlywood point.
-        if (!earlywood_adjusted) {
+        if (earlywood_adjusted === false) {
           year_adjusted = (direction == forwardInTime) ? nearest_prevPt?.year : nearest_nextPt?.year;
         }
       }
 
       // If nearest previous point is the first start point, must infer year from next point.
-      if (!year_adjusted) {
-        year_adjusted = (measurementOptions.subAnnual && !nearest_nextPt?.earlywood) ? nearest_nextPt.year : nearest_nextPt.year - 1;
+      if (!nearest_prevPt) {
+        let yearAdj = (direction == forwardInTime) ? -1 : 1;
+        let lwCheck = (direction == forwardInTime) ? !nearest_nextPt?.earlywood : nearest_nextPt?.earlywood;
+        if (!measurementOptions.subAnnual) {
+          year_adjusted = (direction != tempDirection) ? nearest_nextPt.year : nearest_nextPt.year + yearAdj;
+        } else {
+          year_adjusted = (measurementOptions.subAnnual && lwCheck) ? nearest_nextPt.year : nearest_nextPt.year + yearAdj;
+        }
       }
     } else {
       alert('Please insert new point closer to connecting line.')
@@ -1167,8 +1176,9 @@ function VisualAsset (Lt) {
           }
           // First point is treated as a measurement point, not a start point.
           if (i === 0 && Lt.data.points[i + 1]) {
-            var desc = (!Lt.measurementOptions.subAnnual) ? '' : ', late';
-            var c = (!Lt.measurementOptions.subAnnual) ? 1 : 0;
+            var desc = (!Lt.measurementOptions.subAnnual) ? '' :
+                       (Lt.data.points[i + 1].earlywood) ? ', late' : ', early';
+            var c = (!Lt.measurementOptions.subAnnual || !Lt.data.points[i + 1].earlywood) ? 1 : 0;
             tooltip = String(Lt.data.points[i + 1].year + c) + desc;
           // Last point is treated as a start point, not a measurement point.
           } else if (i === Lt.data.points.length - 1) {
