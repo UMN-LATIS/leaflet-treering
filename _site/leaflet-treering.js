@@ -381,9 +381,9 @@ function MeasurementData (dataObject, Lt) {
         new_points[index_adjustment + k] = e;
       });
 
-      this.points = new_points;
-      this.index = (new_points.length - 1 > 0) ? new_points.length - 1 : 0;
-      let lastIndex = new_points.length - 1;
+      this.points = new_points.filter(Boolean);
+      this.index = this.points.length;
+      let lastIndex = this.points.length - 1;
       // If only a start point exists, reset data.
       if (!this.points[lastIndex].year) {
         this.year = 0;
@@ -427,14 +427,14 @@ function MeasurementData (dataObject, Lt) {
     let new_points = JSON.parse(JSON.stringify(this.points));
     second_points = (direction == tempDirection) ? JSON.parse(JSON.stringify(this.points)).slice(0, lower) : JSON.parse(JSON.stringify(this.points)).slice(upper + 1);
 
-    let num_non_pts = this.points.slice(lower, upper + 1).filter(e => !e.year).length;
+    let num_non_pts = this.points.slice(lower, upper + 1).filter(e => (!e.year && e.year != 0)).length;
     // When measuring subincrements, years recorded are half of number of points plotted.
     let pt_delta = (measurementOptions.subAnnual) ? Math.floor((upper - lower) / 2) : upper - lower;
     let non_pt_delta = (measurementOptions.subAnnual) ? Math.round(num_non_pts / 2) : num_non_pts;
     let year_delta = pt_delta - non_pt_delta + 1;
 
     // Only need to swap earlywood latewood if selected points the same thus a full year is not removed.
-    let need_swap = (this.points[lower].earlywood == this.points[upper].earlywood);
+    let need_swap = (measurementOptions.subAnnual && this.points[lower].earlywood == this.points[upper].earlywood);
     let year_adjustment = (Lt.cut.adjustOuter) ? -1 * year_delta : year_delta;
     let index_adjustment = (direction == tempDirection) ? 0 : upper + 1;
 
@@ -460,8 +460,9 @@ function MeasurementData (dataObject, Lt) {
     new_points.splice(lower, upper - lower + 1);
     new_points = new_points.filter(Boolean);
 
-    this.points = new_points;
-    this.index = new_points.length
+    this.points = new_points.filter(Boolean);
+    this.index = this.points.length;
+    let lastIndex = this.points.length - 1;
 
     // If all points or all except first start point removed, "reset" points.
     if (!this.points[1]) {
@@ -470,7 +471,6 @@ function MeasurementData (dataObject, Lt) {
       return
     }
 
-    let lastIndex = new_points.length - 1;
     // If only a start point exists, reset data.
     if (!this.points[lastIndex].year) {
       this.year = 0;
@@ -528,19 +528,19 @@ function MeasurementData (dataObject, Lt) {
       let nearest_prevPt = this.points.slice(0, i).reverse().find(e => !e.start && !e.break && e.year);
       let nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && e.year);
 
-      year_adjusted = (direction == tempDirection) ? nearest_prevPt.year : nearest_nextPt.year;
+      year_adjusted = (direction == tempDirection) ? nearest_prevPt?.year : nearest_nextPt?.year;
 
       if (measurementOptions.subAnnual) {
         earlywood_adjusted = (direction == tempDirection) ? nearest_prevPt.earlywood : nearest_nextPt.earlywood;
         // If inserted point is a latewood point, must have same year as next inner earlywood point.
         if (!earlywood_adjusted) {
-          year_adjusted = (direction == forwardInTime) ? nearest_prevPt.year : nearest_nextPt.year;
+          year_adjusted = (direction == forwardInTime) ? nearest_prevPt?.year : nearest_nextPt?.year;
         }
       }
 
       // If nearest previous point is the first start point, must infer year from next point.
       if (!year_adjusted) {
-        year_adjusted = (measurementOptions.subAnnual) ? nearest_nextPt.year : nearest_nextPt.year - 1;
+        year_adjusted = (measurementOptions.subAnnual) ? nearest_nextPt?.year : nearest_nextPt?.year - 1;
       }
     } else {
       alert('Please insert new point closer to connecting line.')
@@ -573,9 +573,9 @@ function MeasurementData (dataObject, Lt) {
       new_points[index_adjustment + k] = e;
     });
 
-    this.points = new_points;
-    this.index = new_points.length;
-    let lastIndex = new_points.length - 1;
+    this.points = new_points.filter(Boolean);
+    this.index = this.points.length;
+    let lastIndex = this.points.length - 1;
     if (measurementOptions.subAnnual) {
       this.earlywood = !(this.points[lastIndex].earlywood)
       if (direction == forwardInTime) {
@@ -759,9 +759,9 @@ function MeasurementData (dataObject, Lt) {
       new_points[index_adjustment + j] = e;
     });
 
-    this.points = new_points;
-    this.index = new_points.length;
-    let lastIndex = new_points.length - 1;
+    this.points = new_points.filter(Boolean);
+    this.index = this.points.length;
+    let lastIndex = this.points.length - 1;
     if (measurementOptions.subAnnual) {
       this.earlywood = !(this.points[lastIndex].earlywood)
       if (direction == forwardInTime) {
@@ -3687,9 +3687,10 @@ function CreateBreak(Lt) {
  */
 function DeletePoint(Lt) {
   this.act = "Delete existing points:";
-  this.optA = "shift dating of later years back in time"
-  this.optB = "shift dating of earlier years forward in time"
-  this.adjustOuter = true;
+  this.optA = "shift dating of later years back in time";
+  this.optB = "shift dating of earlier years forward in time";
+  this.size = [335, 170];
+  this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
 
@@ -3755,9 +3756,10 @@ function DeletePoint(Lt) {
  */
 function Cut(Lt) {
   this.act = "Delete series of consecutive points by selecting first and last point to delete:";
-  this.optA = "shift dating of later years back in time"
-  this.optB = "shift dating of earlier years forward in time"
-  this.adjustOuter = true;
+  this.optA = "shift dating of later years back in time";
+  this.optB = "shift dating of earlier years forward in time";
+  this.size = [345, 190];
+  this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
 
@@ -3845,9 +3847,10 @@ function Cut(Lt) {
  */
 function InsertPoint(Lt) {
   this.act = "Insert points along path between existing points:";
-  this.optA = "shift dating of later years forward in time"
-  this.optB = "shift dating of earlier years back in time"
-  this.adjustOuter = true;
+  this.optA = "shift dating of later years forward in time";
+  this.optB = "shift dating of earlier years back in time";
+  this.size = [370, 170];
+  this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
 
@@ -3945,9 +3948,10 @@ function InsertPoint(Lt) {
  */
 function ConvertToStartPoint(Lt) {
   this.act = "Convert a measurement point to a start point";
-  this.optA = "shift dating of later years back in time"
-  this.optB = "shift dating of earlier years forward in time"
-  this.adjustOuter = true;
+  this.optA = "shift dating of later years back in time";
+  this.optB = "shift dating of earlier years forward in time";
+  this.size = [345, 170];
+  this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
 
@@ -4015,9 +4019,10 @@ function ConvertToStartPoint(Lt) {
  */
 function InsertZeroGrowth(Lt) {
   this.act = "Insert increment with zero width:";
-  this.optA = "shift dating of later years forward in time"
-  this.optB = "shift dating of earlier years back in time"
-  this.adjustOuter = true;
+  this.optA = "shift dating of later years forward in time";
+  this.optB = "shift dating of earlier years back in time";
+  this.size = [335, 170];
+  this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
 
@@ -4221,7 +4226,13 @@ function ViewData(Lt) {
   // handlebars from templates.html
   let content = document.getElementById("view-data-default-template").innerHTML;
 
-  this.dialog = L.control.dialog({'size': [200, 235], 'anchor': [50, 0], 'initOpen': false, 'position': 'topleft'}).setContent(content).addTo(Lt.viewer);
+  this.dialog = L.control.dialog({
+    'size': [200, 235],
+    'anchor': [50, 0],
+    'initOpen': false,
+    'position': 'topleft',
+    'minSize': [0, 0]
+  }).setContent(content).addTo(Lt.viewer);
 
   /**
    * Format and download data in Dan's archaic format
@@ -4809,7 +4820,8 @@ function ImageAdjustment(Lt) {
     'size': [340, 280],
     'anchor': [50, 5],
     'initOpen': false,
-    'position': 'topleft'
+    'position': 'topleft',
+    'minSize': [0, 0]
   }).setContent(content).addTo(Lt.viewer);
 
   /**
@@ -4963,7 +4975,8 @@ MeasurementOptions.prototype.displayDialog = function () {
      'size': [510, 320],
      'anchor': [50, 5],
      'initOpen': false,
-     'position': 'topleft'
+     'position': 'topleft',
+     'minSize': [0, 0]
    }).setContent(content).addTo(Lt.viewer);
   };
 
@@ -5553,7 +5566,8 @@ function KeyboardShortCutDialog (Lt) {
       'size': [310, 300],
       'anchor': anchor,
       'initOpen': true,
-      'position': 'topleft'
+      'position': 'topleft',
+      'minSize': [0, 0]
     }).addTo(Lt.viewer);
 
     // remember annotation location each times its moved
@@ -5686,11 +5700,12 @@ function Helper(Lt) {
       });
       let anchor = [y, x];
       this.dialog = L.control.dialog({
-        'size': [345, 190],
+        'size': Lt[tool].size,
         'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
         'anchor': anchor,
         'initOpen': true,
-        'position': 'topleft'
+        'position': 'topleft',
+        'minSize': [0, 0]
       }).setContent(html).addTo(Lt.viewer);
       // Set dialog close button to a check mark instead of X.
       let control_dialog_inner_parent = document.getElementById("shift-container").parentElement.parentElement;
