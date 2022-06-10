@@ -757,10 +757,8 @@ function MeasurementData (dataObject, Lt) {
     let year_adjustment = (Lt.insertZeroGrowth.adjustOuter) ? 1 : -1;
     let index_adjustment = (direction == tempDirection) ? 0 : k;
     // When inserting a sub-annual zero growth point, must slice after the second inserted point.
-    let slice_indexA = (!Lt.measurementOptions.subAnnual) ? i : i - 1;
-    let slice_indexB = i;
-    let second_points = (direction == tempDirection) ? JSON.parse(JSON.stringify(this.points)).slice(0, slice_indexA) :
-                                                       JSON.parse(JSON.stringify(this.points)).slice(slice_indexB);
+    let second_points = (direction == tempDirection) ? JSON.parse(JSON.stringify(this.points)).slice(0, i) :
+                                                       JSON.parse(JSON.stringify(this.points)).slice(i);
 
     second_points.map((e, j) => {
       if (!e) return;
