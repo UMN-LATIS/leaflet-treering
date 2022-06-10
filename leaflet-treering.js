@@ -1428,7 +1428,7 @@ function VisualAsset (Lt) {
 
       if (Lt.insertZeroGrowth.active) {
         if ((Lt.measurementOptions.subAnnual && pts[i].earlywood) || pts[i].start || pts[i].break) {
-          alert('Missing year can only be placed at the end of a year!');
+          alert('Zero width years must be added at the annual ring boundary, (i.e. latewood points)');
         } else {
           Lt.insertZeroGrowth.openDialog(e, i);
         }
@@ -3282,7 +3282,7 @@ function Dating(Lt) {
   this.active = false;
   this.btn = new Button(
     'access_time',
-    'Set the year of any point and adjust all other points',
+    'Edit measurement point dating (Ctrl-d)',
     () => { Lt.disableTools(); Lt.collapseTools(); this.enable() },
     () => { this.disable() }
   );
@@ -3696,10 +3696,11 @@ function CreateBreak(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function DeletePoint(Lt) {
-  this.act = "Delete existing points:";
+  this.title = "Delete points: ";
+  this.desc= "To delete existing points, you must adjust the dating of earlier or later points";
   this.optA = "shift dating of later years back in time";
   this.optB = "shift dating of earlier years forward in time";
-  this.size = [335, 170];
+  this.size = [330, 180];
   this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -3765,10 +3766,11 @@ function DeletePoint(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function Cut(Lt) {
-  this.act = "Delete series of consecutive points by selecting first and last point to delete:";
+  this.title = "Delete a series of points: ";
+  this.desc = "To delete all points between two selected points, you must adjust the dating of earlier or later points.";
   this.optA = "shift dating of later years back in time";
   this.optB = "shift dating of earlier years forward in time";
-  this.size = [345, 190];
+  this.size = [325, 180];
   this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -3856,10 +3858,11 @@ function Cut(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function InsertPoint(Lt) {
-  this.act = "Insert points along path between existing points:";
+  this.title = "Insert points: ";
+  this.desc = "To insert points along a path between two existing points, you must adjust the dating of earlier or later points.";
   this.optA = "shift dating of later years forward in time";
   this.optB = "shift dating of earlier years back in time";
-  this.size = [370, 170];
+  this.size = [355, 185];
   this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -3957,10 +3960,11 @@ function InsertPoint(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function ConvertToStartPoint(Lt) {
-  this.act = "Convert a measurement point to a start point";
+  this.title = "Convert to start point: ";
+  this.desc = "To convert existing measurement points to a start point, you must adjust the dating of earlier or later points.";
   this.optA = "shift dating of later years back in time";
   this.optB = "shift dating of earlier years forward in time";
-  this.size = [345, 170];
+  this.size = [350, 185];
   this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -4028,10 +4032,11 @@ function ConvertToStartPoint(Lt) {
  * @param {Ltrering} Lt - Leaflet treering object
  */
 function InsertZeroGrowth(Lt) {
-  this.act = "Insert increment with zero width:";
+  this.title = "Inser zero width year: ";
+  this.desc = "To insert a zero width year, you must adjust the dating of earlier or later points.";
   this.optA = "shift dating of later years forward in time";
   this.optB = "shift dating of earlier years back in time";
-  this.size = [335, 170];
+  this.size = [335, 180];
   this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -5283,6 +5288,8 @@ function MetaDataText (Lt) {
   };
 
   MetaDataText.prototype.updateText = function () {
+      // Need refactor, redudent code.
+
       var points = Lt.data.points;
 
       var i, firstPt, firstYear, lastPt, lastYear;
@@ -5329,10 +5336,10 @@ function MetaDataText (Lt) {
           // Earlywood & latewood reverse when measuring backwards.
           let ew = (Lt.measurementOptions.forwardDirection) ? "E" : "L";
           let lw = (Lt.measurementOptions.forwardDirection) ? "L" : "E";
-          startAddition = (startPt.earlywood) ? " " + ew : " " + lw;
+          startAddition = (startPt.earlywood) ? ew + " " : lw + " ";
           endAddition = (endPt.earlywood) ? " " + ew : " " + lw;
         }
-        years = ' &nbsp;|&nbsp; ' + String(startYear) + startAddition + " — " + String(endYear) + endAddition;
+        years = ' &nbsp;|&nbsp; ' + startAddition + String(startYear) + " — " + String(endYear) + endAddition;
       };
 
       var branding = ' &nbsp;|&nbsp; DendroElevator developed at the <a href="http://z.umn.edu/treerings" target="_blank"> University of Minnesota </a>';
@@ -5718,7 +5725,8 @@ function Helper(Lt) {
       let content = document.getElementById("edit-tools-shifting-dialog-template").innerHTML;
       let template = Handlebars.compile(content);
       let html = template({
-        action: Lt[tool].act,
+        title: Lt[tool].title,
+        desc: Lt[tool].desc,
         optionA: Lt[tool].optA,
         optionB: Lt[tool].optB,
       });

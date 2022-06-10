@@ -205,11 +205,18 @@ th {
 }
 
 #shift-container p {
+	font-size: 10px;
+	font-weight: normal;
+	color: #7d7d7d;
+	margin: 0;
+	margin-bottom: 7px;
+}
+
+#shift-container #shift-header {
 	font-size: 14px;
 	font-weight: bold;
 	color: black;
 	margin: 0;
-	margin-bottom: 7px;
 }
 
 #shift-container input {
