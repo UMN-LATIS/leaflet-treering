@@ -3698,9 +3698,9 @@ function CreateBreak(Lt) {
 function DeletePoint(Lt) {
   this.title = "Delete points: ";
   this.desc= "To delete existing points, you must adjust the dating of earlier or later points";
-  this.optA = "shift dating of later years back in time";
-  this.optB = "shift dating of earlier years forward in time";
-  this.size = [330, 180];
+  this.optA = "shift dating of later points back in time";
+  this.optB = "shift dating of earlier points forward in time";
+  this.size = [280, 240];
   this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -3768,9 +3768,9 @@ function DeletePoint(Lt) {
 function Cut(Lt) {
   this.title = "Delete a series of points: ";
   this.desc = "To delete all points between two selected points, you must adjust the dating of earlier or later points.";
-  this.optA = "shift dating of later years back in time";
-  this.optB = "shift dating of earlier years forward in time";
-  this.size = [325, 180];
+  this.optA = "shift dating of later points back in time";
+  this.optB = "shift dating of earlier points forward in time";
+  this.size = [280, 240];
   this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -3860,9 +3860,9 @@ function Cut(Lt) {
 function InsertPoint(Lt) {
   this.title = "Insert points: ";
   this.desc = "To insert points along a path between two existing points, you must adjust the dating of earlier or later points.";
-  this.optA = "shift dating of later years forward in time";
-  this.optB = "shift dating of earlier years back in time";
-  this.size = [355, 185];
+  this.optA = "shift dating of later points forward in time";
+  this.optB = "shift dating of earlier points back in time";
+  this.size = [280, 240];
   this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -3962,9 +3962,9 @@ function InsertPoint(Lt) {
 function ConvertToStartPoint(Lt) {
   this.title = "Convert to start point: ";
   this.desc = "To convert existing measurement points to a start point, you must adjust the dating of earlier or later points.";
-  this.optA = "shift dating of later years back in time";
-  this.optB = "shift dating of earlier years forward in time";
-  this.size = [350, 185];
+  this.optA = "shift dating of later points back in time";
+  this.optB = "shift dating of earlier points forward in time";
+  this.size = [280, 240];
   this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
@@ -4032,11 +4032,11 @@ function ConvertToStartPoint(Lt) {
  * @param {Ltrering} Lt - Leaflet treering object
  */
 function InsertZeroGrowth(Lt) {
-  this.title = "Inser zero width year: ";
+  this.title = "Insert zero width year: ";
   this.desc = "To insert a zero width year, you must adjust the dating of earlier or later points.";
-  this.optA = "shift dating of later years forward in time";
-  this.optB = "shift dating of earlier years back in time";
-  this.size = [335, 180];
+  this.optA = "shift dating of later points forward in time";
+  this.optB = "shift dating of earlier points back in time";
+  this.size = [280, 240];
   this.adjustOuter = false;
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
