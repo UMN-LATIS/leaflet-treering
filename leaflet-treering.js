@@ -30,6 +30,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   }
 
   //options
+  this.options = options;
   this.meta = {
     'ppm': options.ppm || 468,
     'saveURL': options.saveURL || '',
@@ -3500,7 +3501,7 @@ function CreatePoint(Lt) {
     $(Lt.viewer.getContainer()).click(e => {
       Lt.viewer.getContainer().style.cursor = 'pointer';
 
-      // Prevent jQuery event error. 
+      // Prevent jQuery event error.
       if (!e.originalEvent) return;
       var latLng = Lt.viewer.mouseEventToLatLng(e);
 
@@ -5343,14 +5344,15 @@ function MetaDataText (Lt) {
     };
 
     let speciesID = this.speciesID + " &nbsp;|&nbsp;";
-    let branding = 'DendroElevator developed at the <a href="http://z.umn.edu/treerings" target="_blank"> University of Minnesota </a>';
+    let branding = 'DendroElevator developed at <a href="http://z.umn.edu/treerings" target="_blank"> UMN </a>';
     let saveText = (Lt.meta.savePermission) ? Lt.saveCloud.saveText : '';
     saveText = saveText + " &nbsp;|&nbsp; ";
     let increment = (Lt.measurementOptions.subAnnual) ? 'sub-annual increments' : 'annual increments';
     let direction = (Lt.measurementOptions.forwardDirection) ? 'Measuring forward, ' : 'Measuring backward, ';
 
     let dpi = Lt.meta.ppm * 25.4;
-    let ppmText = String(Math.round(Lt.meta.ppm)) + "ppmm (" + String(Math.round(dpi)) + "dpi)  &nbsp;|&nbsp; "
+    let ppmText = String(Math.round(Lt.meta.ppm)) + "ppmm (" + String(Math.round(dpi)) + "dpi) &nbsp;|&nbsp; "
+    if (Lt.options.ppm === 0 && !Lt.options.initialData.ppm) ppmText = "Unknown ppmm/dpi  &nbsp;|&nbsp; "
 
     let zoomPercentage = 100 * ((Lt.viewer.getZoom() - Lt.viewer.getMinZoom()) / (Lt.viewer.getMaxZoom() - Lt.viewer.getMinZoom()));
     let zoom = (zoomPercentage).toFixed(1) + '%';
