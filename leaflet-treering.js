@@ -169,12 +169,26 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       map.removeLayer(this.visualAsset.markerLayer);
     }
 
-    // right and left click controls
+    // Right click disables whatever tool is active.
     this.viewer.on('contextmenu', () => {
       this.disableTools();
     });
 
-    // disable tools w/ esc
+    // Close dialog box with enter/return, but do not automatically disable tool.
+    L.DomEvent.on(window, 'keydown', (e) => {
+       if (e.keyCode == 13) {
+         // Refactor so simple loop may be used.
+         console.log("Enter pressed!")
+         if (this.helper.dialog) this.helper.dialog.close();
+         if (this.measurementOptions.dialog) {
+           $("#confirm-button").click();
+         }
+         if (this.annotationAsset.dialogAnnotationWindow) this.annotationAsset.dialogAnnotationWindow.close();
+         if (this.annotationAsset.dialogAttributesWindow) this.annotationAsset.dialogAttributesWindow.close();
+       }
+    }, this);
+
+    // Disable all tools w/ esc.
     L.DomEvent.on(window, 'keydown', (e) => {
        if (e.keyCode == 27) {
          this.disableTools();
@@ -1590,6 +1604,8 @@ function AnnotationAsset(Lt) {
         Lt.collapseTools();
         this.createBtn.active = true; // disableTools() deactivates all buttons, need create annotation active
 
+        // Prevent jQuery event error.
+        if (!e.originalEvent) return;
         this.latLng = Lt.viewer.mouseEventToLatLng(e);
 
         // display icon
@@ -3484,6 +3500,8 @@ function CreatePoint(Lt) {
     $(Lt.viewer.getContainer()).click(e => {
       Lt.viewer.getContainer().style.cursor = 'pointer';
 
+      // Prevent jQuery event error. 
+      if (!e.originalEvent) return;
       var latLng = Lt.viewer.mouseEventToLatLng(e);
 
       Lt.undo.push();
@@ -3891,6 +3909,8 @@ function InsertPoint(Lt) {
     Lt.viewer.getContainer().style.cursor = 'pointer';
 
     $(Lt.viewer.getContainer()).click(e => {
+      // Prevent jQuery event error.
+      if (!e.originalEvent) return;
       let latLng = Lt.viewer.mouseEventToLatLng(e);
       if (this.maintainAdjustment) {
         this.action(latLng);
@@ -4134,6 +4154,8 @@ function InsertBreak(Lt) {
     Lt.mouseLine.from(Lt.data.points[i].latLng);
 
     $(Lt.viewer.getContainer()).click(e => {
+      // Prevent jQuery event error.
+      if (!e.originalEvent) return;
       var latLng = Lt.viewer.mouseEventToLatLng(e);
       Lt.viewer.dragging.disable();
 
@@ -4983,14 +5005,15 @@ function MeasurementOptions(Lt) {
 MeasurementOptions.prototype.displayDialog = function () {
   // handlebars from templates.html
   let content = document.getElementById("measurement-options-dialog-template").innerHTML;
-
-  return L.control.dialog({
+  this.dialog = L.control.dialog({
      'size': [510, 320],
      'anchor': [50, 5],
      'initOpen': false,
      'position': 'topleft',
      'minSize': [0, 0]
    }).setContent(content).addTo(Lt.viewer);
+
+  return this.dialog;
   };
 
   /**
@@ -5207,13 +5230,13 @@ function SaveCloud(Lt) {
       }
 
       this.saveText =
-          ' &nbsp;|&nbsp; Saved to cloud ' + date.year + '/' + date.month + '/' + date.day + ' ' + date.hour + ':' + minute_string + am_pm;
+          date.year + '/' + date.month + '/' + date.day + ' ' + date.hour + ':' + minute_string + am_pm;
     } else if (date.day != undefined) {
       this.saveText =
-          ' &nbsp;|&nbsp; Saved to cloud ' + date.year + '/' + date.month + '/' + date.day;
+          date.year + '/' + date.month + '/' + date.day;
     } else {
       this.saveText =
-          ' &nbsp;|&nbsp; No data saved to cloud';
+          'No data saved to cloud';
     };
 
     Lt.data.saveDate;
@@ -5267,106 +5290,74 @@ function MetaDataText (Lt) {
   Lt.viewer.on('zoomend', () => Lt.metaDataText.updateText());
 
   MetaDataText.prototype.initialize = function () {
-    if (window.name.includes('popout')) {
-      var metaDataTopDiv = document.createElement('div');
+    // Handlebars from templates.html.
+    let metaDataTopDiv = document.createElement('div');
 
-      // handlebars from templates.html
-      let content_A = document.getElementById("meta-data-top-div-template").innerHTML;
+    // Specimin ID | ppm level | zoom level
+    let content_A = document.getElementById("meta-data-top-div-template").innerHTML;
+    metaDataTopDiv.innerHTML = content_A;
+    document.getElementsByClassName('leaflet-bottom leaflet-left')[0].appendChild(metaDataTopDiv);
 
-      metaDataTopDiv.innerHTML = content_A;
-      document.getElementsByClassName('leaflet-bottom leaflet-left')[0].appendChild(metaDataTopDiv);
-    };
+    // Start/end years | measurement options
+    let content_B = document.getElementById("meta-data-middle-div-template").innerHTML;
+    var metaDataMiddleDiv = document.createElement('div');
+    metaDataMiddleDiv.innerHTML = content_B;
+    document.getElementsByClassName('leaflet-bottom leaflet-left')[0].appendChild(metaDataMiddleDiv);
 
-    // handlebars from templates.html
-    let content_B = document.getElementById("meta-data-bottom-div-template").innerHTML;
-
+    // Save option | development source.
+    let content_C = document.getElementById("meta-data-bottom-div-template").innerHTML;
     var metaDataBottomDiv = document.createElement('div');
-    metaDataBottomDiv.innerHTML = content_B;
+    metaDataBottomDiv.innerHTML = content_C;
     document.getElementsByClassName('leaflet-bottom leaflet-left')[0].appendChild(metaDataBottomDiv);
   };
 
   MetaDataText.prototype.updateText = function () {
-      // Need refactor, redudent code.
+    let pts = JSON.parse(JSON.stringify(Lt.data.points));
+    let firstPt = pts.find(e => e.year);
+    let lastPt = pts.reverse().find(e => e.year);
 
-      var points = Lt.data.points;
+    let startPt, endPt;
+    if (firstPt?.year <= lastPt?.year) {
+      startPt = firstPt;
+      endPt = lastPt;
+    } else if (firstPt?.year > lastPt?.year) {
+      startPt = lastPt;
+      endPt = firstPt;
+      // Add 1 to keep points consistent with measuring forwards.
+      // Only applies to measuring backwards annually.
+      if (!Lt.measurementOptions.subAnnual) endPt.year++;
+    }
 
-      var i, firstPt, firstYear, lastPt, lastYear;
-      for (i = 0; i < points.length; i++) { // find 1st point w/ year value
-        if (points[i] && (points[i].year || points[i].year == 0)) {
-          firstPt = points[i];
-          break;
-        };
-      };
-      firstYear = firstPt?.year;
+    let years = '';
+    let startAddition = '';
+    let endAddition = '';
+    if ((startPt?.year || startPt?.year == 0) && (endPt?.year || endPt?.year == 0)) {
+      if (Lt.measurementOptions.subAnnual) {
+        // Earlywood & latewood reversed when measuring backwards.
+        let ew = (Lt.measurementOptions.forwardDirection) ? "E" : "L";
+        let lw = (Lt.measurementOptions.forwardDirection) ? "L" : "E";
+        startAddition = (startPt.earlywood) ? ew + " " : lw + " ";
+        endAddition = (endPt.earlywood) ? " " + ew : " " + lw;
+      }
+      years = startAddition + String(startPt.year) + " — " + String(endPt.year) + endAddition + " &nbsp;|&nbsp; ";
+    };
 
-      for (i = points.length - 1; i >= 0; i--) { //  find last point w/ year value
-        if (points[i] && (points[i].year || points[i].year == 0)) {
-          lastPt = points[i];
-          break;
-        };
-      };
-      lastYear = lastPt?.year;
+    let speciesID = this.speciesID + " &nbsp;|&nbsp;";
+    let branding = 'DendroElevator developed at the <a href="http://z.umn.edu/treerings" target="_blank"> University of Minnesota </a>';
+    let saveText = (Lt.meta.savePermission) ? Lt.saveCloud.saveText : '';
+    saveText = saveText + " &nbsp;|&nbsp; ";
+    let increment = (Lt.measurementOptions.subAnnual) ? 'sub-annual increments' : 'annual increments';
+    let direction = (Lt.measurementOptions.forwardDirection) ? 'Measuring forward, ' : 'Measuring backward, ';
 
-      let startPt, startYear, endPt, endYear;
-      if (firstYear <= lastYear) { // for measuring forward in time, smallest year value first in points array
-        startPt = firstPt;
-        startYear = firstYear;
-        endPt = lastPt;
-        endYear = lastYear;
-      } else if (firstYear > lastYear) { // for measuring backward in time, largest year value first in points array
-        startPt = lastPt;
-        endPt = firstPt;
-        startYear = lastYear + 1; // last point considered a start point when measuring backwards
-        if (Lt.measurementOptions.subAnnual == false) {
-          // add 1 to keep points consistent with measuring forwards
-          // only applies to measuring bakcwards annually
-          endYear = firstYear + 1;
-        } else {
-          endYear = firstYear;
-        }
-      };
+    let dpi = Lt.meta.ppm * 25.4;
+    let ppmText = String(Math.round(Lt.meta.ppm)) + "ppmm (" + String(Math.round(dpi)) + "dpi)  &nbsp;|&nbsp; "
 
-      var years = '';
-      let startAddition = '';
-      let endAddition = '';
-      if ((startYear || startYear == 0) && (endYear || endYear == 0)) {
-        if (Lt.measurementOptions.subAnnual) {
-          // Earlywood & latewood reverse when measuring backwards.
-          let ew = (Lt.measurementOptions.forwardDirection) ? "E" : "L";
-          let lw = (Lt.measurementOptions.forwardDirection) ? "L" : "E";
-          startAddition = (startPt.earlywood) ? ew + " " : lw + " ";
-          endAddition = (endPt.earlywood) ? " " + ew : " " + lw;
-        }
-        years = ' &nbsp;|&nbsp; ' + startAddition + String(startYear) + " — " + String(endYear) + endAddition;
-      };
+    let zoomPercentage = 100 * ((Lt.viewer.getZoom() - Lt.viewer.getMinZoom()) / (Lt.viewer.getMaxZoom() - Lt.viewer.getMinZoom()));
+    let zoom = (zoomPercentage).toFixed(1) + '%';
 
-      var branding = ' &nbsp;|&nbsp; DendroElevator developed at the <a href="http://z.umn.edu/treerings" target="_blank"> University of Minnesota </a>';
-
-      var saveText = '';
-      if (Lt.meta.savePermission) {
-        saveText = Lt.saveCloud.saveText;
-      };
-
-      if (window.name.includes('popout')) {
-        if (Lt.measurementOptions.subAnnual) { // if 2 increments per year
-          var increment = 'sub-annual increments';
-        } else { // otherwise 1 increment per year
-          var increment  = 'annual increments';
-        };
-``
-        if (Lt.measurementOptions.forwardDirection) { // if years counting up
-          var direction = 'Measuring forward, ';
-        } else { // otherwise years counting down
-          var direction = 'Measuring backward, '
-        };
-
-        var zoomPercentage = 100 * ((Lt.viewer.getZoom() - Lt.viewer.getMinZoom()) / (Lt.viewer.getMaxZoom() - Lt.viewer.getMinZoom()));
-        var zoom = ' &nbsp;|&nbsp; Zoom ' + (zoomPercentage).toFixed(1) + '%';
-
-        document.getElementById("meta-data-top-text").innerHTML = direction + increment + zoom + saveText;
-      };
-
-      document.getElementById("meta-data-bottom-text").innerHTML = this.speciesID + years + branding;
+    document.getElementById("meta-data-top-text").innerHTML = speciesID + ppmText + zoom;
+    document.getElementById("meta-data-middle-text").innerHTML = years + direction + increment;
+    document.getElementById("meta-data-bottom-text").innerHTML = saveText + branding;
   };
 };
 
