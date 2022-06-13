@@ -61,7 +61,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   //error alerts in 'measuring' mode aka popout window
   //will not alert in 'browsing' mode aka DE browser window
   if (window.name.includes('popout') && options.ppm === 0 && !options.initialData.ppm) {
-    alert('Calibration needed: set ppm in asset metadata or use calibration tool.');
+    alert('Calibration needed: set p/mm in asset metadata or use calibration tool.');
   }
 
   this.autoscroll = new Autoscroll(this.viewer);
@@ -3201,6 +3201,7 @@ function Redo(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function Calibration(Lt) {
+  this.updated = false;
   this.active = false;
 
   // handlebars from templates.html
@@ -3215,6 +3216,8 @@ function Calibration(Lt) {
   );
 
   Calibration.prototype.calculatePPM = function(p1, p2, length) {
+    this.updated = true;
+
     var startPoint = Lt.viewer.project(p1, Lt.getMaxNativeZoom());
     var endPoint = Lt.viewer.project(p2, Lt.getMaxNativeZoom());
     var pixel_length = Math.sqrt(Math.pow(Math.abs(startPoint.x - endPoint.x), 2) +
@@ -3265,12 +3268,14 @@ function Calibration(Lt) {
           if (key === 13) {
             var length = parseFloat(document.getElementById('length').value);
             this.calculatePPM(latLng_1, latLng_2, length);
+            Lt.metaDataText.updateText();
             this.disable();
           }
         });
       } else {
         var length = parseFloat(document.getElementById('length').value);
         this.calculatePPM(latLng_1, latLng_2, length);
+        Lt.metaDataText.updateText();
         this.disable();
       }
     });
@@ -3348,8 +3353,9 @@ function Dating(Lt) {
         this.disable();
       });
 
-      $(document).keypress(e => {
+      L.DomEvent.on(window, 'keydown', (e) => {
         var key = e.which || e.keyCode;
+        console.log(key)
         if (key === 13) {
           var new_year = parseInt(input.value);
           popup.remove(Lt.viewer);
@@ -5351,11 +5357,11 @@ function MetaDataText (Lt) {
     let direction = (Lt.measurementOptions.forwardDirection) ? 'Measuring forward, ' : 'Measuring backward, ';
 
     let dpi = Lt.meta.ppm * 25.4;
-    let ppmText = String(Math.round(Lt.meta.ppm)) + "ppmm (" + String(Math.round(dpi)) + "dpi) &nbsp;|&nbsp; "
-    if (Lt.options.ppm === 0 && !Lt.options.initialData.ppm) ppmText = "Unknown ppmm/dpi  &nbsp;|&nbsp; "
+    let ppmText = Math.round(Lt.meta.ppm).toLocaleString() + " p/mm (" + Math.round(dpi).toLocaleString() + " dpi) &nbsp;|&nbsp; "
+    if (!Lt.calibration.updated && !Lt.options.initialData.ppm) ppmText = "Resolution unknown &nbsp;|&nbsp; "
 
     let zoomPercentage = 100 * ((Lt.viewer.getZoom() - Lt.viewer.getMinZoom()) / (Lt.viewer.getMaxZoom() - Lt.viewer.getMinZoom()));
-    let zoom = (zoomPercentage).toFixed(1) + '%';
+    let zoom = Math.round(zoomPercentage) + '%';
 
     document.getElementById("meta-data-top-text").innerHTML = speciesID + ppmText + zoom;
     document.getElementById("meta-data-middle-text").innerHTML = years + direction + increment;
