@@ -180,6 +180,10 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
        if (e.keyCode == 13) {
          // Refactor so simple loop may be used.
          console.log("Enter pressed!")
+         if (this.dating.active) {
+           this.dating.keypressAction(e);
+           return;
+         }
          if (this.helper.dialog) this.helper.dialog.close();
          if (this.measurementOptions.dialog) {
            $("#confirm-button").click();
@@ -3335,83 +3339,91 @@ function Dating(Lt) {
       }
 
       // Handlebars from templates.html
+      this.index = i;
       let year = Lt.data.points[i].year;
       let content = document.getElementById("dating-template").innerHTML;
       let template = Handlebars.compile(content);
       let html = template({ date_year: year });
 
-      var popup = L.popup({closeButton: false})
+      this.popup = L.popup({closeButton: false})
           .setContent(html)
           .setLatLng(pt_forLocation.latLng)
           .openOn(Lt.viewer);
 
-      let input = document.getElementById('year_input')
-      input.select();
+      document.getElementById('year_input').select();
 
       $(Lt.viewer.getContainer()).click(e => {
         popup.remove(Lt.viewer);
         this.disable();
       });
-
-      L.DomEvent.on(window, 'keydown', (e) => {
-        var key = e.which || e.keyCode;
-        console.log(key)
-        if (key === 13) {
-          var new_year = parseInt(input.value);
-          popup.remove(Lt.viewer);
-
-          if (!new_year && new_year != 0) {
-            alert("Entered year must be a number.");
-            return
-          }
-
-          Lt.undo.push();
-
-          function incrementYear(pt) {
-            // Increment year if annual,                 latewood when measuring forward in time,                 or earlywood when measuring backward in time
-            return (!Lt.measurementOptions.subAnnual || (Lt.measurementOptions.forwardDirection && !pt.earlywood) || (!Lt.measurementOptions.forwardDirection && pt.earlywood));
-          }
-
-          let shift = new_year - year;
-          let pts_before = Lt.data.points.slice(0, i + 1);
-          let year_diff = pts_before.filter(pb => pb.year && incrementYear(pb)).length;
-          let pts_after = Lt.data.points.slice(i + 1);
-          let dir_constant = (Lt.measurementOptions.forwardDirection) ? 1 : -1;
-
-          // Delta is the starting count value. Need "jump start" value if...
-          // ... expected to increment on next value. Special case if any ...
-          // values before point are 0, then do not "jump start".
-          let delta = 0;
-          if (pts_before.filter(e => e.year === 0).length) delta = 0;
-          else if (year != 0 && incrementYear(Lt.data.points[i])) delta = 1;
-          pts_before.map((pb, j) => {
-            if (pb.year || pb.year == 0) {
-              pb.year = new_year - dir_constant * (year_diff - delta);
-              if (incrementYear(pb)) {
-                delta++;
-              }
-            }
-          })
-
-          // Special case does no apply to after points.
-          delta = 0;
-          if (incrementYear(Lt.data.points[i])) delta = 1;
-          pts_after.map((pa, k) => {
-            if (pa.year || pa.year == 0) {
-              pa.year = new_year + dir_constant * (delta);
-              if (incrementYear(pa)) {
-                delta++;
-              }
-            }
-          })
-
-          Lt.data.year += shift;
-          Lt.visualAsset.reload();
-          this.disable();
-        }
-      });
     }
   };
+
+  /**
+   * Dating action after new year entered
+   * @function keypressAction
+   */
+  Dating.prototype.keypressAction = function(e) {
+    let key = e.which || e.keyCode;
+    if (key === 13) {
+      this.active = false;
+      let input = document.getElementById('year_input');
+      let i = this.index;
+      let year = Lt.data.points[i].year;
+
+      var new_year = parseInt(input.value);
+      this.popup.remove(Lt.viewer);
+
+      if (!new_year && new_year != 0) {
+        alert("Entered year must be a number.");
+        return
+      }
+
+      Lt.undo.push();
+
+      function incrementYear(pt) {
+        // Increment year if annual,                 latewood when measuring forward in time,                 or earlywood when measuring backward in time
+        return (!Lt.measurementOptions.subAnnual || (Lt.measurementOptions.forwardDirection && !pt.earlywood) || (!Lt.measurementOptions.forwardDirection && pt.earlywood));
+      }
+
+      let shift = new_year - year;
+      let pts_before = Lt.data.points.slice(0, i + 1);
+      let year_diff = pts_before.filter(pb => pb.year && incrementYear(pb)).length;
+      let pts_after = Lt.data.points.slice(i + 1);
+      let dir_constant = (Lt.measurementOptions.forwardDirection) ? 1 : -1;
+
+      // Delta is the starting count value. Need "jump start" value if...
+      // ... expected to increment on next value. Special case if any ...
+      // values before point are 0, then do not "jump start".
+      let delta = 0;
+      if (pts_before.filter(e => e.year === 0).length) delta = 0;
+      else if (year != 0 && incrementYear(Lt.data.points[i])) delta = 1;
+      pts_before.map((pb, j) => {
+        if (pb.year || pb.year == 0) {
+          pb.year = new_year - dir_constant * (year_diff - delta);
+          if (incrementYear(pb)) {
+            delta++;
+          }
+        }
+      })
+
+      // Special case does no apply to after points.
+      delta = 0;
+      if (incrementYear(Lt.data.points[i])) delta = 1;
+      pts_after.map((pa, k) => {
+        if (pa.year || pa.year == 0) {
+          pa.year = new_year + dir_constant * (delta);
+          if (incrementYear(pa)) {
+            delta++;
+          }
+        }
+      })
+
+      Lt.data.year += shift;
+      Lt.visualAsset.reload();
+      this.disable();
+    }
+  }
 
   /**
    * Enable dating
