@@ -5343,8 +5343,7 @@ function MetaDataText (Lt) {
       startPt = lastPt;
       endPt = firstPt;
       // Add 1 to keep points consistent with measuring forwards.
-      // Only applies to measuring backwards annually.
-      if (!Lt.measurementOptions.subAnnual) endPt.year++;
+      startPt.year++;
     }
 
     let years = '';
