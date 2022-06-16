@@ -1,3 +1,7 @@
+.leaflet-container {
+	font-size: 12px !important;
+}
+
 #map_container{
 	position: relative;
 	margin-left: 0px;
@@ -191,6 +195,40 @@ th {
 	padding-top: 5px;
 	padding-bottom: 5px;
 	margin-bottom: 0px;
+}
+
+/* increment shift dialog
+   Note: some inline CSS in template.html */
+#shift-container {
+	width: fit-content;
+	height: fit-content;
+}
+
+#shift-container p {
+	font-size: 10px;
+	font-weight: normal;
+	color: #7d7d7d;
+	margin: 0;
+	margin-bottom: 7px;
+}
+
+#shift-container #shift-header {
+	font-size: 14px;
+	font-weight: bold;
+	color: black;
+	margin: 0;
+}
+
+#shift-container input {
+	width: 10px;
+	height: 10px;
+}
+
+#shift-container label {
+	font-size: 12px;
+	font-weight: normal;
+	color: black;
+	margin: 0;
 }
 
 /* annotations */
