@@ -5372,7 +5372,7 @@ function MetaDataText (Lt) {
     if (!Lt.calibration.updated && !Lt.options.initialData.ppm) ppmText = "Resolution unknown &nbsp;|&nbsp; "
 
     let zoomPercentage = 100 * ((Lt.viewer.getZoom() - Lt.viewer.getMinZoom()) / (Lt.viewer.getMaxZoom() - Lt.viewer.getMinZoom()));
-    let zoom = Math.round(zoomPercentage) + '%';
+    let zoom = Math.round(zoomPercentage) + '% zoom';
 
     document.getElementById("meta-data-top-text").innerHTML = speciesID + ppmText + zoom;
     document.getElementById("meta-data-middle-text").innerHTML = years + direction + increment;
