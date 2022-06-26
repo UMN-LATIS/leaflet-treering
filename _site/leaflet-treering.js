@@ -3205,7 +3205,6 @@ function Redo(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function Calibration(Lt) {
-  this.updated = false;
   this.active = false;
 
   // handlebars from templates.html
@@ -3220,8 +3219,6 @@ function Calibration(Lt) {
   );
 
   Calibration.prototype.calculatePPM = function(p1, p2, length) {
-    this.updated = true;
-
     var startPoint = Lt.viewer.project(p1, Lt.getMaxNativeZoom());
     var endPoint = Lt.viewer.project(p2, Lt.getMaxNativeZoom());
     var pixel_length = Math.sqrt(Math.pow(Math.abs(startPoint.x - endPoint.x), 2) +
@@ -3395,9 +3392,10 @@ function Dating(Lt) {
       // Delta is the starting count value. Need "jump start" value if...
       // ... expected to increment on next value. Special case if any ...
       // values before point are 0, then do not "jump start".
+      let numOfZeroYears = pts_before.filter(e => e.year === 0).length;
       let delta = 0;
-      if (pts_before.filter(e => e.year === 0).length) delta = 0;
-      else if (year != 0 && incrementYear(Lt.data.points[i])) delta = 1;
+      if (numOfZeroYears && year != 0 && !incrementYear(Lt.data.points[i])) delta = -1;
+      else if (!numOfZeroYears && incrementYear(Lt.data.points[i])) delta = 1;
       pts_before.map((pb, j) => {
         if (pb.year || pb.year == 0) {
           pb.year = new_year - dir_constant * (year_diff - delta);
@@ -5332,8 +5330,8 @@ function MetaDataText (Lt) {
 
   MetaDataText.prototype.updateText = function () {
     let pts = JSON.parse(JSON.stringify(Lt.data.points));
-    let firstPt = pts.find(e => e.year);
-    let lastPt = pts.reverse().find(e => e.year);
+    let firstPt = pts.find(e => (e.year || e.year === 0));
+    let lastPt = pts.reverse().find(e => (e.year || e.year === 0));
 
     let startPt, endPt;
     if (firstPt?.year <= lastPt?.year) {
@@ -5344,6 +5342,9 @@ function MetaDataText (Lt) {
       endPt = firstPt;
       // Add 1 to keep points consistent with measuring forwards.
       startPt.year++;
+      if (!Lt.measurementOptions.subAnnual) {
+        endPt.year++;
+      }
     }
 
     let years = '';
@@ -5369,7 +5370,7 @@ function MetaDataText (Lt) {
 
     let dpi = Lt.meta.ppm * 25.4;
     let ppmText = Math.round(Lt.meta.ppm).toLocaleString() + " p/mm (" + Math.round(dpi).toLocaleString() + " dpi) &nbsp;|&nbsp; "
-    if (!Lt.calibration.updated && !Lt.options.initialData.ppm) ppmText = "Resolution unknown &nbsp;|&nbsp; "
+    if (!Lt.meta.ppmCalibration && !Lt.options.initialData.ppm) ppmText = "Resolution unknown &nbsp;|&nbsp; "
 
     let zoomPercentage = 100 * ((Lt.viewer.getZoom() - Lt.viewer.getMinZoom()) / (Lt.viewer.getMaxZoom() - Lt.viewer.getMinZoom()));
     let zoom = Math.round(zoomPercentage) + '% zoom';
@@ -5432,9 +5433,11 @@ function LoadLocal(Lt) {
       // if the JSON has PPM data, use that instead of loaded data.
       if(newDataJSON.ppm) {
         Lt.meta.ppm = newDataJSON.ppm;
+        Lt.options.initialData.ppm = newDataJSON.ppm;
       }
 
       Lt.loadData();
+      Lt.metaDataText.updateText();
     };
 
     fr.readAsText(files.item(0));
