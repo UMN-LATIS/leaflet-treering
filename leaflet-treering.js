@@ -5247,10 +5247,10 @@ function SaveCloud(Lt) {
       }
 
       this.saveText =
-          date.year + '/' + date.month + '/' + date.day + ' ' + date.hour + ':' + minute_string + am_pm;
+          "Saved to cloud " + date.year + '/' + date.month + '/' + date.day + ' ' + date.hour + ':' + minute_string + am_pm;
     } else if (date.day != undefined) {
       this.saveText =
-          date.year + '/' + date.month + '/' + date.day;
+          "Saved to cloud " + date.year + '/' + date.month + '/' + date.day;
     } else {
       this.saveText =
           'No data saved to cloud';
@@ -5361,16 +5361,15 @@ function MetaDataText (Lt) {
       years = startAddition + String(startPt.year) + " — " + String(endPt.year) + endAddition + " &nbsp;|&nbsp; ";
     };
 
-    let speciesID = this.speciesID + " &nbsp;|&nbsp;";
+    let speciesID = this.speciesID + " &nbsp;|&nbsp; ";
     let branding = 'DendroElevator developed at <a href="http://z.umn.edu/treerings" target="_blank"> UMN </a>';
-    let saveText = (Lt.meta.savePermission) ? Lt.saveCloud.saveText : '';
-    saveText = saveText + " &nbsp;|&nbsp; ";
+    let saveText = (Lt.meta.savePermission) ? Lt.saveCloud.saveText + " &nbsp;|&nbsp; " : '';
     let increment = (Lt.measurementOptions.subAnnual) ? 'sub-annual increments' : 'annual increments';
     let direction = (Lt.measurementOptions.forwardDirection) ? 'Measuring forward, ' : 'Measuring backward, ';
 
     let dpi = Lt.meta.ppm * 25.4;
     let ppmText = Math.round(Lt.meta.ppm).toLocaleString() + " p/mm (" + Math.round(dpi).toLocaleString() + " dpi) &nbsp;|&nbsp; "
-    if (!Lt.meta.ppmCalibration && !Lt.options.initialData.ppm) ppmText = "Resolution unknown &nbsp;|&nbsp; "
+    if (!Lt.meta.ppmCalibration && !Lt.options.ppm) ppmText = "Resolution unknown &nbsp;|&nbsp; "
 
     let zoomPercentage = 100 * ((Lt.viewer.getZoom() - Lt.viewer.getMinZoom()) / (Lt.viewer.getMaxZoom() - Lt.viewer.getMinZoom()));
     let zoom = Math.round(zoomPercentage) + '% zoom';
@@ -5433,7 +5432,7 @@ function LoadLocal(Lt) {
       // if the JSON has PPM data, use that instead of loaded data.
       if(newDataJSON.ppm) {
         Lt.meta.ppm = newDataJSON.ppm;
-        Lt.options.initialData.ppm = newDataJSON.ppm;
+        Lt.options.ppm = newDataJSON.ppm;
       }
 
       Lt.loadData();
@@ -5663,6 +5662,10 @@ function KeyboardShortCutDialog (Lt) {
       {
        'key': 'Right click or esc',
        'use': 'Disable current tool',
+      },
+      {
+        'key': 'Enter or return',
+        'use': 'Accept menu selection',
       },
     ];
 
