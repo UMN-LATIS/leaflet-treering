@@ -736,12 +736,19 @@ function MeasurementData (dataObject, Lt) {
 
     // Index to splice new points in array depends on shifting direction.
     let k = (direction == tempDirection) ? i : i + 1;
+    if (!k) k = 1;
     let earlywoodAdjusted = true;
 
     if (Lt.measurementOptions.subAnnual) {
       // See above for how years & indices decided.
       let yearA = (Lt.insertZeroGrowth.adjustOuter) ? this.points[i].year + 1 : this.points[i].year;
       let yearB = (Lt.insertZeroGrowth.adjustOuter) ? this.points[i].year + 1 : this.points[i].year - 1;
+
+      if ((!yearA && yearA != 0) || (!yearB && yearB != 0)) {
+        let nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && (e.year || e.year === 0));
+        yearA = (Lt.insertZeroGrowth.adjustOuter) ? nearest_nextPt.year + 1 : nearest_nextPt.year;
+        yearB = (Lt.insertZeroGrowth.adjustOuter) ? nearest_nextPt.year + 1 : nearest_nextPt.year - 1;
+      }
 
       let indexA, indexB;
       if (direction == forwardInTime) {
@@ -766,12 +773,18 @@ function MeasurementData (dataObject, Lt) {
       (direction == tempDirection) ? k-- : k++;
     } else {
       let yearAdjusted = (Lt.insertZeroGrowth.adjustOuter) ? this.points[i].year + 1 : this.points[i].year - 1;
+      if (!yearAdjusted && yearAdjusted != 0) {
+        let nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && (e.year || e.year === 0));
+        yearAdjusted = (Lt.insertZeroGrowth.adjustOuter) ? nearest_nextPt.year + 1 : nearest_nextPt.year - 1;
+      }
+
+
       let new_pt = {
         'start': false, 'skip': false, 'break': false,
         'year': yearAdjusted, 'earlywood': true, 'latLng': latLng
       };
       new_points.splice(k, 0, new_pt);
-    }
+    };
 
     let year_adjustment = (Lt.insertZeroGrowth.adjustOuter) ? 1 : -1;
     let index_adjustment = (direction == tempDirection) ? 0 : k;
@@ -1353,6 +1366,11 @@ function VisualAsset (Lt) {
         } else {
           color = ((pts[i + 1].year + 1) % 10 == 0) ? 'dark_red' : 'light_blue';
         }
+
+        if ((forward && pts[i - 1] && pts[i].latLng.lat == pts[i - 1].latLng.lat && pts[i].latLng.lng == pts[i - 1].latLng.lng) ||
+            (backward && pts[i + 1] && pts[i].latLng.lat == pts[i + 1].latLng.lat && pts[i].latLng.lng == pts[i + 1].latLng.lng)) {
+          color = 'zero';
+        }
       } else {
         color = (annual) ? 'light_blue' : 'dark_blue';
       }
@@ -1444,7 +1462,9 @@ function VisualAsset (Lt) {
       };
 
       if (Lt.insertZeroGrowth.active) {
-        if ((Lt.measurementOptions.subAnnual && pts[i].earlywood) || pts[i].start || pts[i].break) {
+        if ((Lt.measurementOptions.subAnnual && pts[i].earlywood) ||
+             (Lt.measurementOptions.forwardDirection && pts[i].start) ||
+             (!Lt.measurementOptions.forwardDirection && pts[i + 1]?.start) || pts[i].break) {
           alert('Zero width years must be added at the annual ring boundary, (i.e. latewood points)');
         } else {
           Lt.insertZeroGrowth.openDialog(e, i);
