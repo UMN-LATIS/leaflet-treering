@@ -739,46 +739,51 @@ function MeasurementData (dataObject, Lt) {
     if (!k) k = 1;
     let earlywoodAdjusted = true;
 
+    let comparisonYear = (this.points[i].year) ? this.points[i].year : this.points.slice(i).find(e => !e.start && !e.break && (e.year || e.year === 0)).year;
+    if (!i && !Lt.insertZeroGrowth.adjustOuter) comparisonYear++;
+
     if (Lt.measurementOptions.subAnnual) {
-      // See above for how years & indices decided.
-      let yearA = (Lt.insertZeroGrowth.adjustOuter) ? this.points[i].year + 1 : this.points[i].year;
-      let yearB = (Lt.insertZeroGrowth.adjustOuter) ? this.points[i].year + 1 : this.points[i].year - 1;
-
-      if ((!yearA && yearA != 0) || (!yearB && yearB != 0)) {
-        let nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && (e.year || e.year === 0));
-        yearA = (Lt.insertZeroGrowth.adjustOuter) ? nearest_nextPt.year + 1 : nearest_nextPt.year;
-        yearB = (Lt.insertZeroGrowth.adjustOuter) ? nearest_nextPt.year + 1 : nearest_nextPt.year - 1;
-      }
-
-      let indexA, indexB;
-      if (direction == forwardInTime) {
-        indexA = (Lt.insertZeroGrowth.adjustOuter) ? i + 1 : i;
-        indexB = (Lt.insertZeroGrowth.adjustOuter) ? i + 2 : i;
+      let yearA, yearB, indexA, indexB, ewA, ewB;
+      // Special case for inserting a zero growth year on the first point when measuring backwards.
+      // (Hidden start point.)
+      if (i === 0 && direction == backwardInTime) {
+        yearA = (Lt.insertZeroGrowth.adjustOuter) ? comparisonYear : comparisonYear - 2;
+        yearB = (Lt.insertZeroGrowth.adjustOuter) ? comparisonYear + 1 : comparisonYear - 1;
+        indexA = 1;
+        indexB = 1;
+        ewA = false;
+        ewB = true;
       } else {
-        indexA = (Lt.insertZeroGrowth.adjustOuter) ? i : i + 1;
-        indexB = (Lt.insertZeroGrowth.adjustOuter) ? i : i + 2;
+        // See above for how years & indices decided.
+        yearA = (Lt.insertZeroGrowth.adjustOuter) ? comparisonYear + 1 : comparisonYear;
+        yearB = (Lt.insertZeroGrowth.adjustOuter) ? comparisonYear + 1 : comparisonYear - 1;
+
+        if (direction == forwardInTime) {
+          indexA = (Lt.insertZeroGrowth.adjustOuter) ? i + 1 : i;
+          indexB = (Lt.insertZeroGrowth.adjustOuter) ? i + 2 : i;
+        } else {
+          indexA = (Lt.insertZeroGrowth.adjustOuter) ? i : i + 1;
+          indexB = (Lt.insertZeroGrowth.adjustOuter) ? i : i + 2;
+        }
+
+        ewA = true;
+        ewB = false;
       }
 
       let pt_A = {
         'start': false, 'skip': false, 'break': false,
-        'year': yearA, 'earlywood': true, 'latLng': latLng
+        'year': yearA, 'earlywood': ewA, 'latLng': latLng
       };
       new_points.splice(indexA, 0, pt_A);
 
       let pt_B = {
         'start': false, 'skip': false, 'break': false,
-        'year': yearB, 'earlywood': false, 'latLng': latLng
+        'year': yearB, 'earlywood': ewB, 'latLng': latLng
       };
       new_points.splice(indexB, 0, pt_B);
       (direction == tempDirection) ? k-- : k++;
     } else {
-      let yearAdjusted = (Lt.insertZeroGrowth.adjustOuter) ? this.points[i].year + 1 : this.points[i].year - 1;
-      if (!yearAdjusted && yearAdjusted != 0) {
-        let nearest_nextPt = this.points.slice(i).find(e => !e.start && !e.break && (e.year || e.year === 0));
-        yearAdjusted = (Lt.insertZeroGrowth.adjustOuter) ? nearest_nextPt.year + 1 : nearest_nextPt.year - 1;
-      }
-
-
+      let yearAdjusted = (Lt.insertZeroGrowth.adjustOuter) ? comparisonYear + 1 : comparisonYear - 1;
       let new_pt = {
         'start': false, 'skip': false, 'break': false,
         'year': yearAdjusted, 'earlywood': true, 'latLng': latLng
@@ -792,10 +797,15 @@ function MeasurementData (dataObject, Lt) {
     let second_points = (direction == tempDirection) ? JSON.parse(JSON.stringify(this.points)).slice(0, i) :
                                                        JSON.parse(JSON.stringify(this.points)).slice(i);
 
+
     second_points.map((e, j) => {
       if (!e) return;
       if (!e.start && !e.break) e.year = e.year + year_adjustment;
-      new_points[index_adjustment + j] = e;
+      if (i) {
+        new_points[index_adjustment + j] = e;
+      } else {
+        if (!e.start) new_points[index_adjustment + j] = e;
+      }
     });
 
     this.points = new_points.filter(Boolean);
@@ -1462,7 +1472,7 @@ function VisualAsset (Lt) {
       };
 
       if (Lt.insertZeroGrowth.active) {
-        if ((Lt.measurementOptions.subAnnual && pts[i].earlywood) ||
+        if ((Lt.measurementOptions.subAnnual && pts[i].earlywood && !pts[i].start) ||
              (Lt.measurementOptions.forwardDirection && pts[i].start) ||
              (!Lt.measurementOptions.forwardDirection && pts[i + 1]?.start) || pts[i].break) {
           alert('Zero width years must be added at the annual ring boundary, (i.e. latewood points)');
