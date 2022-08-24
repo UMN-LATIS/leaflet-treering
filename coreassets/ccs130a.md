@@ -11,7 +11,7 @@ var corePath = 'ccs130a';
 
 var initialData = {};
 
-var coreData = {'savePermission': true, 'saveURL': '/test', 'ppm': 0, 'popoutUrl': "ccs130a.html", 'assetName': "CCS130A", 'hasLatewood': true,
+var coreData = {'savePermission': false, 'saveURL': '/test', 'ppm': 0, 'popoutUrl': "ccs130a.html", 'assetName': "CCS130A", 'hasLatewood': true,
     'initialData': initialData };
 
 </script>
