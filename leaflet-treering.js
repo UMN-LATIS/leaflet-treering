@@ -111,8 +111,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
   this.annotationTools = new ButtonBar(this, [this.annotationAsset.createBtn, this.annotationAsset.deleteBtn], 'comment', 'Manage annotations');
   this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
-  // add this.insertBreak.btn below once fixed
-  this.editTools = new ButtonBar(this, [this.dating.btn, this.insertPoint.btn, this.convertToStartPoint.btn, this.deletePoint.btn, this.insertZeroGrowth.btn, this.cut.btn], 'edit', 'Edit existing measurements');
+  this.editTools = new ButtonBar(this, [this.dating.btn, this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.deletePoint.btn, this.insertZeroGrowth.btn, this.cut.btn], 'edit', 'Edit existing measurements');
   this.ioTools = new ButtonBar(this, ioBtns, 'folder_open', 'Save or upload a record of measurements, annotations, etc.');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
@@ -1479,10 +1478,6 @@ function VisualAsset (Lt) {
         } else {
           Lt.insertZeroGrowth.openDialog(e, i);
         }
-      }
-
-      if (Lt.insertBreak.active) {
-        Lt.insertBreak.action(i);
       }
 
       if (Lt.dating.active) {
@@ -4177,6 +4172,11 @@ function InsertZeroGrowth(Lt) {
  * @param {Ltreering} Lt - Leaflet treering object
  */
 function InsertBreak(Lt) {
+  this.firstLatLng = null;
+  this.secondLatLng = null;
+  this.closestFirstIndex = null;
+  this.closestSecondIndex = null;
+
   this.active = false;
   this.btn = new Button(
     'broken_image',
@@ -4190,7 +4190,66 @@ function InsertBreak(Lt) {
    * @function action
    * @param i int - add the break point after index i
    */
-  InsertBreak.prototype.action = function(i) {
+  InsertBreak.prototype.action = function() {
+    Lt.viewer.getContainer().style.cursor = 'pointer';
+
+    $(Lt.viewer.getContainer()).click(e => {
+      // Prevent jQuery event error.
+      if (!e.originalEvent) return;
+
+      // Check if click is for second break placement decision first.
+      // Then assign first click placement value, etc..
+      if (this.firstLatLng && !this.secondLatLng) {
+        this.secondLatLng = Lt.viewer.mouseEventToLatLng(e);
+
+        this.closestSecondIndex = Lt.helper.closestPointIndex(this.secondLatLng);
+        if (!this.closestSecondIndex && this.closestSecondIndex != 0) {
+          alert('New break points must be within existing points. Use the create toolbar to add new points to the series.');
+          return;
+        };
+
+        // Check if both break points would be placed in same point interval.
+        // If not, throw alert and have user choose second point again.
+        // Add 1 to closestFirstIndex to account for its own index since it was spliced in previously.
+        if (this.closestFirstIndex + 1 !== this.closestSecondIndex) {
+          alert('To insert a within-ring break, the two new points must be placed between two existing and consecutive points.');
+          this.secondLatLng = null;
+          this.closestSecondIndex = null;
+          return;
+        }
+
+        // Snap inserted point to nearest polyline.
+        let secondLayerCoord = Lt.viewer.latLngToLayerPoint(this.secondLatLng)
+        let secondSnapLayerCoord = Lt.visualAsset.lines[this.closestSecondIndex].closestLayerPoint(secondLayerCoord)
+        let secondSnapLatLng = Lt.viewer.layerPointToLatLng(secondSnapLayerCoord)
+        let secondBreakPt = {'start': true, 'skip': false, 'break': false, 'latLng': secondSnapLatLng};
+        Lt.data.points.splice(this.closestSecondIndex, 0, secondBreakPt);
+        Lt.visualAsset.reload();
+
+        this.disable();
+      } else if (!this.firstLatLng) {
+        this.firstLatLng = Lt.viewer.mouseEventToLatLng(e);
+
+        this.closestFirstIndex = Lt.helper.closestPointIndex(this.firstLatLng);
+        if (!this.closestFirstIndex && this.closestFirstIndex != 0) {
+          alert('New break points must be within existing points. Use the create toolbar to add new points to the series.');
+          this.firstLatLng = null;
+          this.closestFirstIndex = null;
+          return;
+        };
+
+        // Snap inserted point to nearest polyline.
+        let firstLayerCoord = Lt.viewer.latLngToLayerPoint(this.firstLatLng)
+        let firstSnapLayerCoord = Lt.visualAsset.lines[this.closestFirstIndex].closestLayerPoint(firstLayerCoord)
+        let firstSnapLatLng = Lt.viewer.layerPointToLatLng(firstSnapLayerCoord)
+        let firstBreakPt = {'start': false, 'skip': false, 'break': true, 'latLng': firstSnapLatLng};
+        Lt.data.points.splice(this.closestFirstIndex, 0, firstBreakPt);
+        Lt.visualAsset.reload();
+
+      }
+    });
+
+    /*
     var new_points = Lt.data.points;
     var second_points = Object.values(Lt.data.points).splice(i + 1, Lt.data.index - 1);
     var first_point = true;
@@ -4266,6 +4325,7 @@ function InsertBreak(Lt) {
         Lt.visualAsset.reload();
       }
     });
+    */
   };
 
   /**
@@ -4275,7 +4335,7 @@ function InsertBreak(Lt) {
   InsertBreak.prototype.enable = function() {
     this.btn.state('active');
     this.active = true;
-    Lt.viewer.getContainer().style.cursor = 'pointer';
+    this.action();
   };
 
   /**
@@ -4285,7 +4345,19 @@ function InsertBreak(Lt) {
   InsertBreak.prototype.disable = function() {
     $(Lt.viewer.getContainer()).off('click');
     this.btn.state('inactive');
+
+    // Remove incomplete break point sets.
+    if ((!this.secondLatLng || !this.closestSecondIndex) && this.closestFirstIndex) {
+      Lt.data.points.splice(this.closestFirstIndex, 1);
+      Lt.visualAsset.reload();
+    }
+
     this.active = false;
+    this.firstLatLng = null;
+    this.secondLatLng = null;
+    this.closestFirstIndex = null;
+    this.closestSecondIndex = null;
+
     Lt.viewer.getContainer().style.cursor = 'default';
     Lt.viewer.dragging.enable();
     Lt.mouseLine.disable();
