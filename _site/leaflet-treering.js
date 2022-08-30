@@ -61,7 +61,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   //error alerts in 'measuring' mode aka popout window
   //will not alert in 'browsing' mode aka DE browser window
   if (window.name.includes('popout') && options.ppm === 0 && !options.initialData.ppm) {
-    alert('Calibration needed: set p/mm in asset metadata or use calibration tool.');
+    alert('Calibration needed: set p/mm in asset metadata or use calibration tool');
   }
 
   this.autoscroll = new Autoscroll(this.viewer);
@@ -526,7 +526,7 @@ function MeasurementData (dataObject, Lt) {
 
     var i = Lt.helper.closestPointIndex(latLng);
     if (!i && i != 0) {
-      alert('New point must be within existing points. Use the create toolbar to add new points to the series.');
+      alert('New point must be within existing points. Use the create toolbar to add new points to the series');
       return;
     };
 
@@ -570,7 +570,7 @@ function MeasurementData (dataObject, Lt) {
         }
       }
     } else {
-      alert('Please insert new point closer to connecting line.')
+      alert('Please insert new point closer to connecting line')
       return
     };
 
@@ -1981,7 +1981,7 @@ function AnnotationAsset(Lt) {
 
         if (optionsElmList.length == 0) {
           this.dialogAttributesWindow.open();
-          alert("Attribute must have at least one option.");
+          alert("Attribute must have at least one option");
         };
 
         function uniqueNumber () {
@@ -1998,7 +1998,7 @@ function AnnotationAsset(Lt) {
             this.dialogAttributesWindow.open();
             if (this.alertCount == 0) { // alert fires 3 times without catch for unknown reason
               this.alertCount += 1;
-              alert("Attribute must have a title and all options must be named.");
+              alert("Attribute must have a title and all options must be named");
             };
             allOptionsTitled = false;
             break;
@@ -3353,7 +3353,7 @@ function Dating(Lt) {
       // Need to provide way for users to "re-date" them.
       let pt_forLocation = Lt.data.points[i];
       if (i == 0 || !Lt.data.points[i - 1]) {
-        alert("Cannot date first point. Select a different point to adjust dating.")
+        alert("Cannot date first point. Select a different point to adjust dating")
         return
       } else if (Lt.data.points[i].start) {
         i--;
@@ -3397,7 +3397,7 @@ function Dating(Lt) {
       this.popup.remove(Lt.viewer);
 
       if (!new_year && new_year != 0) {
-        alert("Entered year must be a number.");
+        alert("Entered year must be a number");
         return
       }
 
@@ -3644,7 +3644,7 @@ function CreateZeroGrowth(Lt) {
         var yearAdjustment = Lt.data.year;
         if (yearsDecrease) yearAdjustment--;
       } else {
-        alert('Must be inserted at end of year.');
+        alert('Must be inserted at end of year');
         return;
       };
 
@@ -4046,7 +4046,7 @@ function ConvertToStartPoint(Lt) {
     // Start points are camouflage when measuring backwards.
     if (Lt.data.points[i].start || Lt.data.points[i].break ||
         (!Lt.measurementOptions.forwardDirection && Lt.data.points[i + 1] && Lt.data.points[i + 1].start)) {
-      alert("Can only convert measurement points.")
+      alert("Can only convert measurement points")
       return;
     }
 
@@ -4204,15 +4204,17 @@ function InsertBreak(Lt) {
 
         this.closestSecondIndex = Lt.helper.closestPointIndex(this.secondLatLng);
         if (!this.closestSecondIndex && this.closestSecondIndex != 0) {
-          alert('New break points must be within existing points. Use the create toolbar to add new points to the series.');
+          alert('New break points must be within existing points. Use the create toolbar to add new points to the series');
           return;
         };
 
         // Check if both break points would be placed in same point interval.
         // If not, throw alert and have user choose second point again.
-        // Add 1 to closestFirstIndex to account for its own index since it was spliced in previously.
-        if (this.closestFirstIndex + 1 !== this.closestSecondIndex) {
-          alert('To insert a within-ring break, the two new points must be placed between two existing and consecutive points.');
+        // Add/subtract 1 to closestFirstIndex to account for its own index since it was spliced in previously.
+        // Adding & subtracting dependent on measurement direction.
+        let adjustedFirstIndex = this.closestFirstIndex + 1;
+        if (adjustedFirstIndex !== this.closestSecondIndex) {
+          alert('To insert a within-ring break, the two new points must be placed between two existing and directionally consecutive points');
           this.secondLatLng = null;
           this.closestSecondIndex = null;
           return;
@@ -4232,7 +4234,7 @@ function InsertBreak(Lt) {
 
         this.closestFirstIndex = Lt.helper.closestPointIndex(this.firstLatLng);
         if (!this.closestFirstIndex && this.closestFirstIndex != 0) {
-          alert('New break points must be within existing points. Use the create toolbar to add new points to the series.');
+          alert('New break points must be within existing points. Use the create toolbar to add new points to the series');
           this.firstLatLng = null;
           this.closestFirstIndex = null;
           return;
