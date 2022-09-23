@@ -1211,11 +1211,16 @@ function VisualAsset (Lt) {
             tooltip = 'Start';
           }
           // First point is treated as a measurement point, not a start point.
-          if (i === 0 && Lt.data.points[i + 1]) {
-            var desc = (!Lt.measurementOptions.subAnnual) ? '' :
-                       (Lt.data.points[i + 1].earlywood) ? ', late' : ', early';
-            var c = (!Lt.measurementOptions.subAnnual || !Lt.data.points[i + 1].earlywood) ? 1 : 0;
-            tooltip = String(Lt.data.points[i + 1].year + c) + desc;
+          if (i === 0) {
+            let firstMeasurementPt = Lt.data.points.find(e => !e.start && !e.break && (e.year || e.year === 0));
+            if (firstMeasurementPt) {
+              var desc = (!Lt.measurementOptions.subAnnual) ? '' :
+                         (Lt.data.points[i + 1].earlywood) ? ', late' : ', early';
+              var c = (!Lt.measurementOptions.subAnnual || !firstMeasurementPt.earlywood) ? 1 : 0;
+              tooltip = String(firstMeasurementPt.year + c) + desc;
+            } else {
+              tooltip = 'Start';
+            }
           // Last point is treated as a start point, not a measurement point.
           } else if (i === Lt.data.points.length - 1) {
             tooltip = 'Start';
@@ -1541,7 +1546,7 @@ function VisualAsset (Lt) {
       if (pts[i].break) {
         closest_prevPt = pts.slice(0, i).reverse().find(e => !e.start && !e.break && e.year);
         if (annual) {
-          year = (forward) ? closest_prevPt.year + 1 : closest_prevPt.year;
+          year = (forward) ? closest_prevPt?.year + 1 : closest_prevPt?.year;
         } else {
           if (forward) {
             year = (closest_prevPt.earlywood) ? closest_prevPt.year : closest_prevPt.year + 1;
@@ -3377,7 +3382,7 @@ function Dating(Lt) {
       document.getElementById('year_input').select();
 
       $(Lt.viewer.getContainer()).click(e => {
-        popup.remove(Lt.viewer);
+        this.popup.remove(Lt.viewer);
         this.disable();
       });
     }
@@ -4250,6 +4255,8 @@ function InsertBreak(Lt) {
           return;
         };
 
+        Lt.undo.push();
+
         // Snap inserted point to nearest polyline.
         if (!Lt.visualAsset.lines[i]) return;
         let firstLayerCoord = Lt.viewer.latLngToLayerPoint(this.firstLatLng)
@@ -4290,6 +4297,7 @@ function InsertBreak(Lt) {
     // Remove incomplete break point sets.
     if ((!this.secondLatLng || !this.closestSecondIndex) && this.closestFirstIndex) {
       Lt.data.points.splice(this.closestFirstIndex, 1);
+      Lt.undo.stack.pop();
       Lt.visualAsset.reload();
     }
 
@@ -5830,7 +5838,7 @@ function Helper(Lt) {
   }
 
   /**
-   * Reverses points data structure so points ascend in time.
+   * Finds true distance between two points.
    * @function trueDistance
    * @param {first point.latLng} p1
    * @param {second point.latLng} p2
@@ -5889,13 +5897,14 @@ function Helper(Lt) {
      };
    };
 
-   // reverse array order so years ascending
+   // reverse array order so years ascending, but get ending year first
+   let endPt_withYear = pts.find(e => !e.start && !e.break && (e.year || e.year === 0));
    pts.reverse();
 
    // change last point from start to end point
    if (pts[lastIndex] && pts[before_lastIndex]) {
      pts[lastIndex].start = false;
-     pts[lastIndex].year =  (pref.subAnnual) ? pts[before_lastIndex].year : pts[before_lastIndex].year + 1;
+     pts[lastIndex].year =  (pref.subAnnual) ? endPt_withYear.year : endPt_withYear.year + 1;
      pts[lastIndex].earlywood = false;
    };
 
