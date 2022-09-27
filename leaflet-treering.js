@@ -1366,13 +1366,14 @@ function VisualAsset (Lt) {
     // Start and end points swapped when measuring backwards.
     // Only apply this when active measuring disabled.
     if (backward && i === 0) {
-      if (pts[i + 1]) {
+      let nextMeasurePt = pts.find(e => !e.start && !e.break && (e.year || e.year === 0));
+      if (nextMeasurePt && pts[i + 1]) {
         if (subAnnual) {
-          if (pts[i + 1].earlywood) {
+          if (nextMeasurePt.earlywood) {
             // Decades are colored red.
-            color = (pts[i + 1].year % 10 == 0) ? 'dark_red' : 'dark_blue';
+            color = (nextMeasurePt.year % 10 == 0) ? 'dark_red' : 'dark_blue';
           } else { // Otherwise, point is latewood.
-            color = (pts[i + 1].year % 10 == 0) ? 'light_red' : 'light_blue';
+            color = (nextMeasurePt.year % 10 == 0) ? 'light_red' : 'light_blue';
           }
         } else {
           color = ((pts[i + 1].year + 1) % 10 == 0) ? 'dark_red' : 'light_blue';
@@ -1544,14 +1545,23 @@ function VisualAsset (Lt) {
 
       // Check if break in middle of decade measurment.
       if (pts[i].break) {
-        closest_prevPt = pts.slice(0, i).reverse().find(e => !e.start && !e.break && e.year);
+        let closest_prevPt = pts.slice(0, i).reverse().find(e => !e.start && !e.break && (e.year || e.year === 0));
+        // Special case for first start point.
+        if (!closest_prevPt) {
+          let closest_nextPt = pts.slice(i).find(e => !e.start && !e.break && (e.year || e.year === 0));
+          closest_prevPt = {
+            "year": (forward) ? closest_nextPt?.year - 1 : ((annual) ? closest_nextPt?.year + 1 : closest_nextPt?.year),
+            "earlywood": (annual) ? closest_nextPt?.earlywood : !closest_nextPt?.earlywood,
+          }
+        }
+
         if (annual) {
           year = (forward) ? closest_prevPt?.year + 1 : closest_prevPt?.year;
         } else {
           if (forward) {
-            year = (closest_prevPt.earlywood) ? closest_prevPt.year : closest_prevPt.year + 1;
+            year = (closest_prevPt?.earlywood) ? closest_prevPt?.year : closest_prevPt?.year + 1;
           } else {
-            year = closest_prevPt.year;
+            year = closest_prevPt?.year;
           }
         }
       }
