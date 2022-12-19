@@ -5232,6 +5232,7 @@ function SaveLocal(Lt) {
       'points': Lt.data.points,
       'attributesObjectArray': Lt.annotationAsset.attributesObjectArray,
       'annotations': Lt.aData.annotations,
+      'ppm': Lt.meta.ppm,
       'ptWidths': Lt.helper.findDistances(),
     };
 
@@ -5429,7 +5430,7 @@ function MetaDataText (Lt) {
 
     let dpi = Lt.meta.ppm * 25.4;
     let ppmText = Math.round(Lt.meta.ppm).toLocaleString() + " p/mm (" + Math.round(dpi).toLocaleString() + " dpi) &nbsp;|&nbsp; "
-    if (!Lt.meta.ppmCalibration && !Lt.options.ppm && Lt.meta.ppm == Lt.defaultResolution) ppmText = "Resolution unknown &nbsp;|&nbsp; "
+    if (!Lt.meta.ppmCalibration && !Lt.options.ppm && !Lt.options.initialData.ppm && Lt.meta.ppm == Lt.defaultResolution) ppmText = "Resolution unknown &nbsp;|&nbsp; "
 
     let zoomPercentage = 100 * ((Lt.viewer.getZoom() - Lt.viewer.getMinZoom()) / (Lt.viewer.getMaxZoom() - Lt.viewer.getMinZoom()));
     let zoom = Math.round(zoomPercentage) + '% zoom';
