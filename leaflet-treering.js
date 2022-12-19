@@ -5232,6 +5232,7 @@ function SaveLocal(Lt) {
       'points': Lt.data.points,
       'attributesObjectArray': Lt.annotationAsset.attributesObjectArray,
       'annotations': Lt.aData.annotations,
+      'ppm': Lt.meta.ppm,
       'ptWidths': Lt.helper.findDistances(),
     };
 
