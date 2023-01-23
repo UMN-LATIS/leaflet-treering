@@ -113,6 +113,10 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.ioTools = new ButtonBar(this, ioBtns, 'folder_open', 'Save or upload a record of measurements, annotations, etc.');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
+  // Code hosted in Leaflet.AreaCapture.js
+  this.areaCaptureInterface = new AreaCaptureInterface(this);
+  this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'interests', 'Manage areas');
+
   this.tools = [this.viewData, this.calibration, this.dating, this.createPoint, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
 
   this.baseLayer = {
@@ -157,6 +161,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       this.annotationTools.bar.addTo(this.viewer);
       this.settings.bar.addTo(this.viewer);
       this.undoRedoBar.addTo(this.viewer);
+      this.areaTools.bar.addTo(this.viewer);
     } else {
       this.popout.btn.addTo(this.viewer);
       this.viewData.btn.addTo(this.viewer);
@@ -249,6 +254,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     this.editTools.collapse();
     this.ioTools.collapse();
     this.settings.collapse();
+    this.areaTools.collapse();
   };
 
   // we need the max native zoom, which is set on the tile layer and not the map. getMaxZoom will return a synthetic value which is no good for measurement
@@ -5768,7 +5774,6 @@ function KeyboardShortCutDialog (Lt) {
 
   };
 };
-
 
 /**
  * Hosts all global helper functions
