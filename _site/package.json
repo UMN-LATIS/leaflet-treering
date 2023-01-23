@@ -13,6 +13,7 @@
     "leaflet": "^1.8.0",
     "leaflet-dialog": "^1.0.5",
     "leaflet-easybutton": "~2.2.0",
+    "leaflet-ellipse": "^0.9.1",
     "leaflet-fullscreen": "~1.0.2",
     "leaflet-minimap": "~3.4.0",
     "leaflet-modal": "~0.1.3",

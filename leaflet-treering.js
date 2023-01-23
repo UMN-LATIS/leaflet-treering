@@ -113,11 +113,14 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.ioTools = new ButtonBar(this, ioBtns, 'folder_open', 'Save or upload a record of measurements, annotations, etc.');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
+  this.tools = [this.viewData, this.calibration, this.dating, this.createPoint, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
+
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
   this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'interests', 'Manage areas');
-
-  this.tools = [this.viewData, this.calibration, this.dating, this.createPoint, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
+  this.areaCaptureInterface.tools.map(tool => {
+    this.tools.push(tool);
+  })
 
   this.baseLayer = {
     'Tree Ring': base_layer,
@@ -245,7 +248,9 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       delete this.annotationAsset.dialogAttributesWindow;
     };
 
-    this.tools.forEach(e => { e.disable() });
+    this.tools.forEach(e => { 
+      e.disable() 
+    });
   };
 
   LTreering.prototype.collapseTools = function() {
