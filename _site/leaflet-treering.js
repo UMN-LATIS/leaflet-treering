@@ -131,7 +131,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     'Points': this.visualAsset.markerLayer,
     'H-bar': this.mouseLine.layer,
     'Lines': this.visualAsset.lineLayer,
-    'Annotations': this.annotationAsset.markerLayer
+    'Annotations': this.annotationAsset.markerLayer,
+    'Ellipses': this.areaCaptureInterface.ellipseLayer,
   };
 
   /**
@@ -163,8 +164,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       this.editTools.bar.addTo(this.viewer);
       this.annotationTools.bar.addTo(this.viewer);
       this.settings.bar.addTo(this.viewer);
-      this.undoRedoBar.addTo(this.viewer);
       this.areaTools.bar.addTo(this.viewer);
+      this.undoRedoBar.addTo(this.viewer);
     } else {
       this.popout.btn.addTo(this.viewer);
       this.viewData.btn.addTo(this.viewer);
