@@ -5,40 +5,42 @@
  */
 
 /**
- * Interface for anatomy area capture tools.
+ * Interface for area capture tools. Instantiates & connects all area or supprting tools. 
  * @constructor
- * @param {object} LTreering - Lt
+ * 
+ * @param {object} Lt - LTreering object from leaflet-treering.js. 
  */
 function AreaCaptureInterface(Lt) {
+    this.treering = Lt;
     this.calculator = new Calculator(this);
 
-    this.ellipseData = new EllipseData(this, Lt);
-    this.newEllipse = new NewEllipse(this, Lt); 
+    this.ellipseData = new EllipseData(this);
+    this.newEllipse = new NewEllipse(this); 
     
     this.btns = [this.newEllipse.btn];
     this.tools = [this.newEllipse];
-    this.ellipseLayer = L.layerGroup().addTo(Lt.viewer);
-    this.guideMarkerLayer = L.layerGroup().addTo(Lt.viewer);
-    this.guideLineLayer = L.layerGroup().addTo(Lt.viewer);
+    this.ellipseLayer = L.layerGroup().addTo(this.treering.viewer);
+    this.guideMarkerLayer = L.layerGroup().addTo(this.treering.viewer);
+    this.guideLineLayer = L.layerGroup().addTo(this.treering.viewer);
 }
 
 /**
- * Storage of ellipse points.  
+ * Storage of ellipse points and related meta data.  
  * @constructor
- * @param {object} AreaCaptureInterface - Inte
- * @param {object} LTreering - Lt
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.  
  */
-function EllipseData(Inte, Lt) {
+function EllipseData(Inte) {
     this.elements = [];
 }
 
 /**
  * Tool for capturing area with ellipses. 
  * @constructor
- * @param {object} AreaCaptureInterface - Inte
- * @param {object} LTreering - Lt
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
  */
-function NewEllipse(Inte, Lt) {
+function NewEllipse(Inte) {
     this.btn = new Button (
         'scatter_plot',
         'Create elliptical area measurements',
@@ -47,75 +49,76 @@ function NewEllipse(Inte, Lt) {
     );
     
     /**
-     * Enable tool. 
+     * Enable tool by activating button & starting event chain. 
      * @function
      */
     NewEllipse.prototype.enable = function() {
         this.btn.state('active');
-        Lt.viewer.getContainer().style.cursor = 'pointer';
+        Inte.treering.viewer.getContainer().style.cursor = 'pointer';
 
         this.action();
     }
 
     /**
-     * Disable tool. 
+     * Disable tool by removing all events & setting button to inactive. 
      * @function
      */
     NewEllipse.prototype.disable = function() {
         this.btn.state('inactive');
-        Lt.viewer.getContainer().style.cursor = 'default';
+        Inte.treering.viewer.getContainer().style.cursor = 'default';
 
-        $(Lt.viewer.getContainer()).off('click');
+        $(Inte.treering.viewer.getContainer()).off('click');
         Inte.guideMarkerLayer.clearLayers();
 
-        $(Lt.viewer.getContainer()).off('mousemove');
+        $(Inte.treering.viewer.getContainer()).off('mousemove');
         Inte.guideLineLayer.clearLayers();
     }
 
     /**
-     * Drives events which create a new ellipse. 
+     * Drives events which create new ellipses. 
      * @function
      */
     NewEllipse.prototype.action = function() {
         let count = 0;
         let centerLatLng, majorLatLngA, majorLatLngB, minorLatLng;
-        let majorMarkerA, majorMarkerB;
         let radians, directionCorrection;
 
-        $(Lt.viewer.getContainer()).click(e => {
+        $(Inte.treering.viewer.getContainer()).click(e => {
             // Prevent jQuery event error.
             if (!e.originalEvent) return;
 
             count++;
             switch (count) {
                 case 1:
-                    majorLatLngA = Lt.viewer.mouseEventToLatLng(e);
-                    majorMarkerA = this.createGuideMarker(majorLatLngA);
-                    this.createGuideLine(majorLatLngA, -1, null);
+                    majorLatLngA = Inte.treering.viewer.mouseEventToLatLng(e);
+                    this.createGuideMarker(majorLatLngA);
+                    this.createGuideLine(majorLatLngA);
                     break;
                 case 2:
-                    majorLatLngB = Lt.viewer.mouseEventToLatLng(e);
-                    majorMarkerB = this.createGuideMarker(majorLatLngB);
-                    this.connectMarkers(majorMarkerA, majorMarkerB);
+                    majorLatLngB = Inte.treering.viewer.mouseEventToLatLng(e);
+                    this.createGuideMarker(majorLatLngB);
+                    this.connectMarkerLatLngs(majorLatLngA, majorLatLngB);
 
-                    // Find center of major axis: 
+                    // Find center of major axis via midpoint: 
                     centerLatLng = {
                         "lat": (majorLatLngA.lat + majorLatLngB.lat) / 2,
                         "lng": (majorLatLngA.lng + majorLatLngB.lng) / 2,
                     }
                     this.createGuideMarker(centerLatLng);
 
-                    // Use CAH geometry rule to determine radians in radians: 
+                    // Next guide line informs the minor axis. Minor axis must be 90 degrees from major axis. 
+                    // Use CAH geometry rule to determine angle adjustment in radians: 
                     adjacentLatLng = {
                         "lat": centerLatLng.lat,
                         "lng": majorLatLngB.lng,
                     }
                     radians = Math.acos(Inte.calculator.distance(centerLatLng, adjacentLatLng) / Inte.calculator.distance(centerLatLng, majorLatLngB));
-                    // Radians value is always positive. If majorLatLngB is in the 2cd or 4th quadrent (in relation to centerLatLng),
+                    // Returned radians value is always positive. If majorLatLngB is in the 2cd or 4th quadrent (in relation to centerLatLng),
                     // the radians must be multiplied by -1 to correct the rotation orientation. 
-                    directionCorrection = (Inte.calculator.inFirstQuadrent(centerLatLng, majorLatLngB) || Inte.calculator.inThirdQuadrent(centerLatLng, majorLatLngB)) ? 1 : -1;
-                    let rightRotatedRadians = (Math.PI / 2) + (directionCorrection * radians);
+                    directionCorrection = (Inte.calculator.inSecondQuadrent(centerLatLng, majorLatLngB) || Inte.calculator.inFourthQuadrent(centerLatLng, majorLatLngB)) ? -1 : 1;
+                    let rotatedRightRadians = (Math.PI / 2) + (directionCorrection * radians);
 
+                    // Determine major axis line to calculate direction of minor axis guide line. 
                     let slope = (majorLatLngA.lat - majorLatLngB.lat) / (majorLatLngA.lng - majorLatLngB.lng);
                     let intercept = majorLatLngA.lat - (slope * majorLatLngA.lng);
                     let majorAxisLine = {
@@ -123,10 +126,10 @@ function NewEllipse(Inte, Lt) {
                         "intercept": intercept,
                     }
 
-                    this.createGuideLine(centerLatLng, rightRotatedRadians, majorAxisLine);
+                    this.createGuideLine(centerLatLng, rotatedRightRadians, majorAxisLine);
                     break;
                 case 3:
-                    minorLatLng = Lt.viewer.mouseEventToLatLng(e);
+                    minorLatLng = Inte.treering.viewer.mouseEventToLatLng(e);
                     this.createGuideMarker(minorLatLng);
 
                     const latLngToMetersConstant = 111139;
@@ -141,7 +144,7 @@ function NewEllipse(Inte, Lt) {
 
                     // Reset event series: 
                     count = 0;
-                    $(Lt.viewer.getContainer()).off('mousemove');
+                    $(Inte.treering.viewer.getContainer()).off('mousemove');
                     Inte.guideMarkerLayer.clearLayers();
                     Inte.guideLineLayer.clearLayers();
             }
@@ -149,20 +152,23 @@ function NewEllipse(Inte, Lt) {
     }
 
     /**
-     * Creates mousemove event that create a guide line some given angle from a point to the mouse. 
+     * Creates mousemove event to create a guide line given an angle and line from the major axis. 
      * @function
-     * @param {object} LatLng - fromLatLng
-     * @param {float} Radian - radiansFromMajorAxis
+     * 
+     * @param {object} fromLatLng - Originating location of line to mouse. 
+     * @param {float} [radiansFromMajorAxis = -1] - Optional, forces line to have a constant angle from the major axis. 
+     * @param {object} [majorAxisLine = null] - Optional, informs direction of guideline (above or below major axis) with respect to mouse position. 
      */
-    NewEllipse.prototype.createGuideLine = function(fromLatLng, radiansFromMajorAxis, majorAxisLine) {
-        $(Lt.viewer.getContainer()).off('mousemove');
-        $(Lt.viewer.getContainer()).mousemove(e => {
+    NewEllipse.prototype.createGuideLine = function(fromLatLng, radiansFromMajorAxis = -1, majorAxisLine = null) {
+        $(Inte.treering.viewer.getContainer()).off('mousemove');
+        $(Inte.treering.viewer.getContainer()).mousemove(e => {
             Inte.guideLineLayer.clearLayers();
 
-            let eventLatLng = Lt.viewer.mouseEventToLatLng(e);
+            let eventLatLng = Inte.treering.viewer.mouseEventToLatLng(e);
 
             let toLatLng = eventLatLng;
             if (radiansFromMajorAxis > 0) {
+                // Direction of guide line is determined by if mouse is above or below the major axis. 
                 let direction = (eventLatLng.lat > (majorAxisLine.slope * eventLatLng.lng + majorAxisLine.intercept)) ? 1 : -1;
                 let length = Inte.calculator.distance(fromLatLng, eventLatLng);
                 toLatLng = {
@@ -180,8 +186,11 @@ function NewEllipse(Inte, Lt) {
     }
 
     /**
-     * Creates click event to get center, major radius, and minor radius of new ellipse. 
+     * Creates a guide marker. 
      * @function
+     * 
+     * @param {object} latLng - Location to create marker. 
+     * @returns {object} Created marker object. 
      */
     NewEllipse.prototype.createGuideMarker = function(latLng) {
         let marker = L.marker(latLng, { icon: L.divIcon({className: "fa fa-plus guide"}) });
@@ -193,11 +202,11 @@ function NewEllipse(Inte, Lt) {
     /**
      * Draws line between two markers.  
      * @function
+     * 
+     * @param {object} fromLatLng - Starting location of line. 
+     * @param {object} toLatLng - Ending location of line. 
      */
-    NewEllipse.prototype.connectMarkers = function(fromMarker, toMarker) {
-        let fromLatLng = fromMarker.getLatLng();
-        let toLatLng = toMarker.getLatLng();
-
+    NewEllipse.prototype.connectMarkerLatLngs = function(fromLatLng, toLatLng) {
         let line = L.polyline([fromLatLng, toLatLng], {color: 'red'});
         Inte.guideMarkerLayer.addLayer(line);
     }
@@ -206,13 +215,30 @@ function NewEllipse(Inte, Lt) {
 /**
  * Tool for capturing area with ellipses. 
  * @constructor
- * @param {object} AreaCaptureInterface - Inte
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
  */
 function Calculator(Inte) {
+    /**
+     * Calculates distance between two locations. 
+     * @function
+     * 
+     * @param {object} fromLatLng - Starting location.
+     * @param {object} toLatLng - Ending location. 
+     * @returns {float} Distance between the given points. 
+     */
     Calculator.prototype.distance = function(fromLatLng, toLatLng) {
         return Math.sqrt(Math.pow(fromLatLng.lat - toLatLng.lat, 2) + Math.pow(fromLatLng.lng - toLatLng.lng, 2));
     }
 
+    /**
+     * Determines if a location is in the first quadrent relative to a central location. 
+     * @function
+     * 
+     * @param {object} centralLatLng - Central location. 
+     * @param {object} otherLatLng - Location to test. 
+     * @returns {boolean} Whether or not the test location is in the first quadrent. 
+     */
     Calculator.prototype.inFirstQuadrent = function(centralLatLng, otherLatLng) {
         let standardizedLat = otherLatLng.lat - centralLatLng.lat;
         let standardizedLng = otherLatLng.lng - centralLatLng.lng;
@@ -220,6 +246,14 @@ function Calculator(Inte) {
         return standardizedLat > 0 && standardizedLng > 0;
     }
 
+    /**
+     * Determines if a location is in the second quadrent relative to a central location. 
+     * @function
+     * 
+     * @param {object} centralLatLng - Central location. 
+     * @param {object} otherLatLng - Location to test. 
+     * @returns {boolean} Whether or not the test location is in the second quadrent. 
+     */
     Calculator.prototype.inSecondQuadrent = function(centralLatLng, otherLatLng) {
         let standardizedLat = otherLatLng.lat - centralLatLng.lat;
         let standardizedLng = otherLatLng.lng - centralLatLng.lng;
@@ -227,6 +261,14 @@ function Calculator(Inte) {
         return standardizedLat > 0 && standardizedLng < 0;
     }
 
+    /**
+     * Determines if a location is in the third quadrent relative to a central location. 
+     * @function
+     * 
+     * @param {object} centralLatLng - Central location. 
+     * @param {object} otherLatLng - Location to test. 
+     * @returns {boolean} Whether or not the test location is in the third quadrent. 
+     */
     Calculator.prototype.inThirdQuadrent = function(centralLatLng, otherLatLng) {
         let standardizedLat = otherLatLng.lat - centralLatLng.lat;
         let standardizedLng = otherLatLng.lng - centralLatLng.lng;
@@ -234,6 +276,14 @@ function Calculator(Inte) {
         return standardizedLat < 0 && standardizedLng < 0;
     }
 
+    /**
+     * Determines if a location is in the fourth quadrent relative to a central location. 
+     * @function
+     * 
+     * @param {object} centralLatLng - Central location. 
+     * @param {object} otherLatLng - Location to test. 
+     * @returns {boolean} Whether or not the test location is in the fourth quadrent. 
+     */
     Calculator.prototype.inFourthQuadrent = function(centralLatLng, otherLatLng) {
         let standardizedLat = otherLatLng.lat - centralLatLng.lat;
         let standardizedLng = otherLatLng.lng - centralLatLng.lng;
