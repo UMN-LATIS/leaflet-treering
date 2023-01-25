@@ -132,7 +132,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     'H-bar': this.mouseLine.layer,
     'Lines': this.visualAsset.lineLayer,
     'Annotations': this.annotationAsset.markerLayer,
-    'Ellipses': this.areaCaptureInterface.ellipseLayer,
+    'Ellipses': this.areaCaptureInterface.ellipseVisualAssets.ellipseLayer,
   };
 
   /**
