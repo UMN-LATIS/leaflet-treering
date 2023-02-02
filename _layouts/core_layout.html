@@ -145,9 +145,14 @@ void main(void){
 		}).addTo(map);
 
 		// add templates to body before interface loaded
-		$.get("templates.html", function (data) {
-			$("body").append(data);
-			var treering = new LTreering(map, "../", coreData, baseLayer, layer);
-			treering.loadInterface();
+		$.get("templates.html", function (coreassestsData) {
+			$.get("../Template.AreaCapture.html", function (areaCaptureData) {
+				$("body").append(coreassestsData);
+				$("body").append(areaCaptureData);
+
+				var treering = new LTreering(map, "../", coreData, baseLayer, layer);
+				treering.loadInterface();
+			})
+			
 		});
 	</script>

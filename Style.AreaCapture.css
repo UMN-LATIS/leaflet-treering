@@ -1,3 +1,13 @@
 .guide {
 	color: whitesmoke;
 }
+
+.AreaCapture-text {
+	font-size: 16px;
+
+	margin: 0;
+}
+
+.AreaCapture-btn {
+	cursor: pointer;
+}

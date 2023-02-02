@@ -16,6 +16,7 @@ function AreaCaptureInterface(Lt) {
 
     this.ellipseData = new EllipseData(this);
     this.ellipseVisualAssets = new EllipseVisualAssets(this);
+    this.ellipseDialogs = new EllipseDialogs(this);
 
     this.newEllipse = new NewEllipse(this); 
     
@@ -30,6 +31,7 @@ function AreaCaptureInterface(Lt) {
  * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.  
  */
 function EllipseData(Inte) {
+    this.year = 0;
     this.data = [];
 
     /**
@@ -54,7 +56,7 @@ function EllipseData(Inte) {
             "minorRadius": minorRadius, 
             "degrees": degrees,
             "area": area,
-            "year": 0,
+            "year": this.year,
         }
 
         this.data.push(newDataElement);
@@ -182,6 +184,74 @@ function EllipseVisualAssets(Inte) {
 }
 
 /**
+ * Generates dialog boxes related to ellipses. 
+ * @constructor
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
+ */
+function EllipseDialogs(Inte) {
+    this.dialog = null;
+    this.template = null;
+
+    this.size = [160, 90];
+    this.anchor = [50, 0];
+
+    EllipseDialogs.prototype.open = function() {
+        let element = document.getElementById("editDialog-AreaCapture-template").innerHTML;
+        this.template = Handlebars.compile(element);
+        let content = this.template({
+            "year": Inte.ellipseData.year,
+        });
+        
+        this.dialog = L.control.dialog({
+            "size": this.size,
+            "anchor": this.anchor,
+            "initOpen": true,
+            'position': 'topleft',
+            "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+            'minSize': [0, 0]
+        }).setContent(content).addTo(Inte.treering.viewer);
+        this.dialog.hideClose();
+
+        this.createEventListeners();
+    }
+
+    EllipseDialogs.prototype.close = function() {
+        if (this.dialog) this.dialog.destroy();
+    }
+
+    EllipseDialogs.prototype.update = function() {
+        let content = this.template({
+            "year": Inte.ellipseData.year,
+        });
+
+        this.dialog.setContent(content);
+        this.createEventListeners();
+    }
+
+    EllipseDialogs.prototype.createEventListeners = function () {
+        // Remeber dialog anchor position and size after changed. 
+        $(this.dialog._map).on('dialog:resizeend', () => { this.size = this.dialog.options.size } );
+        $(this.dialog._map).on('dialog:moveend', () => { this.anchor = this.dialog.options.anchor } );
+
+        // Year editing buttons: 
+        $("#AreaCapture-editYearBtn").on("click", () => {
+            console.log("Edit year");
+        });
+
+        $("#AreaCapture-subtractYearBtn").on("click", () => {
+            Inte.ellipseData.year--;
+            this.update();
+        });
+
+        $("#AreaCapture-addYearBtn").on("click", () => {
+            Inte.ellipseData.year++;
+            this.update();
+        });
+    }
+}
+
+/**
  * Tool for capturing area with ellipses. 
  * @constructor
  * 
@@ -203,6 +273,7 @@ function NewEllipse(Inte) {
         this.btn.state('active');
         Inte.treering.viewer.getContainer().style.cursor = 'pointer';
 
+        Inte.ellipseDialogs.open();
         this.action();
     }
 
@@ -219,6 +290,8 @@ function NewEllipse(Inte) {
 
         $(Inte.treering.viewer.getContainer()).off('mousemove');
         Inte.ellipseVisualAssets.clearGuideLines();
+
+        Inte.ellipseDialogs.close();
     }
 
     /**
@@ -292,7 +365,6 @@ function NewEllipse(Inte) {
                     $(Inte.treering.viewer.getContainer()).off('mousemove');
                     Inte.ellipseVisualAssets.clearGuideMarkers();
                     Inte.ellipseVisualAssets.clearGuideLines();
-                    
             }
         });
     }
