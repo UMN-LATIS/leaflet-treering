@@ -193,11 +193,13 @@ function EllipseDialogs(Inte) {
     this.dialog = null;
     this.template = null;
 
-    this.size = [160, 90];
+    this.size = [170, 90];
     this.anchor = [50, 0];
 
+    this.shortcutsEnabled = false;
+
     EllipseDialogs.prototype.open = function() {
-        let element = document.getElementById("editDialog-AreaCapture-template").innerHTML;
+        let element = document.getElementById("AreaCapture-incrementDialog-template").innerHTML;
         this.template = Handlebars.compile(element);
         let content = this.template({
             "year": Inte.ellipseData.year,
@@ -213,11 +215,20 @@ function EllipseDialogs(Inte) {
         }).setContent(content).addTo(Inte.treering.viewer);
         this.dialog.hideClose();
 
-        this.createEventListeners();
+        this.createDialogEventListeners();
+
+        if (!this.shortcutsEnabled) {
+            // Only do once when instantiated.
+            // Otherwise multiple listeners will be assigned. 
+            this.createShortcutEventListeners();
+            
+            this.shortcutsEnabled = true;
+        }
     }
 
     EllipseDialogs.prototype.close = function() {
         if (this.dialog) this.dialog.destroy();
+        this.dialog = null;
     }
 
     EllipseDialogs.prototype.update = function() {
@@ -226,28 +237,57 @@ function EllipseDialogs(Inte) {
         });
 
         this.dialog.setContent(content);
-        this.createEventListeners();
+        this.createDialogEventListeners();
     }
 
-    EllipseDialogs.prototype.createEventListeners = function () {
+    EllipseDialogs.prototype.createDialogEventListeners = function () {
         // Remeber dialog anchor position and size after changed. 
         $(this.dialog._map).on('dialog:resizeend', () => { this.size = this.dialog.options.size } );
         $(this.dialog._map).on('dialog:moveend', () => { this.anchor = this.dialog.options.anchor } );
 
         // Year editing buttons: 
-        $("#AreaCapture-editYearBtn").on("click", () => {
-            console.log("Edit year");
+        $("#AreaCapture-editYear-btn").on("click", () => {
+            let element = document.getElementById("AreaCapture-newYearDialog-template").innerHTML;
+            let template = Handlebars.compile(element);
+            let content = template({
+                "year": Inte.ellipseData.year,
+            });
+            this.dialog.setContent(content);
+
+            $("#AreaCapture-confirmYear-btn").on("click", () => {
+                let year = $("#AreaCapture-newYear-input").val();
+                if (year) Inte.ellipseData.year = year;
+                this.update();
+            })
         });
 
-        $("#AreaCapture-subtractYearBtn").on("click", () => {
+        $("#AreaCapture-subtractYear-btn").on("click", () => {
             Inte.ellipseData.year--;
             this.update();
         });
 
-        $("#AreaCapture-addYearBtn").on("click", () => {
+        $("#AreaCapture-addYear-btn").on("click", () => {
             Inte.ellipseData.year++;
             this.update();
         });
+    }
+
+    EllipseDialogs.prototype.createShortcutEventListeners = function () {
+        // Keyboard short cut for subtracting year: Ctrl - Q
+        L.DomEvent.on(window, 'keydown', (e) => {
+            if (e.keyCode == 81 && !(e.getModifierState("Shift")) && e.getModifierState("Control") && this.dialog) {
+                Inte.ellipseData.year--;
+                this.update();
+            }
+         }, this);
+
+        // Keyboard short cut for adding year: Ctrl - E
+        L.DomEvent.on(window, 'keydown', (e) => {
+            if (e.keyCode == 69 && !(e.getModifierState("Shift")) && e.getModifierState("Control") && this.dialog) {
+                Inte.ellipseData.year++;
+                this.update();
+            }
+         }, this);         
     }
 }
 
