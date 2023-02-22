@@ -19,9 +19,10 @@ function AreaCaptureInterface(Lt) {
     this.ellipseDialogs = new EllipseDialogs(this);
 
     this.newEllipse = new NewEllipse(this); 
+    this.lassoEllipses = new LassoEllipses(this);
     
-    this.btns = [this.newEllipse.btn];
-    this.tools = [this.newEllipse];
+    this.btns = [this.newEllipse.btn, this.lassoEllipses.btn];
+    this.tools = [this.newEllipse, this.lassoEllipses];
 }
 
 /**
@@ -76,13 +77,17 @@ function EllipseVisualAssets(Inte) {
     this.guideMarkerLayer = L.layerGroup().addTo(Inte.treering.viewer);
     this.guideLineLayer = L.layerGroup().addTo(Inte.treering.viewer);
 
+    this.ellipseColor = "#49C4D9"; // Light blue color. 
+
     EllipseVisualAssets.prototype.createEllipse = function(centerLatLng, majorLatLng, minorLatLng, degrees) {
         const latLngToMetersConstant = 111139;
         const majorRadius = Inte.calculator.distance(centerLatLng, majorLatLng) * latLngToMetersConstant;
         const minorRadius = Inte.calculator.distance(centerLatLng, minorLatLng) * latLngToMetersConstant;
 
-        let ellipse = L.ellipse(centerLatLng, [majorRadius, minorRadius], degrees);
+        let ellipse = L.ellipse(centerLatLng, [majorRadius, minorRadius], degrees, {color: this.ellipseColor, weight: 5}); 
+        let center = L.marker(centerLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) }); 
         this.ellipseLayer.addLayer(ellipse);
+        this.ellipseLayer.addLayer(center);
         this.elements.push(ellipse);
     }
 
@@ -95,8 +100,8 @@ function EllipseVisualAssets(Inte) {
      * @param {object} [majorAxisLine = null] - Optional, informs direction of guideline (above or below major axis) with respect to mouse position. 
      */
     EllipseVisualAssets.prototype.createGuideLine = function(fromLatLng, radiansFromMajorAxis = -1, majorAxisLine = null) {
-        $(Inte.treering.viewer.getContainer()).off('mousemove');
-        $(Inte.treering.viewer.getContainer()).mousemove(e => {
+        $(Inte.treering.viewer.getContainer()).off("mousemove");
+        $(Inte.treering.viewer.getContainer()).on("mousemove", e => {
             this.guideLineLayer.clearLayers();
 
             let eventLatLng = Inte.treering.viewer.mouseEventToLatLng(e);
@@ -198,6 +203,10 @@ function EllipseDialogs(Inte) {
 
     this.shortcutsEnabled = false;
 
+    /**
+     * Opens dialog window for ellipses. 
+     * @function
+     */
     EllipseDialogs.prototype.open = function() {
         let element = document.getElementById("AreaCapture-incrementDialog-template").innerHTML;
         this.template = Handlebars.compile(element);
@@ -226,11 +235,19 @@ function EllipseDialogs(Inte) {
         }
     }
 
+    /**
+     * Closes dialog window for ellipses. 
+     * @function
+     */
     EllipseDialogs.prototype.close = function() {
         if (this.dialog) this.dialog.destroy();
         this.dialog = null;
     }
 
+    /**
+     * Updates dialog window HTML content. 
+     * @function
+     */
     EllipseDialogs.prototype.update = function() {
         let content = this.template({
             "year": Inte.ellipseData.year,
@@ -240,6 +257,10 @@ function EllipseDialogs(Inte) {
         this.createDialogEventListeners();
     }
 
+    /**
+     * Creates all event listeners for HTML elements in dialog window. 
+     * @function
+     */
     EllipseDialogs.prototype.createDialogEventListeners = function () {
         // Remeber dialog anchor position and size after changed. 
         $(this.dialog._map).on('dialog:resizeend', () => { this.size = this.dialog.options.size } );
@@ -272,6 +293,10 @@ function EllipseDialogs(Inte) {
         });
     }
 
+    /**
+     * Creates all DOM event listeners - keyboard shortcuts.  
+     * @function
+     */
     EllipseDialogs.prototype.createShortcutEventListeners = function () {
         // Keyboard short cut for subtracting year: Ctrl - Q
         L.DomEvent.on(window, 'keydown', (e) => {
@@ -301,7 +326,7 @@ function NewEllipse(Inte) {
     this.btn = new Button (
         'scatter_plot',
         'Create elliptical area measurements',
-        () => { this.enable() },
+        () => { Inte.treering.disableTools(); this.enable() },
         () => { this.disable() },
     );
     
@@ -360,18 +385,15 @@ function NewEllipse(Inte) {
                     Inte.ellipseVisualAssets.connectMarkerLatLngs(majorLatLngA, majorLatLngB);
 
                     // Find center of major axis via midpoint: 
-                    centerLatLng = {
-                        "lat": (majorLatLngA.lat + majorLatLngB.lat) / 2,
-                        "lng": (majorLatLngA.lng + majorLatLngB.lng) / 2,
-                    }
+                    centerLatLng = L.latLng(
+                        (majorLatLngA.lat + majorLatLngB.lat) / 2,
+                        (majorLatLngA.lng + majorLatLngB.lng) / 2
+                    );
                     Inte.ellipseVisualAssets.createGuideMarker(centerLatLng);
 
                     // Next guide line informs the minor axis. Minor axis must be 90 degrees from major axis. 
                     // Use CAH geometry rule to determine angle adjustment in radians: 
-                    adjacentLatLng = {
-                        "lat": centerLatLng.lat,
-                        "lng": majorLatLngB.lng,
-                    }
+                    adjacentLatLng = L.latLng(centerLatLng.lat, majorLatLngB.lng);
                     radians = Math.acos(Inte.calculator.distance(centerLatLng, adjacentLatLng) / Inte.calculator.distance(centerLatLng, majorLatLngB));
                     // Returned radians value is always positive. If majorLatLngB is in the 2cd or 4th quadrent (in relation to centerLatLng),
                     // the radians must be multiplied by -1 to correct the rotation orientation. 
@@ -406,6 +428,83 @@ function NewEllipse(Inte) {
                     Inte.ellipseVisualAssets.clearGuideMarkers();
                     Inte.ellipseVisualAssets.clearGuideLines();
             }
+        });
+    }
+}
+
+function LassoEllipses(Inte) {
+    this.selectedData = [];
+    this.selectedElements = [];
+
+    this.btn = new Button (
+        "blur_circular",
+        "Lasso existing ellipses",
+        () => { Inte.treering.disableTools(); this.enable() },
+        () => { this.disable() },
+    );
+
+    this.lasso = L.lasso(Inte.treering.viewer, {
+        intersect: true,
+        polygon: {
+            color: "#FF0000", // Red coloring. 
+            fillRule: "nonzero",
+        }
+    });
+
+    LassoEllipses.prototype.enable = function() {
+        this.btn.state('active');
+        Inte.treering.viewer.getContainer().style.cursor = 'pointer';
+
+        this.action();
+    }
+
+    LassoEllipses.prototype.disable = function() {
+        this.btn.state('inactive');
+        Inte.treering.viewer.getContainer().style.cursor = 'default';
+
+        this.lasso.disable();
+        this.dehighlightSelected();
+        this.deselectEllipses();
+    }
+
+    LassoEllipses.prototype.action = function() {
+        this.lasso.enable();
+        Inte.treering.viewer.on('lasso.finished', lassoed => {
+            this.selectEllipses(lassoed.layers);
+            this.highlightSelected();
+        });
+    }
+
+    LassoEllipses.prototype.selectEllipses = function(layers) {
+        layers.map(layer => {
+            // Finds saved JSON data of ellipse based on latLng. 
+            let data = Inte.ellipseData.data.find(dat => dat.latLng.equals(layer.getLatLng()));
+            this.selectedData.push(data);
+
+            // Finds saved Leaflet element of ellipse based on latLng. 
+            let element = Inte.ellipseVisualAssets.elements.find(ele => ele.getLatLng().equals(layer.getLatLng()));
+            this.selectedElements.push(element);
+        });
+    }
+
+    LassoEllipses.prototype.deselectEllipses = function() {
+        this.selectedData = [];
+        this.selectedElements = [];
+    }
+
+    LassoEllipses.prototype.highlightSelected = function() {
+        this.selectedElements.map(ele => {
+            ele.setStyle({
+                color: "#FFF000"
+            });
+        });
+    }
+
+    LassoEllipses.prototype.dehighlightSelected = function() {
+        this.selectedElements.map(ele => {
+            ele.setStyle({
+                color: Inte.ellipseVisualAssets.ellipseColor,
+            });
         });
     }
 }
