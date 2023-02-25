@@ -58,6 +58,7 @@ function EllipseData(Inte) {
             "degrees": degrees,
             "area": area,
             "year": this.year,
+            "selected": false,
         }
 
         this.data.push(newDataElement);
@@ -105,23 +106,38 @@ function EllipseVisualAssets(Inte) {
             this.guideLineLayer.clearLayers();
 
             let eventLatLng = Inte.treering.viewer.mouseEventToLatLng(e);
+            let toLatLngA = eventLatLng;
+            let toLatLngB = eventLatLng;
 
-            let toLatLng = eventLatLng;
             if (radiansFromMajorAxis > 0) {
-                // Direction of guide line is determined by if mouse is above or below the major axis. 
+                /* For a single guide line, direction of guide line is determined by if mouse is above or below the major axis. 
                 let direction = (eventLatLng.lat > (majorAxisLine.slope * eventLatLng.lng + majorAxisLine.intercept)) ? 1 : -1;
+                */
+
                 let length = Inte.calculator.distance(fromLatLng, eventLatLng);
-                toLatLng = {
-                    "lat": fromLatLng.lat + (direction * length * Math.sin(radiansFromMajorAxis)),
-                    "lng": fromLatLng.lng + (direction * length * Math.cos(radiansFromMajorAxis)),
+
+                toLatLngA = {
+                    "lat": fromLatLng.lat + (1 * length * Math.sin(radiansFromMajorAxis)),
+                    "lng": fromLatLng.lng + (1 * length * Math.cos(radiansFromMajorAxis)),
                 };
+
+                toLatLngB = {
+                    "lat": fromLatLng.lat + (-1 * length * Math.sin(radiansFromMajorAxis)),
+                    "lng": fromLatLng.lng + (-1 * length * Math.cos(radiansFromMajorAxis)),
+                    };
             }
             
-            let line = L.polyline([fromLatLng, toLatLng], {color: 'red'});
-            this.guideLineLayer.addLayer(line);
+            let lineA = L.polyline([fromLatLng, toLatLngA], {color: 'red'});
+            this.guideLineLayer.addLayer(lineA);
 
-            let tip = L.marker(toLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) });
-            this.guideLineLayer.addLayer(tip);
+            let lineB = L.polyline([fromLatLng, toLatLngB], {color: 'red'});
+            this.guideLineLayer.addLayer(lineB);
+
+            let tipA = L.marker(toLatLngA, { icon: L.divIcon({className: "fa fa-plus guide"}) });
+            this.guideLineLayer.addLayer(tipA);
+
+            let tipB = L.marker(toLatLngB, { icon: L.divIcon({className: "fa fa-plus guide"}) });
+            this.guideLineLayer.addLayer(tipB);
         })
     }
 
@@ -198,7 +214,11 @@ function EllipseDialogs(Inte) {
     this.dialog = null;
     this.template = null;
 
-    this.size = [170, 90];
+    let minWidth = 170;
+    let minHeight = 115;
+
+    this.minSize = [minWidth, minHeight];
+    this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
 
     this.shortcutsEnabled = false;
@@ -220,7 +240,7 @@ function EllipseDialogs(Inte) {
             "initOpen": true,
             'position': 'topleft',
             "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
-            'minSize': [0, 0]
+            'minSize': this.minSize,
         }).setContent(content).addTo(Inte.treering.viewer);
         this.dialog.hideClose();
 
@@ -300,7 +320,7 @@ function EllipseDialogs(Inte) {
     EllipseDialogs.prototype.createShortcutEventListeners = function () {
         // Keyboard short cut for subtracting year: Ctrl - Q
         L.DomEvent.on(window, 'keydown', (e) => {
-            if (e.keyCode == 81 && !(e.getModifierState("Shift")) && e.getModifierState("Control") && this.dialog) {
+            if (e.keyCode == 81 && !e.shiftKey && e.ctrlKey && this.dialog) {
                 Inte.ellipseData.year--;
                 this.update();
             }
@@ -308,7 +328,7 @@ function EllipseDialogs(Inte) {
 
         // Keyboard short cut for adding year: Ctrl - E
         L.DomEvent.on(window, 'keydown', (e) => {
-            if (e.keyCode == 69 && !(e.getModifierState("Shift")) && e.getModifierState("Control") && this.dialog) {
+            if (e.keyCode == 69 && !e.shiftKey && e.ctrlKey && this.dialog) {
                 Inte.ellipseData.year++;
                 this.update();
             }
@@ -368,7 +388,7 @@ function NewEllipse(Inte) {
         let centerLatLng, majorLatLngA, majorLatLngB, minorLatLng;
         let radians, directionCorrection;
 
-        $(Inte.treering.viewer.getContainer()).click(e => {
+        $(Inte.treering.viewer.getContainer()).on("click", e => {
             // Prevent jQuery event error.
             if (!e.originalEvent) return;
 
@@ -432,14 +452,26 @@ function NewEllipse(Inte) {
     }
 }
 
+/**
+ * Tool for selecting (lassoing) one or more existing ellipses.  
+ * @constructor
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
+ */
 function LassoEllipses(Inte) {
     this.selectedData = [];
     this.selectedElements = [];
 
+    this.active = false;
+    this.shortcutsEnabled = false;
     this.btn = new Button (
         "blur_circular",
         "Lasso existing ellipses",
-        () => { Inte.treering.disableTools(); this.enable() },
+        () => {
+            Inte.treering.disableTools(); 
+            Inte.treering.collapseTools(); 
+            this.enable() 
+        },
         () => { this.disable() },
     );
 
@@ -450,49 +482,146 @@ function LassoEllipses(Inte) {
             fillRule: "nonzero",
         }
     });
+    this.lassoEventFinished = true;
 
+    /**
+     * Enable tool & assign shotcuts upon first enable. 
+     * @function
+     */
     LassoEllipses.prototype.enable = function() {
         this.btn.state('active');
+        this.active = true;
         Inte.treering.viewer.getContainer().style.cursor = 'pointer';
+
+        if (!this.shortcutsEnabled) {
+            // Only do once when instantiated.
+            // Otherwise multiple listeners will be assigned. 
+            this.createShortcutEventListeners();
+            
+            this.shortcutsEnabled = true;
+        }
 
         this.action();
     }
 
+    /**
+     * Disable tool.  
+     * @function
+     */
     LassoEllipses.prototype.disable = function() {
         this.btn.state('inactive');
+        this.active = false;
         Inte.treering.viewer.getContainer().style.cursor = 'default';
 
         this.lasso.disable();
-        this.dehighlightSelected();
-        this.deselectEllipses();
     }
 
+    /**
+     * Creates keyboard shortcut event listeners. Based on file selection shortcuts.   
+     * @function
+     */
+    LassoEllipses.prototype.createShortcutEventListeners = function() {
+        // Keyboard short cut for deselection all points: Ctrl - Z 
+        L.DomEvent.on(window, 'keydown', (e) => {
+            if (e.keyCode == 90 && !e.shiftKey && e.ctrlKey && this.active) {
+                this.dehighlightSelected();
+                this.deselectEllipses();
+            }
+         }, this);
+
+        // Keyboard short cut for selecting additional points: Holding Ctrl
+        L.DomEvent.on(window, 'keydown', (e) => {
+            if (e.keyCode == 17 && this.lassoEventFinished && !e.shiftKey && this.active) {
+                this.action(e);
+            }
+        }, this); 
+        L.DomEvent.on(window, 'keyup', (e) => {
+            // Prevents extra action after Ctrl is released. 
+            if (e.keyCode == 17 && this.active) {
+                this.lasso.disable();
+                this.lassoEventFinished = true;
+            }
+        }, this); 
+    }
+
+    /**
+     * Enables lasso plugin to select ellipeses then highlights each one.   
+     * @function
+     */
     LassoEllipses.prototype.action = function() {
         this.lasso.enable();
+        this.lassoEventFinished = false;
+
         Inte.treering.viewer.on('lasso.finished', lassoed => {
-            this.selectEllipses(lassoed.layers);
-            this.highlightSelected();
+            // lasso.finished evnt fires multiple times. Need variable to prevent repeated firing. 
+            if (!this.lassoEventFinished) {
+                this.selectEllipses(lassoed.layers);
+                this.highlightSelected();
+    
+                this.lassoEventFinished = true;
+            }
         });
     }
 
+    /**
+     * Selects all data and elements based on which layers lassoed by user. 
+     * @function
+     * 
+     * @param {array} layers - Array of Leaflet layers/HTML elements. 
+     */
     LassoEllipses.prototype.selectEllipses = function(layers) {
         layers.map(layer => {
             // Finds saved JSON data of ellipse based on latLng. 
             let data = Inte.ellipseData.data.find(dat => dat.latLng.equals(layer.getLatLng()));
-            this.selectedData.push(data);
+            if (data && !data.selected) {
+                data.selected = true;
+                this.selectedData.push(data);
 
-            // Finds saved Leaflet element of ellipse based on latLng. 
-            let element = Inte.ellipseVisualAssets.elements.find(ele => ele.getLatLng().equals(layer.getLatLng()));
-            this.selectedElements.push(element);
+                // Finds saved Leaflet element of ellipse based on latLng. 
+                let element = Inte.ellipseVisualAssets.elements.find(ele => ele.getLatLng().equals(layer.getLatLng()));
+                this.selectedElements.push(element);
+            } else {
+                this.deselectEllipses(layer);
+            }
         });
     }
 
-    LassoEllipses.prototype.deselectEllipses = function() {
+    /**
+     * Deselects all data and elements based on which layers lassoed by user. 
+     * @function
+     * 
+     * @param {array} [layer = null] - Optional Leaflet layer. Include if only a single layer is to be deselected. 
+     */
+    LassoEllipses.prototype.deselectEllipses = function(layer = null) {
+        // Deselect specific layer if specified. 
+        if (layer) {
+            let index = this.selectedData.findIndex(dat => dat.latLng.equals(layer.getLatLng()));
+            if (index > -1) {
+                this.selectedData[index].selected = false;
+                this.selectedData.splice(index, 1);
+                this.selectedElements.splice(index, 1);
+            }
+            return
+        }
+
+        this.selectedData.map(dat => dat.selected = false);
+
         this.selectedData = [];
         this.selectedElements = [];
     }
 
+    /**
+     * Highlights (changes element style) selected ellipses. 
+     * @function
+     */
     LassoEllipses.prototype.highlightSelected = function() {
+        // Remove highlight from all before applying new color. 
+        Inte.ellipseVisualAssets.elements.map(ele => {
+            ele.setStyle({
+                color: Inte.ellipseVisualAssets.ellipseColor,
+            });
+        });
+
         this.selectedElements.map(ele => {
             ele.setStyle({
                 color: "#FFF000"
@@ -500,6 +629,10 @@ function LassoEllipses(Inte) {
         });
     }
 
+    /**
+     * Deighlights (reverts element style) selected ellipses. 
+     * @function
+     */
     LassoEllipses.prototype.dehighlightSelected = function() {
         this.selectedElements.map(ele => {
             ele.setStyle({
@@ -510,7 +643,7 @@ function LassoEllipses(Inte) {
 }
 
 /**
- * Tool for capturing area with ellipses. 
+ * Various calulation related helper functions.  
  * @constructor
  * 
  * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.

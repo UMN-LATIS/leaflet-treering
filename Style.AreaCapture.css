@@ -12,8 +12,18 @@
 	margin: 0;
 }
 
-.AreaCapture-btn {
+.AreaCapture-subtext {
+	font-size: 10px;
+	font-style: italic;
+}
+
+.AreaCapture-btn-container {
 	width: 45%;
+}
+
+.AreaCapture-btn {
+	width: 100%;
+	min-height: 22px;
 	
 	padding: 5px;
 
@@ -23,6 +33,12 @@
 	border-radius: 5px;
 
 	cursor: pointer;
+}
+
+.AreaCapture-incrementYear-container {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
 }
 
 #AreaCapture-subtractYear-btn {
@@ -35,10 +51,4 @@
 
 .AreaCapture-input {
 	width: 7ch;
-}
-
-.AreaCapture-incrementYear-container {
-	display: flex;
-	flex-direction: row;
-	justify-content: space-between;
 }
