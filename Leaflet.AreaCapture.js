@@ -16,13 +16,17 @@ function AreaCaptureInterface(Lt) {
 
     this.ellipseData = new EllipseData(this);
     this.ellipseVisualAssets = new EllipseVisualAssets(this);
-    this.ellipseDialogs = new EllipseDialogs(this);
 
     this.newEllipse = new NewEllipse(this); 
+    this.newEllipseDialog = new NewEllipseDialog(this);
+
     this.lassoEllipses = new LassoEllipses(this);
+
+    this.deleteEllipses = new DeleteEllipses(this);
+    this.deleteEllipsesDialog = new DeleteEllipsesDialog(this);
     
-    this.btns = [this.newEllipse.btn, this.lassoEllipses.btn];
-    this.tools = [this.newEllipse, this.lassoEllipses];
+    this.btns = [this.newEllipse.btn, this.lassoEllipses.btn, this.deleteEllipses.btn];
+    this.tools = [this.newEllipse, this.lassoEllipses, this.deleteEllipses];
 }
 
 /**
@@ -34,6 +38,7 @@ function AreaCaptureInterface(Lt) {
 function EllipseData(Inte) {
     this.year = 0;
     this.data = [];
+    this.selectedData = [];
 
     /**
      * Saves data entry for a new ellipse. 
@@ -73,6 +78,7 @@ function EllipseData(Inte) {
  */
 function EllipseVisualAssets(Inte) {
     this.elements = [];
+    this.selectedElements = [];
     
     this.ellipseLayer = L.layerGroup().addTo(Inte.treering.viewer);
     this.guideMarkerLayer = L.layerGroup().addTo(Inte.treering.viewer);
@@ -89,7 +95,10 @@ function EllipseVisualAssets(Inte) {
         let center = L.marker(centerLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) }); 
         this.ellipseLayer.addLayer(ellipse);
         this.ellipseLayer.addLayer(center);
-        this.elements.push(ellipse);
+        this.elements.push({
+            "ellipse": ellipse, 
+            "center": center,
+        });
     }
 
     /**
@@ -205,138 +214,6 @@ function EllipseVisualAssets(Inte) {
 }
 
 /**
- * Generates dialog boxes related to ellipses. 
- * @constructor
- * 
- * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
- */
-function EllipseDialogs(Inte) {
-    this.dialog = null;
-    this.template = null;
-
-    let minWidth = 170;
-    let minHeight = 115;
-
-    this.minSize = [minWidth, minHeight];
-    this.size = [minWidth, minHeight];
-    this.anchor = [50, 0];
-
-    this.shortcutsEnabled = false;
-
-    /**
-     * Opens dialog window for ellipses. 
-     * @function
-     */
-    EllipseDialogs.prototype.open = function() {
-        let element = document.getElementById("AreaCapture-incrementDialog-template").innerHTML;
-        this.template = Handlebars.compile(element);
-        let content = this.template({
-            "year": Inte.ellipseData.year,
-        });
-        
-        this.dialog = L.control.dialog({
-            "size": this.size,
-            "anchor": this.anchor,
-            "initOpen": true,
-            'position': 'topleft',
-            "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
-            'minSize': this.minSize,
-        }).setContent(content).addTo(Inte.treering.viewer);
-        this.dialog.hideClose();
-
-        this.createDialogEventListeners();
-
-        if (!this.shortcutsEnabled) {
-            // Only do once when instantiated.
-            // Otherwise multiple listeners will be assigned. 
-            this.createShortcutEventListeners();
-            
-            this.shortcutsEnabled = true;
-        }
-    }
-
-    /**
-     * Closes dialog window for ellipses. 
-     * @function
-     */
-    EllipseDialogs.prototype.close = function() {
-        if (this.dialog) this.dialog.destroy();
-        this.dialog = null;
-    }
-
-    /**
-     * Updates dialog window HTML content. 
-     * @function
-     */
-    EllipseDialogs.prototype.update = function() {
-        let content = this.template({
-            "year": Inte.ellipseData.year,
-        });
-
-        this.dialog.setContent(content);
-        this.createDialogEventListeners();
-    }
-
-    /**
-     * Creates all event listeners for HTML elements in dialog window. 
-     * @function
-     */
-    EllipseDialogs.prototype.createDialogEventListeners = function () {
-        // Remeber dialog anchor position and size after changed. 
-        $(this.dialog._map).on('dialog:resizeend', () => { this.size = this.dialog.options.size } );
-        $(this.dialog._map).on('dialog:moveend', () => { this.anchor = this.dialog.options.anchor } );
-
-        // Year editing buttons: 
-        $("#AreaCapture-editYear-btn").on("click", () => {
-            let element = document.getElementById("AreaCapture-newYearDialog-template").innerHTML;
-            let template = Handlebars.compile(element);
-            let content = template({
-                "year": Inte.ellipseData.year,
-            });
-            this.dialog.setContent(content);
-
-            $("#AreaCapture-confirmYear-btn").on("click", () => {
-                let year = $("#AreaCapture-newYear-input").val();
-                if (year) Inte.ellipseData.year = year;
-                this.update();
-            })
-        });
-
-        $("#AreaCapture-subtractYear-btn").on("click", () => {
-            Inte.ellipseData.year--;
-            this.update();
-        });
-
-        $("#AreaCapture-addYear-btn").on("click", () => {
-            Inte.ellipseData.year++;
-            this.update();
-        });
-    }
-
-    /**
-     * Creates all DOM event listeners - keyboard shortcuts.  
-     * @function
-     */
-    EllipseDialogs.prototype.createShortcutEventListeners = function () {
-        // Keyboard short cut for subtracting year: Ctrl - Q
-        L.DomEvent.on(window, 'keydown', (e) => {
-            if (e.keyCode == 81 && !e.shiftKey && e.ctrlKey && this.dialog) {
-                Inte.ellipseData.year--;
-                this.update();
-            }
-         }, this);
-
-        // Keyboard short cut for adding year: Ctrl - E
-        L.DomEvent.on(window, 'keydown', (e) => {
-            if (e.keyCode == 69 && !e.shiftKey && e.ctrlKey && this.dialog) {
-                Inte.ellipseData.year++;
-                this.update();
-            }
-         }, this);         
-    }
-}
-
-/**
  * Tool for capturing area with ellipses. 
  * @constructor
  * 
@@ -358,7 +235,7 @@ function NewEllipse(Inte) {
         this.btn.state('active');
         Inte.treering.viewer.getContainer().style.cursor = 'pointer';
 
-        Inte.ellipseDialogs.open();
+        Inte.newEllipseDialog.open();
         this.action();
     }
 
@@ -376,7 +253,7 @@ function NewEllipse(Inte) {
         $(Inte.treering.viewer.getContainer()).off('mousemove');
         Inte.ellipseVisualAssets.clearGuideLines();
 
-        Inte.ellipseDialogs.close();
+        Inte.newEllipseDialog.close();
     }
 
     /**
@@ -453,15 +330,133 @@ function NewEllipse(Inte) {
 }
 
 /**
+ * Generates dialog boxes related to creating new ellipses. 
+ * @constructor
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
+ */
+function NewEllipseDialog(Inte) {
+    let minWidth = 170;
+    let minHeight = 115;
+    this.size = [minWidth, minHeight];
+    this.anchor = [50, 0];
+
+    let html = document.getElementById("AreaCapture-incrementDialog-template").innerHTML;
+    this.template = Handlebars.compile(html);
+    let content = this.template({
+        "year": Inte.ellipseData.year,
+    });
+    
+    this.dialog = L.control.dialog({
+        "size": this.size,
+        "anchor": this.anchor,
+        "initOpen": false,
+        'position': 'topleft',
+        "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+        'minSize': [minWidth, minHeight],
+    }).setContent(content).addTo(Inte.treering.viewer);
+    this.dialog.hideClose();
+
+    this.initOpen = false;
+
+    /**
+     * Opens dialog window. 
+     * @function
+     */
+    NewEllipseDialog.prototype.open = function() {
+        this.dialog.open();
+
+        if (!this.initOpen) {
+            this.createDialogEventListeners();
+            this.createShortcutEventListeners();
+
+            this.initOpen = true;
+        }
+    }
+
+    /**
+     * Closes dialog window.
+     * @function
+     */
+    NewEllipseDialog.prototype.close = function() {
+        this.dialog.close();
+    }
+
+    /**
+     * Updates dialog window HTML content. 
+     * @function
+     */
+    NewEllipseDialog.prototype.update = function() {
+        let content = this.template({
+            "year": Inte.ellipseData.year,
+        });
+
+        this.dialog.setContent(content);
+        this.createDialogEventListeners();
+    }
+
+    /**
+     * Creates all event listeners for HTML elements in dialog window. 
+     * @function
+     */
+    NewEllipseDialog.prototype.createDialogEventListeners = function () {
+        // Year editing buttons: 
+        $("#AreaCapture-editYear-btn").on("click", () => {
+            let html = document.getElementById("AreaCapture-newYearDialog-template").innerHTML;
+            let template = Handlebars.compile(html);
+            let content = template({
+                "year": Inte.ellipseData.year,
+            });
+            this.dialog.setContent(content);
+
+            $("#AreaCapture-confirmYear-btn").on("click", () => {
+                let year = $("#AreaCapture-newYear-input").val();
+                if (year) Inte.ellipseData.year = year;
+                this.update();
+            })
+        });
+
+        $("#AreaCapture-subtractYear-btn").on("click", () => {
+            Inte.ellipseData.year--;
+            this.update();
+        });
+
+        $("#AreaCapture-addYear-btn").on("click", () => {
+            Inte.ellipseData.year++;
+            this.update();
+        });
+    }
+
+    /**
+     * Creates all DOM event listeners - keyboard shortcuts.  
+     * @function
+     */
+    NewEllipseDialog.prototype.createShortcutEventListeners = function () {
+        // Keyboard short cut for subtracting year: Ctrl - Q
+        L.DomEvent.on(window, 'keydown', (e) => {
+            if (e.keyCode == 81 && !e.shiftKey && e.ctrlKey && this.dialog) {
+                Inte.ellipseData.year--;
+                this.update();
+            }
+         }, this);
+
+        // Keyboard short cut for adding year: Ctrl - E
+        L.DomEvent.on(window, 'keydown', (e) => {
+            if (e.keyCode == 69 && !e.shiftKey && e.ctrlKey && this.dialog) {
+                Inte.ellipseData.year++;
+                this.update();
+            }
+         }, this);         
+    }
+}
+
+/**
  * Tool for selecting (lassoing) one or more existing ellipses.  
  * @constructor
  * 
  * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
  */
 function LassoEllipses(Inte) {
-    this.selectedData = [];
-    this.selectedElements = [];
-
     this.active = false;
     this.shortcutsEnabled = false;
     this.btn = new Button (
@@ -491,7 +486,7 @@ function LassoEllipses(Inte) {
     LassoEllipses.prototype.enable = function() {
         this.btn.state('active');
         this.active = true;
-        Inte.treering.viewer.getContainer().style.cursor = 'pointer';
+        Inte.treering.viewer.getContainer().style.cursor = 'crosshair';
 
         if (!this.shortcutsEnabled) {
             // Only do once when instantiated.
@@ -575,11 +570,11 @@ function LassoEllipses(Inte) {
             let data = Inte.ellipseData.data.find(dat => dat.latLng.equals(layer.getLatLng()));
             if (data && !data.selected) {
                 data.selected = true;
-                this.selectedData.push(data);
+                Inte.ellipseData.selectedData.push(data);
 
                 // Finds saved Leaflet element of ellipse based on latLng. 
-                let element = Inte.ellipseVisualAssets.elements.find(ele => ele.getLatLng().equals(layer.getLatLng()));
-                this.selectedElements.push(element);
+                let element = Inte.ellipseVisualAssets.elements.find(ele => ele.ellipse.getLatLng().equals(layer.getLatLng()));
+                Inte.ellipseVisualAssets.selectedElements.push(element);
             } else {
                 this.deselectEllipses(layer);
             }
@@ -595,19 +590,19 @@ function LassoEllipses(Inte) {
     LassoEllipses.prototype.deselectEllipses = function(layer = null) {
         // Deselect specific layer if specified. 
         if (layer) {
-            let index = this.selectedData.findIndex(dat => dat.latLng.equals(layer.getLatLng()));
+            let index = Inte.ellipseData.selectedData.findIndex(dat => dat.latLng.equals(layer.getLatLng()));
             if (index > -1) {
-                this.selectedData[index].selected = false;
-                this.selectedData.splice(index, 1);
-                this.selectedElements.splice(index, 1);
+                Inte.ellipseData.selectedData[index].selected = false;
+                Inte.ellipseData.selectedData.splice(index, 1);
+                Inte.ellipseVisualAssets.selectedElements.splice(index, 1);
             }
             return
         }
 
-        this.selectedData.map(dat => dat.selected = false);
+        Inte.ellipseData.selectedData.map(dat => dat.selected = false);
 
-        this.selectedData = [];
-        this.selectedElements = [];
+        Inte.ellipseData.selectedData = [];
+        Inte.ellipseVisualAssets.selectedElements = [];
     }
 
     /**
@@ -617,13 +612,13 @@ function LassoEllipses(Inte) {
     LassoEllipses.prototype.highlightSelected = function() {
         // Remove highlight from all before applying new color. 
         Inte.ellipseVisualAssets.elements.map(ele => {
-            ele.setStyle({
+            ele.ellipse.setStyle({
                 color: Inte.ellipseVisualAssets.ellipseColor,
             });
         });
 
-        this.selectedElements.map(ele => {
-            ele.setStyle({
+        Inte.ellipseVisualAssets.selectedElements.map(ele => {
+            ele.ellipse.setStyle({
                 color: "#FFF000"
             });
         });
@@ -634,10 +629,123 @@ function LassoEllipses(Inte) {
      * @function
      */
     LassoEllipses.prototype.dehighlightSelected = function() {
-        this.selectedElements.map(ele => {
-            ele.setStyle({
+        Inte.ellipseVisualAssets.selectedElements.map(ele => {
+            ele.ellipse.setStyle({
                 color: Inte.ellipseVisualAssets.ellipseColor,
             });
+        });
+    }
+}
+
+/**
+ * Tool for deleting existing selected ellipses. 
+ * @constructor
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
+ */
+function DeleteEllipses(Inte) {
+    this.btn = new Button (
+        'delete',
+        'Delete selected ellipses',
+        () => { Inte.treering.disableTools(); this.enable() },
+        () => { this.disable() },
+    );
+    
+    /**
+     * Enables deletion, opens warning dialog. 
+     * @function
+     */
+    DeleteEllipses.prototype.enable = function() {
+        Inte.deleteEllipsesDialog.open();
+    }
+
+    /**
+     * Disables deletion, closes warning dialog. 
+     * @function
+     */
+    DeleteEllipses.prototype.disable = function() {
+        Inte.deleteEllipsesDialog.close();
+    }
+
+    /**
+     * Removes all selected data and elements from Leaflet map and storage arrays.  
+     * @function
+     */
+    DeleteEllipses.prototype.action = function() {
+        Inte.ellipseData.data = Inte.ellipseData.data.filter(dat => !dat.selected);
+        Inte.ellipseData.selectedData = [];
+
+        Inte.ellipseVisualAssets.selectedElements.map(ele => {
+            Inte.ellipseVisualAssets.ellipseLayer.removeLayer(ele.ellipse);
+            Inte.ellipseVisualAssets.ellipseLayer.removeLayer(ele.center);
+        });
+        Inte.ellipseVisualAssets.selectedElements = [];
+    }
+
+}
+
+/**
+ * Generates dialog boxes related to deleting existing ellipses. 
+ * @constructor
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
+ */
+function DeleteEllipsesDialog(Inte) {
+    let content = document.getElementById("AreaCapture-deleteSelectedEllipsesDialog-template").innerHTML;
+
+    let size = [300, 260];
+    this.fromLeft = ($(window).width() - size[0]) / 2;
+    this.fromTop = ($(window).height() - size[1]) / 2;
+    
+    this.dialog = L.control.dialog({
+        "size": size,
+        "anchor": [this.fromTop, this.fromLeft],
+        "initOpen": false,
+        'position': 'topleft',
+        "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+    }).setContent(content).addTo(Inte.treering.viewer);
+    this.dialog.hideClose();
+    this.dialog.hideResize();
+
+    this.initOpen = false;
+
+    /**
+     * Opens dialog window. 
+     * @function
+     */
+    DeleteEllipsesDialog.prototype.open = function() {
+        // Recenter dialog window. Otherwise anchor location remebered. 
+        this.dialog.setLocation([this.fromTop, this.fromLeft]);
+        this.dialog.open();
+
+        if (!this.initOpen) {
+            this.createDialogEventListeners();
+
+            this.initOpen = true;
+        }
+        
+    }
+
+    /**
+     * Closes dialog window. 
+     * @function
+     */
+    DeleteEllipsesDialog.prototype.close = function() {
+        this.dialog.close();
+    }
+
+    /**
+     * Creates all event listeners for HTML elements in dialog window. 
+     * @function
+     */
+    DeleteEllipsesDialog.prototype.createDialogEventListeners = function() {
+        $("#AreaCapture-confirmDelete-btn").on("click", () => {
+            Inte.deleteEllipses.action();
+            this.close();
+        });
+
+        $("#AreaCapture-cancelDelete-btn").on("click", () => {
+            this.close();
         });
     }
 }

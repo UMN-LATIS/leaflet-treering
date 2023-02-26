@@ -6,6 +6,7 @@
 	color: whitesmoke;
 }
 
+/* General: */
 .AreaCapture-text {
 	font-size: 16px;
 
@@ -21,6 +22,12 @@
 	width: 45%;
 }
 
+.AreaCapture-btn-row {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+}
+
 .AreaCapture-btn {
 	width: 100%;
 	min-height: 22px;
@@ -30,17 +37,16 @@
 	border-width: 1px; 
 	border-style: solid; 
 	border-color: white;
-	border-radius: 5px;
+	border-radius: 10px;
 
 	cursor: pointer;
 }
 
-.AreaCapture-incrementYear-container {
-	display: flex;
-	flex-direction: row;
-	justify-content: space-between;
+.AreaCapture-input {
+	width: 7ch;
 }
 
+/* New ellipse dialog: */
 #AreaCapture-subtractYear-btn {
 	background-color: #f5bc42;
 }
@@ -49,6 +55,37 @@
 	background-color: #71b54c;
 }
 
-.AreaCapture-input {
-	width: 7ch;
+/* Delete ellipses dialog */
+.fa-exclamation-triangle {
+	color: #b54c4c;
+	font-size: 56px;
+
+	cursor: not-allowed;
+}
+
+.AreaCapture-deleteWarning-container {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+}
+
+#AreaCapture-confirmDelete-btn {
+	font-size: 18px;
+	font-family: Arial;
+	color: white;
+
+	background-color: #71b54c;
+}
+
+#AreaCapture-cancelDelete-btn {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+
+	font-size: 18px;
+	font-family: Arial;
+	color: white;
+
+	background-color: #b54c4c;
 }
