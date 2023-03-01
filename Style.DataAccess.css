@@ -1,0 +1,56 @@
+.DataAccess-Window{
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+}
+.DataAccess-StatsUploadDelete-Container{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+.DataAccess-Buttons-Container{
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+}
+.DataAccess-Icon-Buttons{
+    color: black;
+    /* width: 30px;
+    height: 30px; */
+    font-size: 30px;
+    margin: 5px;
+}
+.material-symbols-outlined{
+    font-size: inherit;
+}
+.DataAccess-Text-Buttons{
+    color: black;
+    border: 2px solid black;
+    border-radius: 6px;
+    width: 30px;
+    height: 30px;
+    margin: 5px;
+}
+.DataAccess-Center{
+    display:flex;
+    align-items: center;
+    justify-content: center;
+}
+.DataAccess-Text{
+    font-size: 8.5px;
+    font-family: Arial;
+    font-weight: bold;
+    text-align: center;
+}
+.DataAccess-Delete{
+    color: red;
+    border: 2px solid red;
+    border-radius: 6px;
+    width: 30px;
+    height: 30px;
+    margin-top: 30px;
+    /* text-align: center; */
+}
+/* .DataAccess-Table{
+
+} */
