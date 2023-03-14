@@ -63,10 +63,27 @@ function EllipseData(Inte) {
             "degrees": degrees,
             "area": area,
             "year": this.year,
+            "color": Inte.ellipseVisualAssets.ellipseBaseColor,
             "selected": false,
         }
 
         this.data.push(newDataElement);
+    }
+
+    /**
+     * Increase current year.
+     * @function
+     */
+    EllipseData.prototype.increaseYear = function() {
+        this.year++;
+    }
+
+    /**
+     * Decrease current year. 
+     * @function
+     */
+    EllipseData.prototype.decreaseYear = function() {
+        this.year--;
     }
 }
 
@@ -84,14 +101,39 @@ function EllipseVisualAssets(Inte) {
     this.guideMarkerLayer = L.layerGroup().addTo(Inte.treering.viewer);
     this.guideLineLayer = L.layerGroup().addTo(Inte.treering.viewer);
 
-    this.ellipseColor = "#49C4D9"; // Light blue color. 
+    /* Full color scheme for when EW/LW difference enabled. 
+    this.colorScheme = [
+        "#b2df8a", // Light green
+        "#33a02c", // Dark green
+        "#fdbf6f", // Light orange
+        "#ff7f00", // Dark orange
+        "#cab2d6", // Light purple
+        "#6a3d9a", // Dark purple
+        "#e06f4c", // Light red
+        "#db2314"  // Dark red
+    ]
+    */
 
+    this.colorScheme = ["#33a02c", "#ff7f00", "#6a3d9a"] // Green, orange, purple. 
+    this.colorIndex = 0;
+    this.ellipseBaseColor = this.colorScheme[this.colorIndex];
+    this.selectedEllipseColor = "#ffd92f";
+
+    /**
+     * Create a new ellipse element on Leaflet viewer. 
+     * @function
+     * 
+     * @param {object} centerLatLng - Location of ellipse center. 
+     * @param {object} majorLatLng - Location of major axis edge. 
+     * @param {object} minorLatLng - Location of minor axis edge. 
+     * @param {float} degrees - Rotation of ellipse in degrees. 
+     */
     EllipseVisualAssets.prototype.createEllipse = function(centerLatLng, majorLatLng, minorLatLng, degrees) {
         const latLngToMetersConstant = 111139;
         const majorRadius = Inte.calculator.distance(centerLatLng, majorLatLng) * latLngToMetersConstant;
         const minorRadius = Inte.calculator.distance(centerLatLng, minorLatLng) * latLngToMetersConstant;
 
-        let ellipse = L.ellipse(centerLatLng, [majorRadius, minorRadius], degrees, {color: this.ellipseColor, weight: 5}); 
+        let ellipse = L.ellipse(centerLatLng, [majorRadius, minorRadius], degrees, {color: this.ellipseBaseColor, weight: 5}); 
         let center = L.marker(centerLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) }); 
         this.ellipseLayer.addLayer(ellipse);
         this.ellipseLayer.addLayer(center);
@@ -99,6 +141,42 @@ function EllipseVisualAssets(Inte) {
             "ellipse": ellipse, 
             "center": center,
         });
+    }
+
+    /**
+     * Shift color cycle up/forward in color scheme array.
+     * @function 
+     */
+    EllipseVisualAssets.prototype.cycleColorsUp = function() {
+        this.colorIndex++;
+        if (this.colorIndex > this.colorScheme.length - 1) {
+            this.colorIndex = 0;
+        }
+        this.ellipseBaseColor = this.colorScheme[this.colorIndex];
+    }
+
+    /**
+     * Shift color cycle down/backward in color scheme array.
+     * @function 
+     */
+    EllipseVisualAssets.prototype.cycleColorsDown = function() {
+        this.colorIndex--;
+        if (this.colorIndex < 0) {
+            this.colorIndex = this.colorScheme.length - 1;
+        }
+        this.ellipseBaseColor = this.colorScheme[this.colorIndex];
+    }
+
+    // TODO: BROKEN
+    /**
+     * Shift color cycle by a given year difference. 
+     * @function 
+     * 
+     * @param {integer} year - New year value.
+     */
+    EllipseVisualAssets.prototype.cycleColorsMulti = function(year) {
+        this.colorIndex = year % 3;
+        this.ellipseBaseColor = this.colorScheme[this.colorIndex];
     }
 
     /**
@@ -351,9 +429,9 @@ function NewEllipseDialog(Inte) {
         "size": this.size,
         "anchor": this.anchor,
         "initOpen": false,
-        'position': 'topleft',
+        "position": 'topleft',
         "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
-        'minSize': [minWidth, minHeight],
+        "minSize": [minWidth, minHeight],
     }).setContent(content).addTo(Inte.treering.viewer);
     this.dialog.hideClose();
 
@@ -408,21 +486,27 @@ function NewEllipseDialog(Inte) {
                 "year": Inte.ellipseData.year,
             });
             this.dialog.setContent(content);
+            document.getElementById("AreaCapture-newYear-input").select();
 
             $("#AreaCapture-confirmYear-btn").on("click", () => {
                 let year = $("#AreaCapture-newYear-input").val();
-                if (year) Inte.ellipseData.year = year;
+                if (year) {
+                    Inte.ellipseVisualAssets.cycleColorsMulti(year);
+                    Inte.ellipseData.year = year;
+                }
                 this.update();
             })
         });
 
         $("#AreaCapture-subtractYear-btn").on("click", () => {
-            Inte.ellipseData.year--;
+            Inte.ellipseData.decreaseYear();
+            Inte.ellipseVisualAssets.cycleColorsDown();
             this.update();
         });
 
         $("#AreaCapture-addYear-btn").on("click", () => {
-            Inte.ellipseData.year++;
+            Inte.ellipseData.increaseYear();
+            Inte.ellipseVisualAssets.cycleColorsUp();
             this.update();
         });
     }
@@ -435,7 +519,8 @@ function NewEllipseDialog(Inte) {
         // Keyboard short cut for subtracting year: Ctrl - Q
         L.DomEvent.on(window, 'keydown', (e) => {
             if (e.keyCode == 81 && !e.shiftKey && e.ctrlKey && this.dialog) {
-                Inte.ellipseData.year--;
+                Inte.ellipseData.decreaseYear();
+                Inte.ellipseVisualAssets.cycleColorsDown();
                 this.update();
             }
          }, this);
@@ -443,7 +528,8 @@ function NewEllipseDialog(Inte) {
         // Keyboard short cut for adding year: Ctrl - E
         L.DomEvent.on(window, 'keydown', (e) => {
             if (e.keyCode == 69 && !e.shiftKey && e.ctrlKey && this.dialog) {
-                Inte.ellipseData.year++;
+                Inte.ellipseData.increaseYear();
+                Inte.ellipseVisualAssets.cycleColorsUp();
                 this.update();
             }
          }, this);         
@@ -469,7 +555,7 @@ function LassoEllipses(Inte) {
         },
         () => { this.disable() },
     );
-
+    
     this.lasso = L.lasso(Inte.treering.viewer, {
         intersect: true,
         polygon: {
@@ -611,15 +697,15 @@ function LassoEllipses(Inte) {
      */
     LassoEllipses.prototype.highlightSelected = function() {
         // Remove highlight from all before applying new color. 
-        Inte.ellipseVisualAssets.elements.map(ele => {
+        Inte.ellipseVisualAssets.elements.map((ele, i) => {
             ele.ellipse.setStyle({
-                color: Inte.ellipseVisualAssets.ellipseColor,
+                color: Inte.ellipseData.data[i].color,
             });
         });
 
-        Inte.ellipseVisualAssets.selectedElements.map(ele => {
+        Inte.ellipseVisualAssets.selectedElements.map((ele, i) => {
             ele.ellipse.setStyle({
-                color: "#FFF000"
+                color: Inte.ellipseVisualAssets.selectedEllipseColor,
             });
         });
     }
@@ -629,9 +715,9 @@ function LassoEllipses(Inte) {
      * @function
      */
     LassoEllipses.prototype.dehighlightSelected = function() {
-        Inte.ellipseVisualAssets.selectedElements.map(ele => {
+        Inte.ellipseVisualAssets.selectedElements.map((ele, i) => {
             ele.ellipse.setStyle({
-                color: Inte.ellipseVisualAssets.ellipseColor,
+                color: Inte.ellipseData.selectedData[i].color,
             });
         });
     }
@@ -676,6 +762,9 @@ function DeleteEllipses(Inte) {
         Inte.ellipseData.selectedData = [];
 
         Inte.ellipseVisualAssets.selectedElements.map(ele => {
+            let index = Inte.ellipseVisualAssets.elements.findIndex(temp => temp.ellipse.getLatLng().equals(ele.ellipse.getLatLng()));
+            Inte.ellipseVisualAssets.elements.splice(index, 1);
+            
             Inte.ellipseVisualAssets.ellipseLayer.removeLayer(ele.ellipse);
             Inte.ellipseVisualAssets.ellipseLayer.removeLayer(ele.center);
         });
