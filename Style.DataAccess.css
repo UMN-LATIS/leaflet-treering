@@ -51,6 +51,38 @@
     margin-top: 30px;
     /* text-align: center; */
 }
-/* .DataAccess-Table{
+ 
+.DataAccess-Table{ /* th = table header, td = table cell, tr = table row */
+    display:flex;
+    overflow-y: auto;
+    max-height : 250px;
+    width: 100%;
+    border: 2px solid black;
+    border-radius: 6px;
+    /* padding: 4px; padding = space around elements content */
+ }
+    
+th, td, tr  {
+    border-left: 1px solid black; 
+    border-collapse: collapse;
+    padding: 2px 4px; /*padding = space around elements content*/
+}
+.DataAccess-Table-Data{
+    max-height : 250px;
+    border-collapse: collapse; /*sets borders as shared vs two separate walls for adjacent cells*/
+    /* border-radius: 6px; */
+}
 
-} */
+.DataAccess-Table-Data th{
+    position: sticky; 
+    top: 0; 
+    background-color: white;
+
+}
+
+.DataAccess-Table-Data tr:nth-child(even){
+    background-color: #f2f2f2;
+}   
+.DataAccess-Table-Data tr:hover{
+    background-color: #ddd;
+}
