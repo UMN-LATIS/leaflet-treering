@@ -16,9 +16,6 @@
                     <i class="fa fa-minus" 
                     aria-hidden="true"></i>
                 </div>
-                <p class="AreaCapture-subtext">
-                    Ctrl - Q
-                </p>
             </div>
             <div class="AreaCapture-btn-container">
                 <div id="AreaCapture-addYear-btn" class="AreaCapture-btn">
@@ -26,12 +23,16 @@
                     style="float: right;"
                     aria-hidden="true"></i>
                 </div>
-                <p class="AreaCapture-subtext"
-                style="float: right;">
-                    Ctrl - E
-                </p>
             </div>
         </div>
+        <p class="AreaCapture-subtext"
+        style="display: inline;">
+            Ctrl - 1
+        </p>
+        <p class="AreaCapture-subtext"
+        style="float: right;">
+            Ctrl - 3
+        </p>
     </div>
 </script>
 
@@ -68,7 +69,8 @@
             <div class="AreaCapture-btn-container">
                 <div id="AreaCapture-confirmDelete-btn" class="AreaCapture-btn">
                     <i class="fa fa-check" 
-                    aria-hidden="true"></i>
+                    aria-hidden="true"
+                    style="margin-right: 6px;"></i>
                     <span> Confirm </span>
                 </div>
             </div>
@@ -81,7 +83,73 @@
                 </div>
             </div>
         </div>
-        
-        
     </div>
 </script>
+
+<script id="AreaCapture-dateSelectedEllipsesDialog-template" type="text/x-handlebars-template">
+    <div class="AreaCapture-dialog-container">
+        <p class="AreaCapture-text"
+        style="margin-bottom: 6px;"> 
+            Redate ALL selected ellipses to: 
+            <input id="AreaCapture-newDate-input"
+            class="AreaCapture-input"
+            type="number"
+            placeholder="{{ year }}">
+        </p>
+
+        <div class="AreaCapture-radioBtn-container">
+            <input type="radio" 
+            id="AreaCapture-datingShiftForward-btn" 
+            class="AreaCapture-radio" 
+            {{#if shiftDisabled}} disabled {{/if}}
+            value="{{ backwardValue }}" name="AreaCapture-dateRadioBtn-value">
+            <label class="AreaCapture-label" for="AreaCapture-datingShiftForward-btn">
+                <b>Adjust earlier ellipses:</b>shift dating of earlier ellipses back in time.
+            </label>
+            
+            <input type="radio" 
+            id="AreaCapture-datingShiftBackward-btn" 
+            class="AreaCapture-radio"
+            {{#if shiftDisabled}} disabled {{/if}}
+            value="{{ forwardValue }}" name="AreaCapture-dateRadioBtn-value">
+            <label class="AreaCapture-label" for="AreaCapture-datingShiftBackward-btn">
+                <b>Adjust later ellipses:</b> shift dating of later ellipses forward in time.
+            </label>
+            
+            <input type="radio" 
+            id="AreaCapture-datingIndividual-btn" 
+            class="AreaCapture-radio"
+            value="{{ individualValue }}" name="AreaCapture-dateRadioBtn-value"
+            checked>
+            <label class="AreaCapture-label" for="AreaCapture-datingIndividual-btn">
+                Shift <b>only selected</b> ellipses.
+            </label>
+        </div>
+        
+        <div class="AreaCapture-btn-row">
+            <div class="AreaCapture-btn-container">
+                <div id="AreaCapture-confirmDate-btn" class="AreaCapture-btn">
+                    <i class="fa fa-check" 
+                    aria-hidden="true"
+                    style="margin-right: 6px;"></i>
+                    <span> Confirm </span>
+                </div>
+            </div>
+            <div class="AreaCapture-btn-container">
+                <div id="AreaCapture-cancelDate-btn" class="AreaCapture-btn">
+                    <span> Cancel </span>
+                    <i class="fa fa-times" 
+                    style="margin-left: 6px;"
+                    aria-hidden="true"></i>
+                </div>
+            </div>
+        </div>
+        <p class="AreaCapture-subtext">
+            Ctrl - 2
+        </p>
+
+        <p class="AreaCapture-subtext">
+            Note: only ellipses with the same year can shift other ellipses. 
+        </p>
+    </div>
+</script> 

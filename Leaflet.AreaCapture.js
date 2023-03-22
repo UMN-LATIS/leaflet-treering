@@ -24,9 +24,23 @@ function AreaCaptureInterface(Lt) {
 
     this.deleteEllipses = new DeleteEllipses(this);
     this.deleteEllipsesDialog = new DeleteEllipsesDialog(this);
+
+    this.dateEllipses = new DateEllipses(this);
+    this.dateEllipsesDialog = new DateEllipsesDialog(this);
     
-    this.btns = [this.newEllipse.btn, this.lassoEllipses.btn, this.deleteEllipses.btn];
-    this.tools = [this.newEllipse, this.lassoEllipses, this.deleteEllipses];
+    // Order in btns array dictates order in button dropdown in browser. 
+    this.btns = [
+        this.newEllipse.btn, 
+        this.lassoEllipses.btn, 
+        this.dateEllipses.btn, 
+        this.deleteEllipses.btn
+    ];
+    this.tools = [
+        this.newEllipse, 
+        this.lassoEllipses, 
+        this.dateEllipses, 
+        this.deleteEllipses
+    ];
 }
 
 /**
@@ -127,13 +141,14 @@ function EllipseVisualAssets(Inte) {
      * @param {object} majorLatLng - Location of major axis edge. 
      * @param {object} minorLatLng - Location of minor axis edge. 
      * @param {float} degrees - Rotation of ellipse in degrees. 
+     * @param {string} [color = this.ellipseBaseColor] - Color of ellipse ring and inner shade. 
      */
-    EllipseVisualAssets.prototype.createEllipse = function(centerLatLng, majorLatLng, minorLatLng, degrees) {
+    EllipseVisualAssets.prototype.createEllipse = function(centerLatLng, majorLatLng, minorLatLng, degrees, color = this.ellipseBaseColor) {
         const latLngToMetersConstant = 111139;
         const majorRadius = Inte.calculator.distance(centerLatLng, majorLatLng) * latLngToMetersConstant;
         const minorRadius = Inte.calculator.distance(centerLatLng, minorLatLng) * latLngToMetersConstant;
 
-        let ellipse = L.ellipse(centerLatLng, [majorRadius, minorRadius], degrees, {color: this.ellipseBaseColor, weight: 5}); 
+        let ellipse = L.ellipse(centerLatLng, [majorRadius, minorRadius], degrees, {color: color, weight: 5}); 
         let center = L.marker(centerLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) }); 
         this.ellipseLayer.addLayer(ellipse);
         this.ellipseLayer.addLayer(center);
@@ -167,7 +182,6 @@ function EllipseVisualAssets(Inte) {
         this.ellipseBaseColor = this.colorScheme[this.colorIndex];
     }
 
-    // TODO: BROKEN
     /**
      * Shift color cycle by a given year difference. 
      * @function 
@@ -175,8 +189,23 @@ function EllipseVisualAssets(Inte) {
      * @param {integer} year - New year value.
      */
     EllipseVisualAssets.prototype.cycleColorsMulti = function(year) {
-        this.colorIndex = year % 3;
+        let n = this.colorScheme.length;
+        this.colorIndex = year % n;
         this.ellipseBaseColor = this.colorScheme[this.colorIndex];
+    }
+
+    /**
+     * Get color from color scheme cycle given a year. 
+     * @function 
+     * 
+     * @param {integer} year - New year value.
+     */
+    EllipseVisualAssets.prototype.getColorFromCycle = function(year) {
+        let n = this.colorScheme.length;
+        let index = Math.abs(year) % n;
+        let color = this.colorScheme[index];
+
+        return color;
     }
 
     /**
@@ -261,7 +290,7 @@ function EllipseVisualAssets(Inte) {
     EllipseVisualAssets.prototype.reload = function() {
         this.clearEllipses();
         Inte.ellipseData.data.map(e => {
-            this.createEllipse(e.latLng, e.majorLatLng, e.minorLatLng, e.degrees);
+            this.createEllipse(e.latLng, e.majorLatLng, e.minorLatLng, e.degrees, e.color);
         })
     }
 
@@ -435,7 +464,8 @@ function NewEllipseDialog(Inte) {
     }).setContent(content).addTo(Inte.treering.viewer);
     this.dialog.hideClose();
 
-    this.initOpen = false;
+    this.dialogOpen = false;
+    this.eventsCreated = false;
 
     /**
      * Opens dialog window. 
@@ -443,12 +473,13 @@ function NewEllipseDialog(Inte) {
      */
     NewEllipseDialog.prototype.open = function() {
         this.dialog.open();
+        this.dialogOpen = true;
 
-        if (!this.initOpen) {
+        if (!this.eventsCreated) {
             this.createDialogEventListeners();
             this.createShortcutEventListeners();
 
-            this.initOpen = true;
+            this.eventsCreated = true;
         }
     }
 
@@ -458,6 +489,7 @@ function NewEllipseDialog(Inte) {
      */
     NewEllipseDialog.prototype.close = function() {
         this.dialog.close();
+        this.dialogOpen = false;
     }
 
     /**
@@ -469,6 +501,7 @@ function NewEllipseDialog(Inte) {
             "year": Inte.ellipseData.year,
         });
 
+        // Once content updated, need to recreate element event listeners.
         this.dialog.setContent(content);
         this.createDialogEventListeners();
     }
@@ -490,7 +523,7 @@ function NewEllipseDialog(Inte) {
 
             $("#AreaCapture-confirmYear-btn").on("click", () => {
                 let year = $("#AreaCapture-newYear-input").val();
-                if (year) {
+                if (year || year == 0) {
                     Inte.ellipseVisualAssets.cycleColorsMulti(year);
                     Inte.ellipseData.year = year;
                 }
@@ -516,18 +549,30 @@ function NewEllipseDialog(Inte) {
      * @function
      */
     NewEllipseDialog.prototype.createShortcutEventListeners = function () {
-        // Keyboard short cut for subtracting year: Ctrl - Q
+        // Keyboard short cut for subtracting year: Ctrl - 1
         L.DomEvent.on(window, 'keydown', (e) => {
-            if (e.keyCode == 81 && !e.shiftKey && e.ctrlKey && this.dialog) {
+            if (e.keyCode == 49 && !e.shiftKey && e.ctrlKey && this.dialogOpen) {
                 Inte.ellipseData.decreaseYear();
                 Inte.ellipseVisualAssets.cycleColorsDown();
                 this.update();
             }
          }, this);
 
-        // Keyboard short cut for adding year: Ctrl - E
+         // Keyboard short cut for confirming a new year: Ctrl - 2
         L.DomEvent.on(window, 'keydown', (e) => {
-            if (e.keyCode == 69 && !e.shiftKey && e.ctrlKey && this.dialog) {
+            if (e.keyCode == 50 && !e.shiftKey && e.ctrlKey && this.dialogOpen) {
+                let year = $("#AreaCapture-newYear-input").val();
+                if (year || year == 0) {
+                    Inte.ellipseVisualAssets.cycleColorsMulti(year);
+                    Inte.ellipseData.year = year;
+                }
+                this.update();
+            }
+         }, this); 
+
+        // Keyboard short cut for adding year: Ctrl - 3
+        L.DomEvent.on(window, 'keydown', (e) => {
+            if (e.keyCode == 51 && !e.shiftKey && e.ctrlKey && this.dialogOpen) {
                 Inte.ellipseData.increaseYear();
                 Inte.ellipseVisualAssets.cycleColorsUp();
                 this.update();
@@ -550,7 +595,7 @@ function LassoEllipses(Inte) {
         "Lasso existing ellipses",
         () => {
             Inte.treering.disableTools(); 
-            Inte.treering.collapseTools(); 
+            // Inte.treering.collapseTools();
             this.enable() 
         },
         () => { this.disable() },
@@ -711,7 +756,7 @@ function LassoEllipses(Inte) {
     }
 
     /**
-     * Deighlights (reverts element style) selected ellipses. 
+     * Dehighlights (reverts element style) selected ellipses. 
      * @function
      */
     LassoEllipses.prototype.dehighlightSelected = function() {
@@ -720,6 +765,14 @@ function LassoEllipses(Inte) {
                 color: Inte.ellipseData.selectedData[i].color,
             });
         });
+    }
+
+    /**
+     * Alerts user about editting abilities. 
+     * @function
+     */
+    LassoEllipses.prototype.warning = function() {
+        alert("Must have at least one ellipse selected to edit.");
     }
 }
 
@@ -796,7 +849,7 @@ function DeleteEllipsesDialog(Inte) {
     this.dialog.hideClose();
     this.dialog.hideResize();
 
-    this.initOpen = false;
+    this.eventsCreated = false;
 
     /**
      * Opens dialog window. 
@@ -807,10 +860,10 @@ function DeleteEllipsesDialog(Inte) {
         this.dialog.setLocation([this.fromTop, this.fromLeft]);
         this.dialog.open();
 
-        if (!this.initOpen) {
+        if (!this.eventsCreated) {
             this.createDialogEventListeners();
 
-            this.initOpen = true;
+            this.eventsCreated = true;
         }
         
     }
@@ -836,6 +889,206 @@ function DeleteEllipsesDialog(Inte) {
         $("#AreaCapture-cancelDelete-btn").on("click", () => {
             this.close();
         });
+    }
+}
+
+/**
+ * Tool for dating existing selected ellipses. 
+ * @constructor
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
+ */
+function DateEllipses(Inte) {
+    this.btn = new Button (
+        'access_time',
+        'Date selected ellipses',
+        () => { Inte.treering.disableTools(); this.enable() },
+        () => { this.disable() },
+    );
+
+    // These strings are arbutary, just used to pair inputs & events. 
+    this.forwardValue = "i";
+    this.backwardValue = "j";
+    this.individualValue = "k";
+
+    /**
+     * Enables dating, opens selection dialog. 
+     * @function
+     */
+    DateEllipses.prototype.enable = function() {
+        Inte.dateEllipsesDialog.open();
+    }
+
+    /**
+     * Disables dating, opens selection dialog. 
+     * @function
+     */
+    DateEllipses.prototype.disable = function() {
+        Inte.dateEllipsesDialog.close();
+    }
+
+    /**
+     * Dates all selected ellipses per the mode chosen by user.   
+     * @function
+     * 
+     * @param {integer} year - New year value. 
+     */
+    DateEllipses.prototype.action = function(year) {
+        let selectedValue = $('input[name="AreaCapture-dateRadioBtn-value"]:checked').val();
+        
+        let selectedYear = Inte.ellipseData.selectedData[0].year;
+        let deltaYear = year - selectedYear;
+        let otherEllipses = [];
+
+        switch(selectedValue) {
+            case(this.forwardValue): {
+                otherEllipses = Inte.ellipseData.data.filter(ele => ele.year > selectedYear);
+                break;
+            }
+            case(this.backwardValue): {
+                otherEllipses = Inte.ellipseData.data.filter(ele => ele.year < selectedYear);
+                break;
+            }
+        }
+
+        otherEllipses.map(ele => {
+            ele.year += deltaYear;
+            ele.color = Inte.ellipseVisualAssets.getColorFromCycle(ele.year);
+        });
+
+        let color = Inte.ellipseVisualAssets.getColorFromCycle(year);
+            Inte.ellipseData.selectedData.map(ele => {
+                ele.year = year;
+                ele.color = color;
+            });
+
+        Inte.lassoEllipses.deselectEllipses();
+        Inte.ellipseVisualAssets.reload();
+    }
+}
+
+/**
+ * Generates dialog boxes related to dating existing ellipses. 
+ * @constructor
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
+ */
+function DateEllipsesDialog(Inte) {
+    let html = document.getElementById("AreaCapture-dateSelectedEllipsesDialog-template").innerHTML;
+    this.template = Handlebars.compile(html);
+    let content = this.template({
+        "forwardValue": Inte.dateEllipses.forwardValue,
+        "backwardValue": Inte.dateEllipses.backwardValue,
+        "individualValue": Inte.dateEllipses.individualValue,
+        "year": 0, 
+        "shiftDisabled": true, 
+    });
+
+    let size = [350, 296];
+    this.fromLeft = ($(window).width() - size[0]) / 2;
+    this.fromTop = ($(window).height() - size[1]) / 2;
+    
+    this.dialog = L.control.dialog({
+        "size": size,
+        "anchor": [this.fromTop, this.fromLeft],
+        "initOpen": false,
+        'position': 'topleft',
+        "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+    }).setContent(content).addTo(Inte.treering.viewer);
+    this.dialog.hideClose();
+    this.dialog.hideResize();
+
+    this.eventsCreated = false;
+    this.dialogOpen = false;
+
+    /**
+     * Opens dialog window. 
+     * @function
+     */
+    DateEllipsesDialog.prototype.open = function() {
+        if (!Inte.ellipseData.selectedData.length) {
+            Inte.lassoEllipses.warning();
+            return
+        }
+
+        // Update dialog content with most recent items. 
+        this.update();
+
+        // Recenter dialog window. Otherwise anchor location remebered. 
+        this.dialog.setLocation([this.fromTop, this.fromLeft]);
+        this.dialog.open();
+        this.dialogOpen = true;
+
+        if (!this.eventsCreated) {
+            // Only create shortcut listeners since update() creates event listenters.
+            this.createShortcutEventListeners();
+
+            this.eventsCreated = true;
+        }
+        
+    }
+
+    /**
+     * Closes dialog window. 
+     * @function
+     */
+    DateEllipsesDialog.prototype.close = function() {
+        this.dialog.close();
+        this.dialogOpen = false;
+    }
+
+    /**
+     * Updates dialog window HTML content. 
+     * @function
+     */
+    DateEllipsesDialog.prototype.update = function() {
+        let year = Inte.ellipseData.selectedData[0].year;
+        let uniqueYears = [...new Set(Inte.ellipseData.selectedData.map(ele => ele.year))];
+        let multipleYearsSelected = uniqueYears.length > 1;
+
+        let content = this.template({
+            "forwardValue": Inte.dateEllipses.forwardValue,
+            "backwardValue": Inte.dateEllipses.backwardValue,
+            "individualValue": Inte.dateEllipses.individualValue,
+            "year": year,
+            "shiftDisabled": multipleYearsSelected,
+        });
+
+        // Once content updated, need to recreate element event listeners. 
+        this.dialog.setContent(content);
+        this.createDialogEventListeners();
+    }
+
+    /**
+     * Creates all event listeners for HTML elements in dialog window. 
+     * @function
+     */
+    DateEllipsesDialog.prototype.createDialogEventListeners = function() {
+        $("#AreaCapture-confirmDate-btn").on("click", () => {
+            let year = parseInt($("#AreaCapture-newDate-input").val());
+            if (year || year == 0) {
+                Inte.dateEllipses.action(year);
+            }
+            this.close();
+        });
+
+        $("#AreaCapture-cancelDate-btn").on("click", () => {
+            this.close();
+        });
+    }
+
+    /**
+     * Creates all DOM event listeners - keyboard shortcuts.  
+     * @function
+     */
+    DateEllipsesDialog.prototype.createShortcutEventListeners = function () {
+        // Keyboard short cut for confirming new date: Ctrl - 2
+        L.DomEvent.on(window, 'keydown', (e) => {
+            if (e.keyCode == 50 && !e.shiftKey && e.ctrlKey && this.dialogOpen) {
+                Inte.dateEllipses.action();
+                this.close();
+            }
+         }, this);        
     }
 }
 

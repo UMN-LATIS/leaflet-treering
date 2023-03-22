@@ -14,8 +14,18 @@
 }
 
 .AreaCapture-subtext {
+	color: gray;
 	font-size: 10px;
 	font-style: italic;
+}
+
+.AreaCapture-label {
+    display: block;
+
+	font-size: 14px;
+	font-weight: normal !important;
+
+	margin-left: 30px;
 }
 
 .AreaCapture-btn-container {
@@ -29,8 +39,16 @@
 }
 
 .AreaCapture-btn {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+
 	width: 100%;
 	min-height: 22px;
+
+	font-size: 18px;
+	font-family: Arial;
+	color: white;
 	
 	padding: 5px;
 
@@ -40,6 +58,10 @@
 	border-radius: 10px;
 
 	cursor: pointer;
+}
+
+.AreaCapture-radio {
+	float: left;
 }
 
 .AreaCapture-input {
@@ -71,21 +93,22 @@
 }
 
 #AreaCapture-confirmDelete-btn {
-	font-size: 18px;
-	font-family: Arial;
-	color: white;
-
 	background-color: #71b54c;
 }
 
 #AreaCapture-cancelDelete-btn {
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
+	background-color: #b54c4c;
+}
 
-	font-size: 18px;
-	font-family: Arial;
-	color: white;
+/* Date ellipses dialog */
+.AreaCapture-radioBtn-container {
+	margin-bottom: 12px;
+}
 
+#AreaCapture-confirmDate-btn {
+	background-color: #71b54c;
+}
+
+#AreaCapture-cancelDate-btn {
 	background-color: #b54c4c;
 }
