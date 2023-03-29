@@ -16,12 +16,24 @@
                 <span class="material-symbols-outlined">
                     insert_chart
                 </span>
+                <!-- <button onclick="myFunction()">insert_chart</button>
+                <script>
+                    function myFunction() {
+                      console.log("Insert Chart Clicked");
+                    }
+                </script> -->
             </div>
 
 
             <div class= "DataAccess-QueryStats-Buttons DataAccess-Icon-Buttons">
                 <span class="material-symbols-outlined">
-                    query_stats
+                    new_window
+                </span>
+            </div>
+
+            <div class= "DataAccess-UploadFile-Buttons DataAccess-Icon-Buttons">
+                <span class="material-symbols-outlined">
+                    upload_file
                 </span>
             </div>
 
@@ -31,11 +43,7 @@
                 </span>
             </div>
 
-            <div class= "DataAccess-UploadFile-Buttons DataAccess-Icon-Buttons">
-                <span class="material-symbols-outlined">
-                    upload_file
-                </span>
-            </div>
+           
         </div>
 
 
@@ -48,15 +56,6 @@
 
 
     <div class = "DataAccess-Buttons-Container">
-    <div class= "DataAccess-JsonDownload-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center">
-            <!-- <div style="width:48%; display:inline; float:right; margin-right:2%; border-right:2px double #cccccc;"> -->
-            <!-- <span class="material-symbols-outlined">
-                check_box_outline_blank -->
-            <!-- </span> -->
-            <p>
-                JSON
-            </p>
-        </div>
 
         <div class= "DataAccess-Copy-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center">
             <!-- <div style="width:48%; display:inline; float:right; margin-right:2%; border-right:2px double #cccccc;"> -->
@@ -74,7 +73,7 @@
                 check_box_outline_blank
             </span> -->
             <P>
-                TSV
+                CSV
             </P>
         </div>
 
@@ -84,7 +83,7 @@
                 check_box_outline_blank
             </span> -->
             <p>
-                CSV
+                TSV
             </p>
         </div>
 
@@ -95,6 +94,16 @@
             </span> -->
             <p>
                 RWL
+            </p>
+        </div>
+
+        <div class= "DataAccess-JsonDownload-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center">
+            <!-- <div style="width:48%; display:inline; float:right; margin-right:2%; border-right:2px double #cccccc;"> -->
+            <!-- <span class="material-symbols-outlined">
+                check_box_outline_blank -->
+            <!-- </span> -->
+            <p>
+                JSON
             </p>
         </div>
     </div>
@@ -119,12 +128,17 @@
                 </tr>
             </thead>
             <tbody>
-            {{#each initialData}}
+            {{#with initialData}}
+                {{#each tw.x}}
                 <tr>
-                    <td>{{this.year}}</td>
-                    <td>{{this.width}}</td>
+                    <td>{{this}}</td>
+                    <td>{{decimalFixed (lookup ../tw.y @index)}} </td>
+                    <td>{{decimalFixed (lookup ../ew.y @index)}} </td>
+                    <td>{{decimalFixed (lookup ../lw.y @index)}} </td>
+
                 </tr>
-            {{/each}}
+                {{/each}}
+            {{/with}}
             </tbody>
         </table>
     </div>
@@ -137,3 +151,7 @@ let newPointObj = {
     "lw_width": width * (2/3),
     "width": width,
 } -->
+
+
+<!-- // if blocks to determine if EW and LW columns are shown -->
+<!-- objectName?.atribute returns undefined if attribute does not exist -->
