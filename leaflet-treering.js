@@ -120,7 +120,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'interests', 'Manage areas');
   this.areaCaptureInterface.tools.map(tool => {
     this.tools.push(tool);
-  })
+  });
 
   this.baseLayer = {
     'Tree Ring': base_layer,

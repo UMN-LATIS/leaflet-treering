@@ -141,15 +141,33 @@ function EllipseVisualAssets(Inte) {
      * @param {object} majorLatLng - Location of major axis edge. 
      * @param {object} minorLatLng - Location of minor axis edge. 
      * @param {float} degrees - Rotation of ellipse in degrees. 
+     * @param {integer} [year = Inte.ellipseData.year] - Year of ellipse to show when hovered over. 
      * @param {string} [color = this.ellipseBaseColor] - Color of ellipse ring and inner shade. 
      */
-    EllipseVisualAssets.prototype.createEllipse = function(centerLatLng, majorLatLng, minorLatLng, degrees, color = this.ellipseBaseColor) {
+    EllipseVisualAssets.prototype.createEllipse = function(centerLatLng, majorLatLng, minorLatLng, degrees, year = Inte.ellipseData.year, color = this.ellipseBaseColor) {
         const latLngToMetersConstant = 111139;
         const majorRadius = Inte.calculator.distance(centerLatLng, majorLatLng) * latLngToMetersConstant;
         const minorRadius = Inte.calculator.distance(centerLatLng, minorLatLng) * latLngToMetersConstant;
+        
+        const majorRadiusScaled = Inte.treering.helper.trueDistance(centerLatLng, majorLatLng);
+        const minorRadiusScaled = Inte.treering.helper.trueDistance(centerLatLng, minorLatLng);
+        const area = (Math.PI * majorRadiusScaled * minorRadiusScaled).toFixed(3);
 
         let ellipse = L.ellipse(centerLatLng, [majorRadius, minorRadius], degrees, {color: color, weight: 5}); 
         let center = L.marker(centerLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) }); 
+        
+        center.bindPopup(
+            `Year: ${year} <br>
+            Area: ${area}mm`, 
+            { closeButton: false }
+            );
+        ellipse.on('mouseover', function (e) {
+            center.openPopup();
+        });
+        ellipse.on('mouseout', function (e) {
+            center.closePopup();
+        });
+
         this.ellipseLayer.addLayer(ellipse);
         this.ellipseLayer.addLayer(center);
         this.elements.push({
@@ -290,7 +308,7 @@ function EllipseVisualAssets(Inte) {
     EllipseVisualAssets.prototype.reload = function() {
         this.clearEllipses();
         Inte.ellipseData.data.map(e => {
-            this.createEllipse(e.latLng, e.majorLatLng, e.minorLatLng, e.degrees, e.color);
+            this.createEllipse(e.latLng, e.majorLatLng, e.minorLatLng, e.degrees, e.year, e.color);
         })
     }
 
