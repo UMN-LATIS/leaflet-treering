@@ -122,6 +122,9 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     this.tools.push(tool);
   })
 
+  // Code hosted in Leaflet.DataAccess.js
+  this.dataAccessInterface = new DataAccessInterface(this);
+
   this.baseLayer = {
     'Tree Ring': base_layer,
     'GL Layer': gl_layer

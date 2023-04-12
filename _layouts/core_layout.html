@@ -56,6 +56,7 @@
 
 <script type="application/javascript" src="../Leaflet.AreaCapture.js"></script>
 
+<script type = "application/javascript" src= "../Leaflet.DataAccess.js"></script>
 <script>
 
 var fragmentShader2 = `
@@ -147,11 +148,14 @@ void main(void){
 		// add templates to body before interface loaded
 		$.get("templates.html", function (coreassestsData) {
 			$.get("../Template.AreaCapture.html", function (areaCaptureData) {
-				$("body").append(coreassestsData);
-				$("body").append(areaCaptureData);
+				$.get("../Template.DataAccess.html", function (dataAccessData) {
+					$("body").append(coreassestsData);
+					$("body").append(areaCaptureData);
+					$("body").append(dataAccessData);
 
-				var treering = new LTreering(map, "../", coreData, baseLayer, layer);
-				treering.loadInterface();
+					var treering = new LTreering(map, "../", coreData, baseLayer, layer);
+					treering.loadInterface();
+				})
 			})
 			
 		});
