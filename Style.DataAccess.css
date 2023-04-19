@@ -3,10 +3,15 @@
     flex-direction: row;
     justify-content: flex-start;
 }
+.DataAccess-StatsUploadDelete-Container, .DataAccess-Buttons-Container, #DataAccess-Table {
+    margin: 0 5px;
+    
+}
 .DataAccess-StatsUploadDelete-Container{
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    align-items: center;
 }
 .DataAccess-Buttons-Container{
     display: flex;
@@ -14,23 +19,38 @@
     justify-content: space-evenly;
 }
 .DataAccess-Icon-Buttons{
+    display: flex;
+    justify-content: center;
+    align-items: center;
     color: black;
     /* width: 30px;
     height: 30px; */
-    font-size: 30px;
-    margin: 5px;
+    /* font-size: 30px; */
+    /* margin: 5px; */
 }
-.material-symbols-outlined{
-    font-size: inherit;
+/* .material-symbols-outlined{
+    font-size: 40 px;
+} */
+
+.DataAccess-material-symbols{
+    font-size: 30px !important;
+}
+.DataAccess-Icon-Buttons, .DataAccess-Text-Buttons{
+    margin-bottom: 5px;
 }
 .DataAccess-Text-Buttons{
+    display: flex;
+    justify-content: center;
+    align-items: center;
     color: black;
     border: 2px solid black;
     border-radius: 6px;
     width: 30px;
     height: 30px;
-    margin: 5px;
 }
+buttonp{
+    margin: 0 !important;
+} 
 .DataAccess-Center{
     display:flex;
     align-items: center;
@@ -48,7 +68,7 @@
     border-radius: 6px;
     width: 30px;
     height: 30px;
-    margin-top: 30px;
+    /* margin-top: 15px; */
     /* text-align: center; */
 }
  
@@ -68,6 +88,9 @@ th, td, tr  {
     padding: 2px 4px; /*padding = space around elements content*/
 }
 .DataAccess-Table-Data{
+    font-size: 10px;
+    font-family: Arial;
+    font-weight: bold;
     max-height : 250px;
     border-collapse: collapse; /*sets borders as shared vs two separate walls for adjacent cells*/
     /* border-radius: 6px; */

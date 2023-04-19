@@ -26,7 +26,6 @@ function createMockData1(yearStart = 1800, yearEnd = 2020, widthMin = 0.05, widt
 
     return jsonOut;
 }
-
 function DataAccessInterface(Lt){
     this.treering = Lt; // assign thie given leaflet treering data to this.treering
     console.log("Data Access");
@@ -37,12 +36,14 @@ function DataAccessDialog(Inte){
     var table_ele = document.getElementById("DataAccess-Table-ID");
     var html = table_ele.innerHTML;
     var tableTemplate = Handlebars.compile(html);
+    var data = Inte.treering.helper.findDistances();
+    var data = {
+        tw: {},
+        ew: {},
+        lw: {},
+    }
     var content = tableTemplate({
-        "initialData" : 
-        {tw: {x:[], y:[]},
-        ew:{x:[], y: []}, 
-        lw: {x:[], y:[]}
-        }
+        "initialData" : data
     });
     document.getElementById("DataAccess-Table").innerHTML = content;
     this.dialog = L.control.dialog({
@@ -52,7 +53,42 @@ function DataAccessDialog(Inte){
         'position': 'topleft',
         "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
         'minSize': [0, 0]
-}).setContent(window_ele).addTo(Inte.treering.viewer);
+    }).setContent(window_ele).addTo(Inte.treering.viewer);
+    
+    // this.createEventListeners();
+    DataAccessDialog.prototype.createEventListeners = function () {
+        $("#insert_chart").on("click", () => {
+            console.log("Insert Chart Click");
+        });
+        $("#new_window").on("click", () => {
+            console.log("New Window CLick");
+        });
+        $("#upload_file").on("click", () => {
+            console.log("Upload File CLick");
+        });
+        $("#cloud_upload").on("click", () => {
+            console.log("Cloud Upload CLick");
+        });
+        $("#delete").on("click", () => {
+            console.log("Delete CLick");
+        });
+        $("#copy").click(() => {
+            console.log("Copy Click");
+        });
+        $("#csv").on("click", () => {
+            console.log("CSV CLick");
+        });
+        $("#tsv").on("click", () => {
+            console.log("CSV CLick");
+        });
+        $("#rwl").on("click", () => {
+            console.log("CSV CLick");
+        });
+        $("#json").on("click", () => {
+            console.log("CSV CLick");
+        });
+    }
+        // Inte.createEventListeners();
 }
 
 
@@ -116,6 +152,7 @@ Handlebars.registerHelper('decimalFixed', function(decimal) {
 });
 
 // var initialData = createMockData()
+
 // console.log(initialData);
 // var element = document.getElementById("DataAccess-Table-ID")
 // var html = element.innerHTML;
@@ -128,48 +165,26 @@ Handlebars.registerHelper('decimalFixed', function(decimal) {
 // var parentDocument = document.getElementById("DataAccess-Table");
 // parentDocument.innerHTML = content;
 
-// var insert_chart = document.getElementById("insert_chart")
-// insert_chart.addEventListener("click", () => {
-//     console.log("insert_chart was clicked");
-// });
-
-// var new_window = document.getElementById("new_window")
-// new_window.addEventListener("click" ,() =>{
-//     console.log("new-window was clicked");
-// });
-
-// var new_window = document.getElementById("upload_file")
-// new_window.addEventListener("click" ,() =>{
-//     console.log("upload_file was clicked");
-// });
-// var new_window = document.getElementById("cloud_upload")
-// new_window.addEventListener("click" ,() =>{
-//     console.log("cloud_upload was clicked");
-// });
-// var new_window = document.getElementById("delete")
-// new_window.addEventListener("click" ,() =>{
-//     console.log("delete was clicked");
-// });
-// var new_window = document.getElementById("copy")
-// new_window.addEventListener("click" ,() =>{
-//     console.log("copy was clicked");
-// });
-// var new_window = document.getElementById("csv")
-// new_window.addEventListener("click" ,() =>{
-//     console.log("csv was clicked");
-// });
-// var new_window = document.getElementById("tsv")
-// new_window.addEventListener("click" ,() =>{
-//     console.log("tsv was clicked");
-// });
-// var new_window = document.getElementById("rwl")
-// new_window.addEventListener("click" ,() =>{
-//     console.log("rwl was clicked");
-// });
-// var new_window = document.getElementById("json")
-// new_window.addEventListener("click" ,() =>{
-//     console.log("json was clicked");
-// });
+document.getElementById("insert_chart").addEventListener("click", () =>
+    console.log("Insert Chart Click"));
+document.getElementById("new_window").addEventListener("click", () =>
+    console.log("New Window Click"));
+document.getElementById("upload_file").addEventListener("click", () =>
+    console.log("Upload File Click"));
+document.getElementById("cloud_upload").addEventListener("click", () =>
+    console.log("Cloud Upload Click"));
+document.getElementById("delete").addEventListener("click", () =>
+    console.log("Delete Click"));
+document.getElementById("copy").addEventListener("click", () =>
+    console.log("Copy Click"));
+document.getElementById("csv").addEventListener("click", () =>
+    console.log("CSV Click"));
+document.getElementById("tsv").addEventListener("click", () =>
+    console.log("TSV Click"));
+document.getElementById("rwl").addEventListener("click", () =>
+    console.log("RWL Click"));
+document.getElementById("json").addEventListener("click", () =>
+    console.log("JSON Click"));
 
 
 // Find distances from leaflet-treering has a find disance prototype that 
