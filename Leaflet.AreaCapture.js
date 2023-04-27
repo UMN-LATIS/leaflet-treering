@@ -101,6 +101,42 @@ function EllipseData(Inte) {
     EllipseData.prototype.decreaseYear = function() {
         this.year--;
     }
+
+    /**
+     * Undo recent changes.
+     * @function
+     * 
+     * @param {string} JSONdata - All ellipse data to load. 
+     */
+    EllipseData.prototype.undo = function(JSONdata) {
+        this.data = JSON.parse(JSON.stringify(JSONdata));
+
+        // JSON strips LatLng object of properties, need to recreate. 
+        this.data.map(dat => {
+            dat.latLng = L.latLng(dat.latLng.lat, dat.latLng.lng);
+            dat.selected = false;
+        });
+
+        Inte.ellipseVisualAssets.reload();
+    }
+
+    /**
+     * Redo recent changes.
+     * @function
+     * 
+     * @param {string} JSONdata - All ellipse data to load. 
+     */
+    EllipseData.prototype.redo = function(JSONdata) {
+        this.data = JSON.parse(JSON.stringify(JSONdata));
+
+        // JSON strips LatLng object of properties, need to recreate. 
+        this.data.map(dat => {
+            dat.latLng = L.latLng(dat.latLng.lat, dat.latLng.lng);
+            dat.selected = false;
+        });
+
+        Inte.ellipseVisualAssets.reload();
+    }
 }
 
 /**
@@ -355,6 +391,16 @@ function NewEllipse(Inte) {
         () => { Inte.treering.disableTools(); this.enable() },
         () => { this.disable() },
     );
+
+    // Crtl-E to create a new ellipse. 
+    L.DomEvent.on(window, 'keydown', (e) => {
+        if (e.keyCode == 69 && e.getModifierState("Control") && window.name.includes('popout')) {
+        e.preventDefault();
+        e.stopPropagation();
+        Inte.treering.disableTools();
+        this.enable();
+        }
+    }, this);
     
     /**
      * Enable tool by activating button & starting event chain. 
@@ -363,6 +409,9 @@ function NewEllipse(Inte) {
     NewEllipse.prototype.enable = function() {
         this.btn.state('active');
         Inte.treering.viewer.getContainer().style.cursor = 'pointer';
+
+        // Push change to undo stack: 
+        Inte.treering.undo.push();
 
         Inte.newEllipseDialog.open();
         this.action();
@@ -437,6 +486,9 @@ function NewEllipse(Inte) {
                     Inte.ellipseVisualAssets.createGuideLine(centerLatLng, rotatedRightRadians, majorAxisLine);
                     break;
                 case 3:
+                    // Push change to undo stack:
+                    Inte.treering.undo.push();
+
                     minorLatLng = Inte.treering.viewer.mouseEventToLatLng(e);
                     Inte.ellipseVisualAssets.createGuideMarker(minorLatLng);
 
@@ -847,6 +899,9 @@ function DeleteEllipses(Inte) {
      * @function
      */
     DeleteEllipses.prototype.action = function() {
+        // Push change to undo stack: 
+        Inte.treering.undo.push();
+
         Inte.ellipseData.data = Inte.ellipseData.data.filter(dat => !dat.selected);
         Inte.ellipseData.selectedData = [];
 
@@ -975,6 +1030,9 @@ function DateEllipses(Inte) {
      * @param {integer} year - New year value. 
      */
     DateEllipses.prototype.action = function(year) {
+        // Push change to undo stack: 
+        Inte.treering.undo.push();
+
         let selectedValue = $('input[name="AreaCapture-dateRadioBtn-value"]:checked').val();
         
         let selectedYear = Inte.ellipseData.selectedData[0].year;
