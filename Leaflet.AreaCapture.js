@@ -68,6 +68,8 @@ function EllipseData(Inte) {
         let minorRadius = Inte.treering.helper.trueDistance(centerLatLng, minorLatLng);
         let area = Math.PI * majorRadius * minorRadius;
         
+        let color = (this.year % 10 == 0) ? Inte.ellipseVisualAssets.decadeColor : Inte.ellipseVisualAssets.ellipseBaseColor;
+
         let newDataElement = {
             "latLng": centerLatLng, 
             "majorLatLng": majorLatLng,
@@ -77,7 +79,7 @@ function EllipseData(Inte) {
             "degrees": degrees,
             "area": area,
             "year": this.year,
-            "color": Inte.ellipseVisualAssets.ellipseBaseColor,
+            "color": color,
             "selected": false,
         }
 
@@ -132,6 +134,7 @@ function EllipseVisualAssets(Inte) {
     this.colorIndex = 0;
     this.ellipseBaseColor = this.colorScheme[this.colorIndex];
     this.selectedEllipseColor = "#ffd92f";
+    this.decadeColor = "#db2314";
 
     /**
      * Create a new ellipse element on Leaflet viewer. 
@@ -153,12 +156,13 @@ function EllipseVisualAssets(Inte) {
         const minorRadiusScaled = Inte.treering.helper.trueDistance(centerLatLng, minorLatLng);
         const area = (Math.PI * majorRadiusScaled * minorRadiusScaled).toFixed(3);
 
+        if (year % 10 == 0) color = this.decadeColor;
         let ellipse = L.ellipse(centerLatLng, [majorRadius, minorRadius], degrees, {color: color, weight: 5}); 
         let center = L.marker(centerLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) }); 
         
         center.bindPopup(
-            `Year: ${year} <br>
-            Area: ${area}mm`, 
+            `T: ${year} <br>
+            A: ${area} mm<sup>2</sup>`, 
             { closeButton: false }
             );
         ellipse.on('mouseover', function (e) {
@@ -633,6 +637,11 @@ function LassoEllipses(Inte) {
      * @function
      */
     LassoEllipses.prototype.enable = function() {
+        if (!Inte.ellipseData.data.length) {
+            alert("Must create ellipses before lasso can be used.");
+            return
+        }
+
         this.btn.state('active');
         this.active = true;
         Inte.treering.viewer.getContainer().style.cursor = 'crosshair';
@@ -715,6 +724,10 @@ function LassoEllipses(Inte) {
      */
     LassoEllipses.prototype.selectEllipses = function(layers) {
         layers.map(layer => {
+            if (!(layer instanceof L.Marker)) {
+                return
+            }
+
             // Finds saved JSON data of ellipse based on latLng. 
             let data = Inte.ellipseData.data.find(dat => dat.latLng.equals(layer.getLatLng()));
             if (data && !data.selected) {
@@ -813,6 +826,11 @@ function DeleteEllipses(Inte) {
      * @function
      */
     DeleteEllipses.prototype.enable = function() {
+        if (!Inte.ellipseData.selectedData.length) {
+            Inte.lassoEllipses.warning();
+            return
+        }
+
         Inte.deleteEllipsesDialog.open();
     }
 
@@ -934,6 +952,11 @@ function DateEllipses(Inte) {
      * @function
      */
     DateEllipses.prototype.enable = function() {
+        if (!Inte.ellipseData.selectedData.length) {
+            Inte.lassoEllipses.warning();
+            return
+        }
+
         Inte.dateEllipsesDialog.open();
     }
 
@@ -1024,11 +1047,6 @@ function DateEllipsesDialog(Inte) {
      * @function
      */
     DateEllipsesDialog.prototype.open = function() {
-        if (!Inte.ellipseData.selectedData.length) {
-            Inte.lassoEllipses.warning();
-            return
-        }
-
         // Update dialog content with most recent items. 
         this.update();
 
