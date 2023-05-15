@@ -120,7 +120,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'interests', 'Manage areas');
   this.areaCaptureInterface.tools.map(tool => {
     this.tools.push(tool);
-  })
+  });
 
   // Code hosted in Leaflet.DataAccess.js
   this.dataAccessInterface = new DataAccessInterface(this);
@@ -3172,9 +3172,12 @@ function Undo(Lt) {
     this.btn.enable();
     Lt.redo.btn.disable();
     Lt.redo.stack.length = 0;
+
     var restore_points = JSON.parse(JSON.stringify(Lt.data.points));
+    let ellipse_points = JSON.parse(JSON.stringify(Lt.areaCaptureInterface.ellipseData.data));
+
     this.stack.push({'year': Lt.data.year, 'earlywood': Lt.data.earlywood,
-      'index': Lt.data.index, 'points': restore_points });
+      'index': Lt.data.index, 'points': restore_points, 'ellipses':  ellipse_points});
   };
 
   /**
@@ -3183,16 +3186,21 @@ function Undo(Lt) {
    */
   Undo.prototype.pop = function() {
     if (this.stack.length > 0) {
-      if (Lt.data.points[Lt.data.index - 1].start) {
-        Lt.createPoint.disable();
-      } else {
-        Lt.mouseLine.from(Lt.data.points[Lt.data.index - 2].latLng);
+      if (Lt.data.points.length) {
+        if (Lt.data.points[Lt.data.index - 1].start) {
+          Lt.createPoint.disable();
+        } else {
+          Lt.mouseLine.from(Lt.data.points[Lt.data.index - 2].latLng);
+        }
       }
 
       Lt.redo.btn.enable();
+
       var restore_points = JSON.parse(JSON.stringify(Lt.data.points));
+      let ellipse_points = JSON.parse(JSON.stringify(Lt.areaCaptureInterface.ellipseData.data));
+
       Lt.redo.stack.push({'year': Lt.data.year, 'earlywood': Lt.data.earlywood,
-        'index': Lt.data.index, 'points': restore_points});
+        'index': Lt.data.index, 'points': restore_points, 'ellipses':  ellipse_points});
       var dataJSON = this.stack.pop();
 
       Lt.data.points = JSON.parse(JSON.stringify(dataJSON.points));
@@ -3202,6 +3210,7 @@ function Undo(Lt) {
       Lt.data.earlywood = dataJSON.earlywood;
 
       Lt.visualAsset.reload();
+      Lt.areaCaptureInterface.ellipseData.undo(dataJSON.ellipses);
 
       if (this.stack.length == 0) {
         this.btn.disable();
@@ -3233,8 +3242,10 @@ function Redo(Lt) {
   Redo.prototype.pop = function() {
     Lt.undo.btn.enable();
     var restore_points = JSON.parse(JSON.stringify(Lt.data.points));
+    let ellipse_points = JSON.parse(JSON.stringify(Lt.areaCaptureInterface.ellipseData.data));
+
     Lt.undo.stack.push({'year': Lt.data.year, 'earlywood': Lt.data.earlywood,
-      'index': Lt.data.index, 'points': restore_points});
+      'index': Lt.data.index, 'points': restore_points, 'ellipses':  ellipse_points});
     var dataJSON = this.stack.pop();
 
     Lt.data.points = JSON.parse(JSON.stringify(dataJSON.points));
@@ -3244,6 +3255,7 @@ function Redo(Lt) {
     Lt.data.earlywood = dataJSON.earlywood;
 
     Lt.visualAsset.reload();
+    Lt.areaCaptureInterface.ellipseData.redo(dataJSON.ellipses);
 
     if (this.stack.length == 0) {
       this.btn.disable();
