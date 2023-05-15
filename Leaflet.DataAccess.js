@@ -57,7 +57,7 @@ function DataAccessDialog(Inte){
     
     // this.createEventListeners();
     DataAccessDialog.prototype.createEventListeners = function () {
-        $("#insert_chart").on("click", () => {
+        $("#insert_chart").on("click"), () => {
             console.log("Insert Chart Click");
         });
         $("#new_window").on("click", () => {
