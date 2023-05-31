@@ -103,12 +103,21 @@ function EllipseData(Inte) {
     }
 
     /**
-     * Undo recent changes.
+     * Get JSON data. 
+     * 
+     * @returns {list} List of ellipse data objects. 
+     */
+    EllipseData.prototype.getJSON = function() {
+        return this.data;
+    }
+
+    /**
+     * Load JSON data. 
      * @function
      * 
      * @param {string} JSONdata - All ellipse data to load. 
      */
-    EllipseData.prototype.undo = function(JSONdata) {
+    EllipseData.prototype.loadJSON = function(JSONdata) {
         this.data = JSON.parse(JSON.stringify(JSONdata));
 
         // JSON strips LatLng object of properties, need to recreate. 
@@ -121,21 +130,42 @@ function EllipseData(Inte) {
     }
 
     /**
+     * Reload JSON data. 
+     * @function
+     */
+    EllipseData.prototype.reloadJSON = function() { 
+        this.data.map(dat => {
+            let majorRadius = Inte.treering.helper.trueDistance(dat.latLng, dat.majorLatLng);
+            let minorRadius = Inte.treering.helper.trueDistance(dat.latLng, dat.minorLatLng);
+            let area = Math.PI * majorRadius * minorRadius;
+
+            dat.majorRadius = majorRadius;
+            dat.minorRadius = minorRadius;
+            dat.area = area;
+            dat.selected = false;
+        });
+
+        Inte.ellipseVisualAssets.reload();
+    }
+
+    /**
+     * Undo recent changes.
+     * @function
+     * 
+     * @param {string} JSONdata - All ellipse data to load. 
+     */
+    EllipseData.prototype.undo = function(JSONdata) {
+        this.loadJSON(JSONdata);
+    }
+
+    /**
      * Redo recent changes.
      * @function
      * 
      * @param {string} JSONdata - All ellipse data to load. 
      */
     EllipseData.prototype.redo = function(JSONdata) {
-        this.data = JSON.parse(JSON.stringify(JSONdata));
-
-        // JSON strips LatLng object of properties, need to recreate. 
-        this.data.map(dat => {
-            dat.latLng = L.latLng(dat.latLng.lat, dat.latLng.lng);
-            dat.selected = false;
-        });
-
-        Inte.ellipseVisualAssets.reload();
+        this.loadJSON(JSONdata);
     }
 }
 

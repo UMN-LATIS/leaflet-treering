@@ -115,12 +115,14 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
   this.tools = [this.viewData, this.calibration, this.dating, this.createPoint, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
 
+  // --- //
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
   this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'interests', 'Manage areas');
   this.areaCaptureInterface.tools.map(tool => {
     this.tools.push(tool);
   });
+  // --- //
 
   this.baseLayer = {
     'Tree Ring': base_layer,
@@ -273,6 +275,11 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       });
       return maxNativeZoom;
   };
+
+  // --- //
+  // Code hosted in Leaflet.AreaCapture.js
+  if (options.initialData.ellipses) this.areaCaptureInterface.ellipseData.loadJSON(options.initialData.ellipses);
+  // --- //
 }
 
 /*******************************************************************************/
@@ -3292,6 +3299,9 @@ function Calibration(Lt) {
     Lt.meta.ppm = pixelsPerMillimeter / retinaFactor;
     Lt.meta.ppmCalibration = true;
     console.log(Lt.meta.ppm);
+
+    // Recalculate ellipse areas. 
+    Lt.areaCaptureInterface.ellipseData.reloadJSON();
   }
 
   Calibration.prototype.enable = function() {
@@ -5258,6 +5268,7 @@ function SaveLocal(Lt) {
       'annotations': Lt.aData.annotations,
       'ppm': Lt.meta.ppm,
       'ptWidths': Lt.helper.findDistances(),
+      'ellipses': Lt.areaCaptureInterface.ellipseData.getJSON(),
     };
 
     // don't serialize our default value
@@ -5362,6 +5373,7 @@ function SaveCloud(Lt) {
         'attributesObjectArray': Lt.annotationAsset.attributesObjectArray,
         'annotations': Lt.aData.annotations,
         'ppm': Lt.meta.ppm,
+        'ellipses': Lt.areaCaptureInterface.ellipseData.getJSON(),
       };
 
       // don't serialize our default value
@@ -5522,6 +5534,11 @@ function LoadLocal(Lt) {
 
       Lt.loadData();
       Lt.metaDataText.updateText();
+
+      // --- //
+      // Code hosted in Leaflet.AreaCapture.js
+      if (newDataJSON.ellipses) Lt.areaCaptureInterface.ellipseData.loadJSON(newDataJSON.ellipses);
+      // --- //
     };
 
     fr.readAsText(files.item(0));
