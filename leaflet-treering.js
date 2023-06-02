@@ -4815,22 +4815,22 @@ function AutoRingDetection(Lt) {
         //Lt.data.newPoint(true, latlng);
         //Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, latlng);
 
-        outR += color[0] + "\t";
-        outG += color[1] + "\t";
-        outB += color[2] + "\t";
-        outL += ((Math.max(color[0], color[1], color[2]) + Math.min(color[0], color[1], color[2])) / 2) + "\t";
+        outR += color[0] + ",";
+        outG += color[1] + ",";
+        outB += color[2] + ",";
+        outL += ((Math.max(color[0], color[1], color[2]) + Math.min(color[0], color[1], color[2])) / 2) + ",";
       }
       outR += "\n";
       outG += "\n";
       outB += "\n";
       outL += "\n";
     }
-    console.log("Red:")
+    //console.log("Red:")
     //console.log(outR);
-    console.log("Green:")
+    //console.log("Green:")
     //console.log(outG);
     console.log("Blue:")
-    //console.log(outB);
+    console.log(outB);
     console.log("Light:")
     console.log(outL);
   }
