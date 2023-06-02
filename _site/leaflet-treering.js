@@ -118,7 +118,17 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   // --- //
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
-  this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'interests', 'Manage areas');
+  this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'hdr_strong', 'Manage ellipses');
+
+  // Alert for Beta purposes: 
+  this.betaToggle = true;
+  $(this.areaTools.btn.button).on("click", () => {
+    if (this.betaToggle) {
+      alert("The area capture tools are in early beta. Please direct any issues or feedback to: thorn573@umn.edu.");
+      this.betaToggle = false;
+    }
+  })
+
   this.areaCaptureInterface.tools.map(tool => {
     this.tools.push(tool);
   });

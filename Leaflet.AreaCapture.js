@@ -15,6 +15,7 @@ function AreaCaptureInterface(Lt) {
     this.calculator = new Calculator(this);
 
     this.ellipseData = new EllipseData(this);
+    this.ellipseCSVDownload = new EllipseCSVDownload(this);
     this.ellipseVisualAssets = new EllipseVisualAssets(this);
 
     this.newEllipse = new NewEllipse(this); 
@@ -33,7 +34,8 @@ function AreaCaptureInterface(Lt) {
         this.newEllipse.btn, 
         this.lassoEllipses.btn, 
         this.dateEllipses.btn, 
-        this.deleteEllipses.btn
+        this.deleteEllipses.btn,
+        this.ellipseCSVDownload.btn
     ];
     this.tools = [
         this.newEllipse, 
@@ -166,6 +168,38 @@ function EllipseData(Inte) {
      */
     EllipseData.prototype.redo = function(JSONdata) {
         this.loadJSON(JSONdata);
+    }
+}
+
+/**
+ * Download ellipse points as CSV.
+ * @constructor
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools. 
+ */
+function EllipseCSVDownload(Inte) {
+    this.btn = new Button (
+        'download',
+        'Download elliptical data as CSV',
+        () => { this.action() }
+    );
+    
+    /**
+     * Action for download.
+     * @function
+     */
+    EllipseCSVDownload.prototype.action = function() {
+        let csvString = "year,area_mm2\n";
+        for (let obj of Inte.ellipseData.data) {
+            csvString += obj.year + "," + obj.area.toFixed(3) + "\n";
+        }
+
+        let zip = new JSZip();
+        zip.file((Inte.treering.meta.assetName + '_ellipses.csv'), csvString)
+        zip.generateAsync({type: 'blob'})
+            .then((blob) => {
+                saveAs(blob, (Inte.treering.meta.assetName + '_ellipses_csv.zip'));
+            });
     }
 }
 
@@ -695,7 +729,7 @@ function LassoEllipses(Inte) {
     this.active = false;
     this.shortcutsEnabled = false;
     this.btn = new Button (
-        "blur_circular",
+        "settings_backup_restore",
         "Lasso existing ellipses",
         () => {
             Inte.treering.disableTools(); 
