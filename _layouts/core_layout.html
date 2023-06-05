@@ -22,6 +22,8 @@
 
 	<link rel="stylesheet" href="../style.css">
 
+	<link rel="stylesheet" href="../Style.AreaCapture.css">
+
 	<script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
 
 	<script src="../assets/jquery/dist/jquery.min.js"></script>
@@ -30,7 +32,7 @@
 	<script src="../assets/file-saver/FileSaver.min.js"></script>
 	<script src="https://cdn.plot.ly/plotly-2.0.0-rc.2.min.js"></script>
 	<script src="../assets/papaparse/papaparse.min.js"></script>
-  <script src="https://unpkg.com/simple-smoothing-spline/dist/index.umd.min.js" async></script>
+ 	<script src="https://unpkg.com/simple-smoothing-spline/dist/index.umd.min.js" async></script>
 
 	<script src="../assets/leaflet/dist/leaflet.js"></script>
 	<script src="../assets/leaflet-fullscreen/dist/Leaflet.fullscreen.js"></script>
@@ -40,14 +42,20 @@
     <script src="../Leaflet.TileLayer.GL.js"></script>
 
 	<script src="../Leaflet.elevator.js"></script>
+
+	<script src="../assets/leaflet-ellipse/l.ellipse.js"></script>
+	<script src="https://unpkg.com/leaflet-lasso@2.2.12/dist/leaflet-lasso.umd.min.js"></script>
 </head>
 
 <body>
     <div id="map_container"><div id="imageMap"></div></div>
 </body>
 </html>
+
 <script type="application/javascript" src="../leaflet-treering.js"></script>
 <script type="text/javascript" src="../leaflet-treering.js"></script>
+
+<script type="application/javascript" src="../Leaflet.AreaCapture.js"></script>
 
 <script>
 
@@ -138,9 +146,14 @@ void main(void){
 		}).addTo(map);
 
 		// add templates to body before interface loaded
-		$.get("templates.html", function (data) {
-			$("body").append(data);
-			var treering = new LTreering(map, "../", coreData, baseLayer, layer);
-			treering.loadInterface();
+		$.get("templates.html", function (coreassestsData) {
+			$.get("../Template.AreaCapture.html", function (areaCaptureData) {
+				$("body").append(coreassestsData);
+				$("body").append(areaCaptureData);
+
+				var treering = new LTreering(map, "../", coreData, baseLayer, layer);
+				treering.loadInterface();
+			})
+			
 		});
 	</script>
