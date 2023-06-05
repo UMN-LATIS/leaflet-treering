@@ -124,7 +124,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.betaToggle = true;
   $(this.areaTools.btn.button).on("click", () => {
     if (this.betaToggle) {
-      alert("The area capture tools are in early beta. Please direct any issues or feedback to: thorn573@umn.edu.");
+      alert("Area measurement tools for beta testing & provisional data development. Please direct any issues or feedback to: thorn573@umn.edu.");
       this.betaToggle = false;
     }
   })
