@@ -4410,7 +4410,7 @@ function ViewData(Lt) {
         alert('Value exceeds 4 characters');
         throw 'error in toFourCharString(n)';
       } else {
-        alert('toSixCharString(n) unknown error');
+        alert('toFourCharString(n) unknown error');
         throw 'error';
       }
       return string;
@@ -4441,6 +4441,8 @@ function ViewData(Lt) {
 
     var toEightCharString = function(n) {
       var string = n.toString();
+      
+
       if (string.length == 0) {
         string = string + '        ';
       } else if (string.length == 1) {
@@ -4457,11 +4459,13 @@ function ViewData(Lt) {
         string = string + '  ';
       } else if (string.length == 7) {
         string = string + ' ';
-      } else if (string.length >= 8) {
-        alert('Value exceeds 7 characters');
+      } else if (string.length == 8) {
+        return string;
+      } else if (string.length > 8) {
+        alert('Value exceeds 8 characters');
         throw 'error in toEightCharString(n)';
       } else {
-        alert('toSixCharString(n) unknown error');
+        alert('toEightCharString(n) unknown error');
         throw 'error';
       }
       return string;
