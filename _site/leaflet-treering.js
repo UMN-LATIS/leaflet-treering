@@ -106,14 +106,15 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
   this.popoutPlots = new PopoutPlots(this);
 
+  this.universalDelete = new UniversalDelete(this);
+
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
-  this.annotationTools = new ButtonBar(this, [this.annotationAsset.createBtn, this.annotationAsset.deleteBtn], 'comment', 'Manage annotations');
   this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
-  this.editTools = new ButtonBar(this, [this.dating.btn, this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.deletePoint.btn, this.insertZeroGrowth.btn, this.cut.btn], 'edit', 'Edit existing measurements');
+  this.editTools = new ButtonBar(this, [this.dating.btn, this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.insertZeroGrowth.btn, this.cut.btn], 'edit', 'Edit existing measurements');
   this.ioTools = new ButtonBar(this, ioBtns, 'folder_open', 'Save or upload a record of measurements, annotations, etc.');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
-  this.tools = [this.viewData, this.calibration, this.dating, this.createPoint, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
+  this.tools = [this.viewData, this.calibration, this.dating, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
 
   // --- //
   // Code hosted in Leaflet.AreaCapture.js
@@ -174,7 +175,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       //this.PixelAdjustment.btn.addTo(this.viewer);
       this.createTools.bar.addTo(this.viewer);
       this.editTools.bar.addTo(this.viewer);
-      this.annotationTools.bar.addTo(this.viewer);
+      this.annotationAsset.createBtn.addTo(this.viewer);
+      this.universalDelete.btn.addTo(this.viewer);
       this.settings.bar.addTo(this.viewer);
       this.areaTools.bar.addTo(this.viewer);
       this.undoRedoBar.addTo(this.viewer);
@@ -267,7 +269,6 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   };
 
   LTreering.prototype.collapseTools = function() {
-    this.annotationTools.collapse();
     this.createTools.collapse();
     this.editTools.collapse();
     this.ioTools.collapse();
@@ -293,6 +294,56 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 }
 
 /*******************************************************************************/
+
+/**
+ * Universal delete button
+ * @constructor 
+ * 
+ * @param {object} Lt - Leaflet Treering object.  
+ */
+function UniversalDelete(Lt) {
+  this.btn = new Button(
+    'delete',
+    'Delete an object (marker or annotation)',
+    () => { Lt.disableTools(); this.enable() },
+    () => { this.disable() }
+  );
+
+  // Enable with DEL
+  L.DomEvent.on(window, 'keydown', (e) => {
+    if (e.keyCode == 46 && window.name.includes('popout')) { 
+      e.preventDefault();
+      e.stopPropagation();
+      Lt.disableTools();
+
+      Lt.viewer.getContainer().style.cursor = 'pointer';
+      this.enable();
+    }
+ }, this);
+
+  /**
+   * Enables button
+   * @function
+   */
+  UniversalDelete.prototype.enable = function() {
+    this.btn.state('active');
+    this.btn.active = true;
+
+    Lt.viewer.getContainer().style.cursor = 'pointer';
+  }
+
+  /**
+   * Disbales button
+   * @function
+   */
+  UniversalDelete.prototype.disable = function() {
+    this.btn.state('inactive');
+    this.btn.active = false;
+
+    $(Lt.viewer.getContainer()).off('click');
+    Lt.viewer.getContainer().style.cursor = 'default';
+  }
+}
 
 /**
  * A measurement data object
@@ -1484,7 +1535,7 @@ function VisualAsset (Lt) {
 
     // Tell marker what to do when clicked.
     this.markers[i].on('click', (e) => {
-      if (Lt.deletePoint.active) {
+      if (Lt.universalDelete.btn.active) {
         Lt.deletePoint.openDialog(e, i);
       };
 
@@ -1642,14 +1693,6 @@ function AnnotationAsset(Lt) {
   );
   this.createBtn.active = false;
 
-  this.deleteBtn = new Button (
-    'delete',
-    'Delete an annotation',
-    () => { Lt.disableTools(); this.enable(this.deleteBtn) },
-    () => { this.disable(this.deleteBtn) }
-  );
-  this.deleteBtn.active = false;
-
   // crtl-a to activate createBtn
   L.DomEvent.on(window, 'keydown', (e) => {
     if (e.keyCode == 65 && e.getModifierState("Control") && window.name.includes('popout')) { // 65 refers to 'a'
@@ -1699,7 +1742,6 @@ function AnnotationAsset(Lt) {
   AnnotationAsset.prototype.disable = function (btn) {
     if (!btn) { // for Lt.disableTools()
       this.disable(this.createBtn);
-      this.disable(this.deleteBtn);
       return
     };
 
@@ -2307,8 +2349,8 @@ function AnnotationAsset(Lt) {
     });
 
     // how marker reacts when clicked
-    $(this.markers[index]).click(() => {
-      if (this.deleteBtn.active) { // deleteing
+    $(this.markers[index]).on("click", () => {
+      if (Lt.universalDelete.btn.active) { // deleteing
         Lt.aData.deleteAnnotation(index);
         Lt.annotationAsset.reload();
       } else { // viewing or editing
@@ -3822,14 +3864,6 @@ function DeletePoint(Lt) {
   this.selectedAdjustment = false;
   this.maintainAdjustment = false;
 
-  this.active = false;
-  this.btn = new Button(
-    'delete',
-    'Delete a measurement point',
-    () => { Lt.disableTools(); this.enable() },
-    () => { this.disable() }
-  );
-
   /**
    * Open dialog for user to choose shift direction
    * @function openDialog
@@ -3851,29 +3885,6 @@ function DeletePoint(Lt) {
     Lt.undo.push();
     Lt.data.deletePoint(i);
     Lt.visualAsset.reload();
-  };
-
-  /**
-   * Enable deleting points on click
-   * @function enable
-   */
-  DeletePoint.prototype.enable = function() {
-    this.btn.state('active');
-    this.active = true;
-    this.selectedAdjustment = false;
-    Lt.viewer.getContainer().style.cursor = 'pointer';
-  };
-
-  /**
-   * Disable deleting points on click
-   * @function disable
-   */
-  DeletePoint.prototype.disable = function() {
-    $(Lt.viewer.getContainer()).off('click');
-    this.btn.state('inactive');
-    this.active = false;
-    this.selectedAdjustment = false;
-    Lt.viewer.getContainer().style.cursor = 'default';
   };
 }
 
