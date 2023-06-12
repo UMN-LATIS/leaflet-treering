@@ -328,6 +328,7 @@ function UniversalDelete(Lt) {
   UniversalDelete.prototype.enable = function() {
     this.btn.state('active');
     this.btn.active = true;
+    Lt.deletePoint.selectedAdjustment = false;
 
     Lt.viewer.getContainer().style.cursor = 'pointer';
   }
@@ -339,6 +340,7 @@ function UniversalDelete(Lt) {
   UniversalDelete.prototype.disable = function() {
     this.btn.state('inactive');
     this.btn.active = false;
+    Lt.deletePoint.selectedAdjustment = false;
 
     $(Lt.viewer.getContainer()).off('click');
     Lt.viewer.getContainer().style.cursor = 'default';
