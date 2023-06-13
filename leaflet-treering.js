@@ -24,7 +24,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   var latData = urlParams.get("lat");
   var lngData = urlParams.get("lng");
   if (latData && lngData) {
-    setTimeout(function() {
+    setTimeout(function() {find
       viewer.setView([latData, lngData], 16); //  max zoom level is 18
     }, 500);
   }
