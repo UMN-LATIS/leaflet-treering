@@ -727,13 +727,13 @@ function NewEllipseDialog(Inte) {
  */
 function LassoEllipses(Inte) {
     this.active = false;
-    this.shortcutsEnabled = false;
+    this.eventListenersEnabled = false;
     this.btn = new Button (
         "settings_backup_restore",
         "Lasso existing ellipses",
         () => {
             Inte.treering.disableTools(); 
-            // Inte.treering.collapseTools();
+            Inte.treering.collapseTools();
             this.enable() 
         },
         () => { this.disable() },
@@ -746,7 +746,6 @@ function LassoEllipses(Inte) {
             fillRule: "nonzero",
         }
     });
-    this.lassoEventFinished = true;
 
     /**
      * Enable tool & assign shotcuts upon first enable. 
@@ -762,12 +761,12 @@ function LassoEllipses(Inte) {
         this.active = true;
         Inte.treering.viewer.getContainer().style.cursor = 'crosshair';
 
-        if (!this.shortcutsEnabled) {
+        if (!this.eventListenersEnabled) {
             // Only do once when instantiated.
             // Otherwise multiple listeners will be assigned. 
-            this.createShortcutEventListeners();
+            this.createEventListeners();
             
-            this.shortcutsEnabled = true;
+            this.eventListenersEnabled = true;
         }
 
         this.action();
@@ -789,28 +788,14 @@ function LassoEllipses(Inte) {
      * Creates keyboard shortcut event listeners. Based on file selection shortcuts.   
      * @function
      */
-    LassoEllipses.prototype.createShortcutEventListeners = function() {
-        // Keyboard short cut for deselection all points: Ctrl - Z 
-        L.DomEvent.on(window, 'keydown', (e) => {
-            if (e.keyCode == 90 && !e.shiftKey && e.ctrlKey && this.active) {
-                this.dehighlightSelected();
-                this.deselectEllipses();
-            }
-         }, this);
+    LassoEllipses.prototype.createEventListeners = function() {
+        Inte.treering.viewer.on('lasso.finished', lassoed => {
+            this.selectEllipses(lassoed.layers);
+            this.highlightSelected();
 
-        // Keyboard short cut for selecting additional points: Holding Ctrl
-        L.DomEvent.on(window, 'keydown', (e) => {
-            if (e.keyCode == 17 && this.lassoEventFinished && !e.shiftKey && this.active) {
-                this.action(e);
-            }
-        }, this); 
-        L.DomEvent.on(window, 'keyup', (e) => {
-            // Prevents extra action after Ctrl is released. 
-            if (e.keyCode == 17 && this.active) {
-                this.lasso.disable();
-                this.lassoEventFinished = true;
-            }
-        }, this); 
+            // Timeout required to avoid disable() call from lasso-handler.ts. 
+            setTimeout(() => this.lasso.enable(), 1);
+        });
     }
 
     /**
@@ -819,17 +804,6 @@ function LassoEllipses(Inte) {
      */
     LassoEllipses.prototype.action = function() {
         this.lasso.enable();
-        this.lassoEventFinished = false;
-
-        Inte.treering.viewer.on('lasso.finished', lassoed => {
-            // lasso.finished evnt fires multiple times. Need variable to prevent repeated firing. 
-            if (!this.lassoEventFinished) {
-                this.selectEllipses(lassoed.layers);
-                this.highlightSelected();
-    
-                this.lassoEventFinished = true;
-            }
-        });
     }
 
     /**
@@ -840,6 +814,7 @@ function LassoEllipses(Inte) {
      */
     LassoEllipses.prototype.selectEllipses = function(layers) {
         layers.map(layer => {
+            // Ensures measurement markers not included in selection. 
             if (!(layer instanceof L.Marker)) {
                 return
             }
