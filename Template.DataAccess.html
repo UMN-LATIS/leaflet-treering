@@ -38,7 +38,7 @@
                 {{/if}}
             </div>
     
-            <div id = "delete" class= "DataAccess-Delete-Buttons DataAccess-Delete DataAccess-Icon-Buttons" title="Delete all measurements & annotations">
+            <div id = "delete" class= "DataAccess-Delete-Buttons DataAccess-Delete DataAccess-Icon-Buttons" title="Delete all measurement data">
                 <span class="material-symbols-outlined ">
                     delete
                 </span>
@@ -69,32 +69,71 @@
 
         <div class = "DataAccess-Table-div">
             <table class="DataAccess-Table">  
-                <tbody>
-                    <tr>
-                        <th>Year</th>
-                        <th>TW</th>
-                        {{#if data.ew}}
-                            <th>EW</th>
-                            <th>LW</th>
-                        {{/if}}
-                    </tr>
-
-                    {{#with data}}
-                        {{#each tw.x}}
+                <tbody id="DataAccess-table-body">
+                    {{#if data.tw.x.length}}
                         <tr>
-                            <td>{{this}}</td>
-                            <td>{{numToFourDigits (lookup ../tw.y @index)}} </td>
-        
-                            {{#if ../ew}}
-                                <td>{{numToFourDigits (lookup ../ew.y @index)}} </td>
-                                <td>{{numToFourDigits (lookup ../lw.y @index)}} </td>
+                            <th>Year</th>
+                            <th>TW</th>
+                            {{#if data.ew}}
+                                <th>EW</th>
+                                <th>LW</th>
                             {{/if}}
-        
                         </tr>
-                        {{/each}}
-                    {{/with}}
+
+                        {{#with data}}
+                            {{#each tw.x}}
+                            <tr>
+                                <td>{{this}}</td>
+                                <td>{{numToFourDigits (lookup ../tw.y @index)}} </td>
+            
+                                {{#if ../ew}}
+                                    <td>{{numToFourDigits (lookup ../ew.y @index)}} </td>
+                                    <td>{{numToFourDigits (lookup ../lw.y @index)}} </td>
+                                {{/if}}
+            
+                            </tr>
+                            {{/each}}
+                        {{/with}}
+                    {{else}}
+                        Missing measurement data
+                    {{/if}}
                 </tbody>
+
+                
             </table>
+        </div>
+    </div>
+</script>
+
+<script id="DataAccess-deleteAllDialog-template" type="text/x-handlebars-template">
+    <div class="DataAccess-dialog-container">
+        <div class="DataAccess-deleteWarning-container">
+            <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+            <h3>
+                Warning
+            </h3>
+            <p class="DataAccess-delete-text">
+                Are you sure you want to delete <b>ALL</b> measurement data?
+            </p>
+        </div>
+        <br>
+        <div class="DataAccess-btn-row">
+            <div class="DataAccess-btn-container">
+                <div id="DataAccess-confirmDelete-btn" class="DataAccess-delete-btn">
+                    <i class="fa fa-check" 
+                    aria-hidden="true"
+                    style="margin-right: 6px;"></i>
+                    <span> Confirm </span>
+                </div>
+            </div>
+            <div class="DataAccess-btn-container">
+                <div id="DataAccess-cancelDelete-btn" class="DataAccess-delete-btn">
+                    <span> Cancel </span>
+                    <i class="fa fa-times" 
+                    style="margin-left: 6px;"
+                    aria-hidden="true"></i>
+                </div>
+            </div>
         </div>
     </div>
 </script>

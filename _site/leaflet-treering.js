@@ -237,6 +237,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     this.tools.forEach(e => { 
       e.disable() 
     });
+
+    if (!this.dataAccessInterface.viewDataDialog.dialog.options.size[0]) this.dataAccessInterface.viewDataDialog.close();
   };
 
   LTreering.prototype.collapseTools = function() {
@@ -318,9 +320,8 @@ function MeasurementData (dataObject, Lt) {
     // update every time a point is placed
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.dataAccessInterface.popoutPlots.win) {
-      Lt.dataAccessInterface.popoutPlots.sendData();
-    }
+    if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   };
 
   /**
@@ -408,9 +409,8 @@ function MeasurementData (dataObject, Lt) {
 
     Lt.metaDataText.updateText(); // updates after a point is deleted
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.dataAccessInterface.popoutPlots.win) {
-      Lt.dataAccessInterface.popoutPlots.sendData();
-    }
+    if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   };
 
   /**
@@ -497,9 +497,8 @@ function MeasurementData (dataObject, Lt) {
 
     Lt.metaDataText.updateText(); // updates after points are cut
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.dataAccessInterface.popoutPlots.win) {
-      Lt.dataAccessInterface.popoutPlots.sendData();
-    }
+    if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   };
 
   /**
@@ -603,9 +602,9 @@ function MeasurementData (dataObject, Lt) {
     // Update other features after point inserted.
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.dataAccessInterface.popoutPlots.win) {
-      Lt.dataAccessInterface.popoutPlots.sendData();
-    }
+    if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+
     return i;
   };
 
@@ -683,9 +682,8 @@ function MeasurementData (dataObject, Lt) {
 
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.dataAccessInterface.popoutPlots.win) {
-      Lt.dataAccessInterface.popoutPlots.sendData();
-    }
+    if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   }
 
   /**
@@ -815,9 +813,8 @@ function MeasurementData (dataObject, Lt) {
     // Update other features after point inserted.
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.dataAccessInterface.popoutPlots.win) {
-      Lt.dataAccessInterface.popoutPlots.sendData();
-    }
+    if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
 
     return k;
   };
@@ -3102,9 +3099,8 @@ function Undo(Lt) {
   this.btn = new Button('undo', 'Undo', () => {
     this.pop();
     Lt.metaDataText.updateText();
-    if (Lt.dataAccessInterface.popoutPlots.win) {
-      Lt.dataAccessInterface.popoutPlots.sendData();
-    }
+    if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   });
   this.btn.disable();
 
@@ -3173,9 +3169,8 @@ function Redo(Lt) {
   this.btn = new Button('redo', 'Redo', () => {
     this.pop();
     Lt.metaDataText.updateText();
-    if (Lt.dataAccessInterface.popoutPlots.win) {
-      Lt.dataAccessInterface.popoutPlots.sendData();
-    }
+    if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   });
   this.btn.disable();
 
@@ -3451,9 +3446,8 @@ function Dating(Lt) {
   Dating.prototype.disable = function() {
     Lt.metaDataText.updateText(); // updates once user hits enter
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.dataAccessInterface.popoutPlots.win) {
-      Lt.dataAccessInterface.popoutPlots.sendData();
-    }
+    if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
 
     this.btn.state('inactive');
     $(Lt.viewer.getContainer()).off('click');
@@ -3653,9 +3647,8 @@ function CreateZeroGrowth(Lt) {
 
       Lt.metaDataText.updateText(); // updates after point is inserted
       Lt.annotationAsset.reloadAssociatedYears();
-      if (Lt.dataAccessInterface.popoutPlots.win) {
-        Lt.dataAccessInterface.popoutPlots.sendData();
-      }
+      if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
+      if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
 
     } else {
       alert('First year cannot be missing!');
@@ -4293,596 +4286,6 @@ function InsertBreak(Lt) {
 }
 
 /**
- * View data and download data
- * @constructor
- * @param {Ltreering} Lt - Leaflet treering object
- */
-function ViewData(Lt) {
-  this.btn = new Button(
-    'view_list',
-    'View & download measurement data',
-    () => { Lt.disableTools(); this.enable() },
-    () => { this.disable() }
-  );
-
-  // handlebars from templates.html
-  let content = document.getElementById("view-data-default-template").innerHTML;
-
-  this.dialog = L.control.dialog({
-    'size': [200, 235],
-    'anchor': [50, 0],
-    'initOpen': false,
-    'position': 'topleft',
-    'minSize': [0, 0]
-  }).setContent(content).addTo(Lt.viewer);
-
-  /**
-   * Format and download data in Dan's archaic format
-   * @function download
-   */
-  ViewData.prototype.download = function() {
-
-    var toFourCharString = function(n) {
-      var string = n.toString();
-
-      if (string.length == 1) {
-        string = '   ' + string;
-      } else if (string.length == 2) {
-        string = '  ' + string;
-      } else if (string.length == 3) {
-        string = ' ' + string;
-      } else if (string.length == 4) {
-        string = string;
-      } else if (string.length >= 5) {
-        alert('Value exceeds 4 characters');
-        throw 'error in toFourCharString(n)';
-      } else {
-        alert('toSixCharString(n) unknown error');
-        throw 'error';
-      }
-      return string;
-    };
-
-    var toSixCharString = function(n) {
-      var string = n.toString();
-
-      if (string.length == 1) {
-        string = '     ' + string;
-      } else if (string.length == 2) {
-        string = '    ' + string;
-      } else if (string.length == 3) {
-        string = '   ' + string;
-      } else if (string.length == 4) {
-        string = '  ' + string;
-      } else if (string.length == 5) {
-        string = ' ' + string;
-      } else if (string.length >= 6) {
-        alert('Value exceeds 5 characters');
-        throw 'error in toSixCharString(n)';
-      } else {
-        alert('toSixCharString(n) unknown error');
-        throw 'error';
-      }
-      return string;
-    };
-
-    var toEightCharString = function(n) {
-      var string = n.toString();
-      if (string.length == 0) {
-        string = string + '        ';
-      } else if (string.length == 1) {
-        string = string + '       ';
-      } else if (string.length == 2) {
-        string = string + '      ';
-      } else if (string.length == 3) {
-        string = string + '     ';
-      } else if (string.length == 4) {
-        string = string + '    ';
-      } else if (string.length == 5) {
-        string = string + '   ';
-      } else if (string.length == 6) {
-        string = string + '  ';
-      } else if (string.length == 7) {
-        string = string + ' ';
-      } else if (string.length >= 8) {
-        alert('Value exceeds 7 characters');
-        throw 'error in toEightCharString(n)';
-      } else {
-        alert('toSixCharString(n) unknown error');
-        throw 'error';
-      }
-      return string;
-    };
-
-    if (Lt.measurementOptions.forwardDirection) { // years ascend in value
-      var pts = Lt.data.points;
-    } else { // otherwise years descend in value
-      var pts = Lt.helper.reverseData();
-    }
-
-    if (Lt.data.points != undefined && Lt.data.points[1] != undefined) {
-
-      var sum_points;
-      var sum_string = '';
-      var last_latLng;
-      var break_length;
-      var length_string;
-
-      if (Lt.measurementOptions.subAnnual) {
-
-        var sum_string = '';
-        var ew_string = '';
-        var lw_string = '';
-
-        y = pts[1].year;
-        var sum_points = pts.filter(e => {
-          if (e.earlywood != undefined) {
-            return !(e.earlywood);
-          } else {
-            return true;
-          }
-        });
-
-        if (sum_points[1].year % 10 > 0) {
-          sum_string = sum_string.concat(
-              toEightCharString(Lt.meta.assetName) +
-              toFourCharString(sum_points[1].year));
-        }
-
-        var break_point = false;
-        sum_points.map((e, i, a) => {
-          if (e.start) {
-            last_latLng = e.latLng;
-          } else if (e.break) {
-            break_length =
-              Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
-              break_point = true;
-          } else {
-            if (e.year % 10 == 0) {
-              if(sum_string.length > 0) {
-                sum_string = sum_string.concat('\n');
-              }
-              sum_string = sum_string.concat(
-                  toEightCharString(Lt.meta.assetName) +
-                  toFourCharString(e.year));
-            }
-            while (e.year > y) {
-              sum_string = sum_string.concat('    -1');
-              y++;
-              if (y % 10 == 0) {
-                sum_string = sum_string.concat('\n' +
-                    toFourCharString(e.year));
-              }
-            }
-
-            if (!last_latLng) {
-              last_latLng = e.latLng;
-            };
-
-            var length = Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
-            if (break_point) {
-              length += break_length;
-              break_point = false;
-            }
-            if (length == 9999) {
-              length = 9998;
-            }
-            if (length == 999) {
-              length = 998;
-            }
-
-            length_string = toSixCharString(length);
-
-            sum_string = sum_string.concat(length_string);
-            last_latLng = e.latLng;
-            y++;
-          }
-        });
-
-        // if we ended at the end of a decade, we need to add a new line
-        if (y % 10 == 0) {
-          sum_string = sum_string.concat('\n' +
-          toEightCharString(Lt.meta.assetName) +
-          toFourCharString(y));
-        }
-        sum_string = sum_string.concat(' -9999');
-
-        y = pts[1].year;
-
-        if (pts[1].year % 10 > 0) {
-          ew_string = ew_string.concat(
-              toEightCharString(Lt.meta.assetName) +
-              toFourCharString(pts[1].year));
-          lw_string = lw_string.concat(
-              toEightCharString(Lt.meta.assetName) +
-              toFourCharString(pts[1].year));
-        }
-
-        break_point = false;
-        pts.map((e, i, a) => {
-          if (e.start) {
-            last_latLng = e.latLng;
-          } else if (e.break) {
-            break_length =
-              Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
-            break_point = true;
-          } else {
-            if (e.year % 10 == 0) {
-              if (e.earlywood) {
-                if (ew_string.length >0) {
-                  ew_string = ew_string.concat('\n');
-                }
-                ew_string = ew_string.concat(
-                    toEightCharString(Lt.meta.assetName) +
-                    toFourCharString(e.year));
-              } else {
-                if (lw_string.length >0) {
-                  lw_string = lw_string.concat('\n');
-                }
-                lw_string = lw_string.concat(
-                    toEightCharString(Lt.meta.assetName) +
-                    toFourCharString(e.year));
-              }
-            }
-            while (e.year > y) {
-              ew_string = ew_string.concat('    -1');
-              lw_string = lw_string.concat('    -1');
-              y++;
-              if (y % 10 == 0) {
-                ew_string = ew_string.concat('\n' +
-                    toEightCharString(Lt.meta.assetName) +
-                    toFourCharString(e.year));
-                lw_string = lw_string.concat('\n' +
-                    toEightCharString(Lt.meta.assetName) +
-                    toFourCharString(e.year));
-              }
-            }
-
-            length = Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
-            if (break_point) {
-              length += break_length;
-              break_point = false;
-            }
-            if (length == 9999) {
-              length = 9998;
-            }
-            if (length == 999) {
-              length = 998;
-            }
-
-            length_string = toSixCharString(length);
-
-            if (e.earlywood) {
-              ew_string = ew_string.concat(length_string);
-              last_latLng = e.latLng;
-            } else {
-              lw_string = lw_string.concat(length_string);
-              last_latLng = e.latLng;
-              y++;
-            }
-          }
-        });
-
-        if (y % 10 == 0) {
-          ew_string = ew_string.concat('\n' +
-            toEightCharString(Lt.meta.assetName) +
-            toFourCharString(y));
-          lw_string = lw_string.concat('\n' +
-            toEightCharString(Lt.meta.assetName) +
-            toFourCharString(y));
-        }
-        ew_string = ew_string.concat(' -9999');
-        lw_string = lw_string.concat(' -9999');
-
-        console.log(sum_string);
-        console.log(ew_string);
-        console.log(lw_string);
-
-        var zip = new JSZip();
-        zip.file((Lt.meta.assetName + '_TW_rwl.txt'), sum_string);
-        zip.file((Lt.meta.assetName + '_LW_rwl.txt'), lw_string);
-        zip.file((Lt.meta.assetName + '_EW_rwl.txt'), ew_string);
-
-      } else {
-
-        var y = pts[1].year;
-        sum_points = pts;
-
-        if (sum_points[1].year % 10 > 0) {
-          sum_string = sum_string.concat(
-              toEightCharString(Lt.meta.assetName) +
-              toFourCharString(sum_points[1].year));
-        }
-        sum_points.map((e, i, a) => {
-          if(e.start) {
-              last_latLng = e.latLng;
-            }
-            else if (e.break) {
-              break_length =
-                Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
-              break_point = true;
-            } else {
-            if (e.year % 10 == 0) {
-              if(sum_string.length > 0) {
-                sum_string = sum_string.concat('\n');
-              }
-              sum_string = sum_string.concat(
-                  toEightCharString(Lt.meta.assetName) +
-                  toFourCharString(e.year));
-            }
-            while (e.year > y) {
-              sum_string = sum_string.concat('    -1');
-              y++;
-              if (y % 10 == 0) {
-                sum_string = sum_string.concat('\n' +
-                    toFourCharString(e.year));
-              }
-            }
-
-            length = Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000);
-            if (break_point) {
-              length += break_length;
-              break_point = false;
-            }
-            if (length == 9999) {
-              length = 9998;
-            }
-            if (length == 999) {
-              length = 998;
-            }
-
-            length_string = toSixCharString(length);
-
-            sum_string = sum_string.concat(length_string);
-            last_latLng = e.latLng;
-            y++;
-          }
-        });
-
-        if (y % 10 == 0) {
-          sum_string = sum_string.concat('\n' +
-            toEightCharString(Lt.meta.assetName) +
-            toFourCharString(y));
-        }
-        sum_string = sum_string.concat(' -9999');
-
-        var zip = new JSZip();
-        zip.file((Lt.meta.assetName + '_TW_rwl.txt'), sum_string);
-      }
-
-      zip.generateAsync({type: 'blob'})
-          .then((blob) => {
-            saveAs(blob, (Lt.meta.assetName + '_rwl.zip'));
-          });
-    } else {
-      alert('There is no data to download');
-    }
-  };
-
-  /**
-   * Open the data viewer box
-   * @function enable
-   */
-  ViewData.prototype.enable = function() {
-    this.btn.state('active');
-
-    var stringSetup; // buttons & table headers
-    var stringContent = ''; // years and lengths
-
-    //closes data view if mouse clicks anywhere outside the data viewer box
-    $(Lt.viewer.getContainer()).click(e => {
-      this.disable();
-    });
-
-    if (Lt.measurementOptions.forwardDirection) { // years ascend in value
-      var pts = Lt.data.points;
-    } else { // otherwise years descend in value
-      var pts = Lt.helper.reverseData();
-    };
-
-    if (pts[0] != undefined) {
-      var y = pts[1].year;
-
-      // handlebars from templates.html
-      let content_A = document.getElementById("string-setup-data-template").innerHTML;
-
-      stringSetup = content_A;
-
-      var break_point = false;
-      var last_latLng;
-      var break_length;
-      var break_point;
-      var length;
-      var copyDataString = Lt.measurementOptions.subAnnual? "Year\t   "+Lt.meta.assetName+"_ew\t"+Lt.meta.assetName+"_lw\t"+Lt.meta.assetName+"_tw\n": "Year\t"+Lt.meta.assetName+"_tw\n";
-      var EWTabDataString = "Year\t" + Lt.meta.assetName + "_EW\n";
-      var LWTabDataString ="Year\t" + Lt.meta.assetName + "_LW\n";
-      var TWTabDataString = "Year\t" + Lt.meta.assetName + "_TW\n";
-      var EWoodcsvDataString = "Year," + Lt.meta.assetName + "_EW\n";
-      var LWoodcsvDataString ="Year," + Lt.meta.assetName + "_LW\n";
-      var TWoodcsvDataString = 'Year,' + Lt.meta.assetName + "_TW\n";
-      var lengthAsAString;
-      var  totalWidthString = String(totalWidth);
-      var totalWidth = 0;
-      var wood;
-
-      Lt.data.clean();
-      pts.map((e, i, a) => {
-        wood = Lt.measurementOptions.subAnnual? (e.earlywood? "E": "L") : ""
-        if (e.start) {
-          last_latLng = e.latLng;
-        } else if (e.break) {
-          break_length =
-            Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000) / 1000;
-          break_point = true;
-        } else {
-          while (e.year > y) {
-            // handlebars from templates.html
-            let content_B = document.getElementById("concat-string-content-A-template").innerHTML;
-            let template_B = Handlebars.compile(content_B);
-            let html_B = template_B( {y: y} )
-
-            stringContent = stringContent.concat(html_B);
-            y++;
-          }
-          length = Math.round(Lt.helper.trueDistance(last_latLng, e.latLng) * 1000) / 1000;
-          if (break_point) {
-            length += break_length;
-            length = Math.round(length * 1000) / 1000;
-            break_point = false;
-          }
-          if (length == 9.999) {
-            length = 9.998;
-          }
-
-          //Format length number into a string with trailing zeros
-          lengthAsAString = String(length);
-          lengthAsAString = lengthAsAString.padEnd(5,'0');
-
-          if(lengthAsAString.includes('.999'))
-          {
-              lengthAsAString = lengthAsAString.substring(0,lengthAsAString.length-1);
-              lengthAsAString+='8';
-
-          }
-          //assign color to data row
-          var row_color_html = Lt.helper.assignRowColor(e,y,Lt,lengthAsAString)
-          stringContent = stringContent.concat(row_color_html);
-          y++;
-
-          last_latLng = e.latLng;
-
-          //Set up CSV files to download later
-          //For subannual measurements
-          if(Lt.measurementOptions.subAnnual)
-          {
-          if(wood=='E')
-          {
-            EWTabDataString += e.year + "\t" + lengthAsAString+ "\n";
-            copyDataString += e.year + "\t   "+ lengthAsAString +"   \t";
-            EWoodcsvDataString += e.year+","+lengthAsAString+"\n";
-            totalWidth+=length;
-          }
-          else
-          {
-            LWoodcsvDataString += e.year+","+lengthAsAString+"\n";
-            //adding two parts of the year together
-            totalWidth+=length;
-            totalWidth=Math.round(totalWidth * 1000) / 1000;
-            totalWidthString = String(totalWidth);
-            totalWidthString = totalWidthString.padEnd(5,'0');
-            if(totalWidthString.includes('.999'))
-          {
-              totalWidthString = totalWidthString.substring(0,totalWidthString.length-1);
-              totalWidthString+='8';
-          }
-            TWoodcsvDataString += e.year+","+totalWidthString+"\n";
-            LWTabDataString += e.year + "\t" + lengthAsAString+ "\n";
-            TWTabDataString += e.year + "\t" + totalWidthString+ "\n";
-            copyDataString += lengthAsAString +"   \t"+totalWidthString +"\n";
-            //set to zero only after latewood has been added and totalWidth is in csv
-            totalWidth = 0;
-          }
-        }
-        //For annual measurements
-        else{
-          TWoodcsvDataString+= e.year+","+lengthAsAString+"\n";
-           //Copies data to a string that can be copied to the clipboard
-           TWTabDataString += e.year + "\t" + lengthAsAString+ "\n";
-          copyDataString += e.year + "\t"+ lengthAsAString +"\n";
-        }
-        }
-      });
-      this.dialog.setContent(stringSetup + stringContent + '</table><div>');
-    } else {
-      // handlebars from templates.html
-      let content_D = document.getElementById("string-setup-no-data-template").innerHTML;
-
-      stringSetup = content_D;
-      this.dialog.setContent(stringSetup);
-    }
-    this.dialog.lock();
-    this.dialog.open();
-
-    $('#download-ltrr-button').click(() => this.download());
-    $('#copy-data-button').click(()=> copyToClipboard(copyDataString));
-    $('#download-csv-button').click(() => {
-     if(Lt.measurementOptions.subAnnual)
-     {
-       downloadCSVFiles(Lt, TWoodcsvDataString,EWoodcsvDataString, LWoodcsvDataString);
-     }
-     else{
-      downloadCSVFiles(Lt, TWoodcsvDataString);
-     }
-    }
-    );
-    $('#download-tab-button').click(() => {
-          if(Lt.measurementOptions.subAnnual)
-          {
-            downloadTabFiles(Lt, TWTabDataString,EWTabDataString, LWTabDataString);
-          }
-          else{
-           downloadTabFiles(Lt, TWTabDataString);
-          }
-         }
-       );
-    $('#delete-button').click(() => {
-      // handlebars from templates.html
-      let content_E = document.getElementById("data-view-delete-template").innerHTML;
-
-      this.dialog.setContent(content_E);
-
-      $('#confirm-delete').click(() => {
-        Lt.undo.push();
-
-        Lt.data.points = [];
-        Lt.data.year = 0;
-        Lt.data.earlywood = true;
-        Lt.data.index = 0;
-
-        Lt.visualAsset.reload();
-        Lt.metaDataText.updateText();
-
-        this.disable();
-      });
-      $('#cancel-delete').click(() => {
-        this.disable();
-        this.enable();
-      });
-    });
-  },
-  /**
-   * copy text to clipboard
-   * @function enable
-   */
-  copyToClipboard = function(allData){
-    const el = document.createElement('textarea');
-    el.value = allData;
-    document.body.appendChild(el);
-    el.select();
-    document.execCommand('copy');
-    document.body.removeChild(el);
-  }
-
-  /**
-   * close the data viewer box
-   * @function disable
-   */
-  ViewData.prototype.disable = function() {
-    $(Lt.viewer.getContainer()).off('click');
-    this.btn.state('inactive');
-    $('#confirm-delete').off('click');
-    $('#cancel-delete').off('click');
-    $('#download-ltrr-button').off('click');
-    $('#download-csv-button').off('click');
-    $('#download-tab-button').off('click');
-    $('#copy-data-button').off('click');
-    $('#delete-button').off('click');
-    $('#copy-data-button').off('click');
-    this.dialog.close();
-  };
-};
-
-/**
  * Change color properties of image
  * @constructor
  * @param {Ltreering} Lt - Leaflet treering object
@@ -5176,49 +4579,6 @@ MeasurementOptions.prototype.displayDialog = function () {
 }
 
 /**
- * Save a local copy of the measurement data
- * @constructor
- * @param {Ltreering} Lt - Leaflet treering object
- */
-function SaveLocal(Lt) {
-  this.btn = new Button(
-    'save',
-    'Download .json file of current measurements, annotations, etc.',
-    () => { this.action() }
-  );
-
-  /**
-   * Save a local copy of the measurement data
-   * @function action
-   */
-  SaveLocal.prototype.action = function() {
-    Lt.data.clean();
-    var dataJSON = {
-      'SaveDate': Lt.data.saveDate,
-      'year': Lt.data.year,
-      'forwardDirection': Lt.measurementOptions.forwardDirection,
-      'subAnnual': Lt.measurementOptions.subAnnual,
-      'earlywood': Lt.data.earlywood,
-      'index': Lt.data.index,
-      'points': Lt.data.points,
-      'attributesObjectArray': Lt.annotationAsset.attributesObjectArray,
-      'annotations': Lt.aData.annotations,
-      'ppm': Lt.meta.ppm,
-      'ptWidths': Lt.helper.findDistances(),
-    };
-
-    // don't serialize our default value
-    if(Lt.meta.ppm != Lt.defaultResolution || Lt.meta.ppmCalibration) {
-      dataJSON.ppm = Lt.meta.ppm;
-    }
-
-    var file = new File([JSON.stringify(dataJSON)],
-        (Lt.meta.assetName + '.json'), {type: 'text/plain;charset=utf-8'});
-    saveAs(file);
-  };
-}
-
-/**
  * Display assets meta data as text
  * @constructor
  * @param {Ltreering} Lt - Leaflet treering object
@@ -5413,8 +4773,7 @@ function Panhandler(La) {
    * Download CSV ZIP file
    * @function
    */
-  function downloadCSVFiles(Lt,TWoodcsvDataString,EWoodcsvDataString,LWoodcsvDataString)
-  {
+  function downloadCSVFiles(Lt,TWoodcsvDataString,EWoodcsvDataString,LWoodcsvDataString) {
     var zip = new JSZip();
     if(Lt.measurementOptions.subAnnual)
     {
@@ -5426,8 +4785,9 @@ function Panhandler(La) {
           .then((blob) => {
             saveAs(blob, (Lt.meta.assetName + '_csv.zip'));
           });
-    }
-    function downloadTabFiles(Lt,TWTabDataString,EWTabDataString,LWTabDataString)
+  }
+
+  function downloadTabFiles(Lt,TWTabDataString,EWTabDataString,LWTabDataString)
   {
     var zip = new JSZip();
     if(Lt.measurementOptions.subAnnual)

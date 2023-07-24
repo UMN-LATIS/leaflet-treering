@@ -19,6 +19,11 @@ function DataAccessInterface(Lt) {
     this.popoutPlots = new PopoutPlots(this);
     this.jsonFileUpload = new JSONFileUpload(this);
     this.cloudUpload = new CloudUpload(this);
+    
+    this.deleteData = new DeleteData(this);
+    this.deleteDataDialog = new DeleteDataDialog(this);
+
+    this.download = new Download(this);
 }
 
 /**
@@ -53,10 +58,14 @@ function ViewData(Inte) {
 */
 function ViewDataDialog(Inte) {
     Handlebars.registerHelper('numToFourDigits', function(decimal) {
-        if (decimal) {
-            decimal = decimal.toString() + "0000"; // Add zeroes for already truncated values (i.e. 0.3 -> 0.300).
-            let dec_idx = decimal.indexOf('.');
-            let rounded = decimal.slice(0, dec_idx + 4);
+        if (decimal || decimal == 0) {
+            let rounded = "0.000"
+            if (decimal > 0) {
+                decimal = decimal.toString() + "000"; // Add zeroes for already truncated values (i.e. 0.3 -> 0.300).
+                let dec_idx = decimal.indexOf('.');
+                rounded = decimal.slice(0, dec_idx + 4);
+            }
+            
             return rounded;
         }
         
@@ -76,13 +85,20 @@ function ViewDataDialog(Inte) {
     }).addTo(Inte.treering.viewer);
     this.dialog.hideResize();
 
-    $(this.dialog._map).on('dialog:closed', (dialog) => { Inte.viewData.btn.state('inactive') });
+    $(this.dialog._map).on('dialog:closed', (dialog) => { 
+        Inte.viewData.btn.state('inactive'); 
+        if (Inte.deleteData?.dialog) Inte.deleteData.dialog.close() 
+    });
+
+    this.scrollPositionFromTop = 0;
 
     /**
      * Opens dialog window.
      * @function
      */
     ViewDataDialog.prototype.open = function() { 
+        Inte.treering.collapseTools();
+
         let dat = Inte.treering.helper.findDistances();
         let content = this.template({
             data: dat,
@@ -94,6 +110,7 @@ function ViewDataDialog(Inte) {
         this.dialog.setContent(content);
         this.dialog.setSize(size);
         this.dialog.open();
+        document.getElementById("DataAccess-table-body").scrollTop = this.scrollPositionFromTop;
         this.createEventListeners();
     }
 
@@ -103,6 +120,7 @@ function ViewDataDialog(Inte) {
      */
     ViewDataDialog.prototype.close = function() {
         this.dialog.close();
+        if (Inte.deleteData.dialog) Inte.deleteData.dialog.close();
     }
     
     /**
@@ -118,6 +136,7 @@ function ViewDataDialog(Inte) {
         
         this.dialog.setContent(content);
         this.dialog.open();
+        document.getElementById("DataAccess-table-body").scrollTop = this.scrollPositionFromTop;
         this.createEventListeners();
     }
     
@@ -126,6 +145,10 @@ function ViewDataDialog(Inte) {
      * @function
      */
     ViewDataDialog.prototype.createEventListeners = function () {
+        $("#DataAccess-table-body").on("scroll", () => {
+            this.scrollPositionFromTop = document.getElementById("DataAccess-table-body").scrollTop;
+        })
+
         $("#insert_chart").on("click", () => {
             Inte.popoutPlots.action();
         });
@@ -143,27 +166,27 @@ function ViewDataDialog(Inte) {
         });
 
         $("#delete").on("click", () => {
-            console.log("Delete Click");
+            if (Inte.treering.data.points.length) Inte.deleteDataDialog.open();
         });
 
         $("#copy").on("click",() => {
-            console.log("Copy Click");
+            Inte.download.copy();
         });
 
         $("#csv").on("click", () => {
-            console.log("CSV Click");
+            Inte.download.csv();
         });
 
         $("#tsv").on("click", () => {
-            console.log("TSV Click");
+            Inte.download.tsv();
         });
 
         $("#rwl").on("click", () => {
-            console.log("RWL Click");
+            Inte.download.rwl();
         });
 
         $("#json").on("click", () => {
-            console.log("JSON Click");
+            Inte.download.json();
         });
     }
 }
@@ -171,6 +194,7 @@ function ViewDataDialog(Inte) {
 /** 
  * A popout window with time series plots.
  * @constructor
+ * 
  * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
  */
 function PopoutPlots(Inte) {
@@ -180,6 +204,10 @@ function PopoutPlots(Inte) {
     this.childSite = null
     this.win = null
     
+    /**
+     * Opens popout plit window.  
+     * @function
+     */
     PopoutPlots.prototype.action = function() {
         //this.childSite = 'http://localhost:8080/dendro-plots/'
         this.childSite = 'https://umn-latis.github.io/dendro-plots/'
@@ -206,6 +234,7 @@ function PopoutPlots(Inte) {
 /** 
  * Allows user to upload local JSON files. 
  * @constructor
+ * 
  * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
  */
 function JSONFileUpload(Inte) {
@@ -263,6 +292,7 @@ function JSONFileUpload(Inte) {
 /**
  * Save JSON to cloud.
  * @constructor
+ * 
  * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
  */
 function CloudUpload(Inte) {
@@ -362,4 +392,581 @@ function CloudUpload(Inte) {
             alert('Authentication Error: Save to cloud permission not granted.');
         };
     };
+}
+
+/**
+ * Deletes all measurement data.
+ * @constructor
+ * 
+ * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
+ */
+function DeleteData(Inte) {
+    /**
+     * Deletes data.
+     * @function
+     */
+    DeleteData.prototype.action = function() {
+        Inte.treering.undo.push();
+
+        Inte.treering.data.points = [];
+        Inte.treering.data.year = 0;
+        Inte.treering.data.earlywood = true;
+        Inte.treering.data.index = 0;
+
+        Inte.treering.visualAsset.reload();
+        Inte.treering.metaDataText.updateText();
+
+        Inte.viewDataDialog.reload();
+    }
+}
+
+/**
+ * Creates dialog for deleting data.
+ * @constructor
+ * 
+ * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
+ */
+function DeleteDataDialog(Inte) {
+    let content = document.getElementById("DataAccess-deleteAllDialog-template").innerHTML;
+
+    let size = [300, 260];
+    this.fromLeft = ($(window).width() - size[0]) / 2;
+    this.fromTop = ($(window).height() - size[1]) / 2;
+    
+    this.dialog = L.control.dialog({
+        "size": size,
+        "anchor": [this.fromTop, this.fromLeft],
+        "initOpen": false,
+        'position': 'topleft',
+        "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+    }).setContent(content).addTo(Inte.treering.viewer);
+    this.dialog.hideClose();
+    this.dialog.hideResize();
+
+    /**
+     * Opens dialog window. 
+     * @function
+     */
+    DeleteDataDialog.prototype.open = function() {
+        // Recenter dialog window. Otherwise anchor location remebered. 
+        this.dialog.setLocation([this.fromTop, this.fromLeft]);
+        this.dialog.open();
+        this.createEventListeners();
+    }
+
+    /**
+     * Closes dialog window. 
+     * @function
+     */
+    DeleteDataDialog.prototype.close = function() {
+        this.dialog.close();
+    }
+
+    /**
+     * Creates all event listeners for HTML elements in dialog window. 
+     * @function
+     */
+    DeleteDataDialog.prototype.createEventListeners = function() {
+        $("#DataAccess-confirmDelete-btn").on("click", () => {
+            Inte.deleteData.action();
+            this.close();
+        });
+
+        $("#DataAccess-cancelDelete-btn").on("click", () => {
+            this.close();
+        });
+    }
+}
+
+/**
+ * Hosts all download types. 
+ * @constructor
+ * 
+ * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
+ */
+function Download(Inte) {
+    /**
+     * Format data into seperated text and return as a single string.
+     * @function
+     * 
+     * @param {string} sep - Seperator value (i.e. comma). 
+     */
+    Download.prototype.seperateDataCombined = function(sep) {
+        let dat = Inte.treering.helper.findDistances();
+
+        let outStr = "Year" + sep + Inte.treering.meta.assetName + "_TW";
+        if (dat?.ew) outStr += sep + Inte.treering.meta.assetName + "_EW" + sep + Inte.treering.meta.assetName + "_LW";
+        outStr += "\n"
+
+        for (var i = 0; i < dat.tw.x.length; i++) {
+            outStr += dat.tw.x[i] + sep + dat.tw.y[i].toFixed(3);
+            if (dat?.ew) outStr += sep + dat.ew.y[i].toFixed(3) + sep + dat.ew.y[i].toFixed(3);
+            
+            if (i < dat.tw.x.length - 1) outStr += "\n"
+        }
+
+        return outStr;
+    }
+
+    /**
+     * Format data into seperated text and return multiple strings.
+     * @function
+     * 
+     * @param {string} sep - Seperator value (i.e. comma). 
+     */
+    Download.prototype.seperateDataDifferent = function(sep) {
+        let dat = Inte.treering.helper.findDistances();
+        
+        let outTWStr = "Year" + sep + Inte.treering.meta.assetName + "_TW\n";
+        let outEWStr = "Year" + sep + Inte.treering.meta.assetName + "_EW\n";
+        let outLWStr = "Year" + sep + Inte.treering.meta.assetName + "_LW\n";
+
+        for (var i = 0; i < dat.tw.x.length; i++) {
+            outTWStr += dat.tw.x[i] + sep + dat.tw.y[i].toFixed(3);
+            if (dat?.ew) {
+                outEWStr += dat.ew.x[i] + sep + dat.ew.y[i].toFixed(3);
+                outLWStr += dat.lw.x[i] + sep + dat.lw.y[i].toFixed(3);
+            }
+
+            if (i < dat.tw.x.length - 1) {
+                outTWStr += "\n";
+                outEWStr += "\n";
+                outLWStr += "\n";
+            }
+        }
+
+        let outLst = (dat?.ew) ? [outTWStr, outEWStr, outLWStr] : [outTWStr];
+
+        return outLst;
+    }
+
+    /**
+     * Create zip folder.
+     * @function
+     * 
+     * @param {string} fileExt - File type (i.e. csv, tsv).
+     * @param {string} twDatString - String of total width data.
+     * @param {string} [o] allDatString - Optional string of all data.
+     * @param {string} [o] ewDatString - Optional string of earlywood width data. 
+     * @param {string} [o] lwDatString - Optional string of latewood width data.
+     */
+    Download.prototype.zipFiles = function(fileExt, twDatString, allDatString, ewDatString, lwDatString) {
+        let zip = new JSZip();
+
+        if (ewDatString && lwDatString) {
+            zip.file((Inte.treering.meta.assetName + "_EW_" + fileExt + "." + fileExt), ewDatString);
+            zip.file((Inte.treering.meta.assetName + "_LW_" + fileExt + "." + fileExt), lwDatString);
+            zip.file((Inte.treering.meta.assetName + "_all_" + fileExt + "." + fileExt), allDatString);
+        }
+
+        zip.file((Inte.treering.meta.assetName + "_TW_" + fileExt + "." + fileExt), twDatString);
+        zip.generateAsync({type: 'blob'})
+            .then((blob) => {
+                saveAs(blob, (Inte.treering.meta.assetName + "_" + fileExt + ".zip"));
+            });
+    }
+
+    /**
+     * Copy data to clipboard.
+     * @function
+     */
+    Download.prototype.copy = function() {
+        navigator.clipboard.writeText(this.seperateDataCombined("\t"));
+    }
+
+    /**
+     * Download .csv file.
+     * @function
+     */
+    Download.prototype.csv = function() {
+        let allDatString = this.seperateDataCombined(",");
+        let datStringLst = this.seperateDataDifferent(",");
+        if (datStringLst.length > 1) this.zipFiles("csv", datStringLst[0], allDatString, datStringLst[1], datStringLst[2]);
+        else this.zipFiles("csv", datStringLst[0]);
+    }
+
+    /**
+     * Download .tsv file.
+     * @function
+     */
+    Download.prototype.tsv = function() {
+        let allDatString = this.seperateDataCombined("\t");
+        let datStringLst = this.seperateDataDifferent("\t");
+        if (datStringLst.length > 1) this.zipFiles("tsv", datStringLst[0], allDatString, datStringLst[1], datStringLst[2]);
+        else this.zipFiles("tsv", datStringLst[0]);
+    }
+
+    /**
+     * Download .rwl file. REFACTOR
+     * @function
+     */
+    Download.prototype.rwl = function() {
+        var toFourCharString = function(n) {
+            var string = n.toString();
+      
+            if (string.length == 1) {
+              string = '   ' + string;
+            } else if (string.length == 2) {
+              string = '  ' + string;
+            } else if (string.length == 3) {
+              string = ' ' + string;
+            } else if (string.length == 4) {
+              string = string;
+            } else if (string.length >= 5) {
+              alert('Value exceeds 4 characters');
+              throw 'error in toFourCharString(n)';
+            } else {
+              alert('toFourCharString(n) unknown error');
+              throw 'error';
+            }
+            return string;
+          };
+      
+          var toSixCharString = function(n) {
+            var string = n.toString();
+      
+            if (string.length == 1) {
+              string = '     ' + string;
+            } else if (string.length == 2) {
+              string = '    ' + string;
+            } else if (string.length == 3) {
+              string = '   ' + string;
+            } else if (string.length == 4) {
+              string = '  ' + string;
+            } else if (string.length == 5) {
+              string = ' ' + string;
+            } else if (string.length >= 6) {
+              alert('Value exceeds 5 characters');
+              throw 'error in toSixCharString(n)';
+            } else {
+              alert('toSixCharString(n) unknown error');
+              throw 'error';
+            }
+            return string;
+          };
+      
+          var toEightCharString = function(n) {
+            var string = n.toString();
+      
+            if (string.length == 0) {
+              string = string + '        ';
+            } else if (string.length == 1) {
+              string = string + '       ';
+            } else if (string.length == 2) {
+              string = string + '      ';
+            } else if (string.length == 3) {
+              string = string + '     ';
+            } else if (string.length == 4) {
+              string = string + '    ';
+            } else if (string.length == 5) {
+              string = string + '   ';
+            } else if (string.length == 6) {
+              string = string + '  ';
+            } else if (string.length == 7) {
+              string = string + ' ';
+            } else if (string.length == 8) {
+              return string;
+            } else if (string.length > 8) {
+              alert('Value exceeds 8 characters');
+              throw 'error in toEightCharString(n)';
+            } else {
+              alert('toEightCharString(n) unknown error');
+              throw 'error';
+            }
+            return string;
+          };
+      
+          if (Inte.treering.measurementOptions.forwardDirection) { // years ascend in value
+            var pts = Inte.treering.data.points;
+          } else { // otherwise years descend in value
+            var pts = Inte.treering.helper.reverseData();
+          }
+      
+          if (Inte.treering.data.points != undefined && Inte.treering.data.points[1] != undefined) {
+      
+            var sum_points;
+            var sum_string = '';
+            var last_latLng;
+            var break_length;
+            var length_string;
+      
+            if (Inte.treering.measurementOptions.subAnnual) {
+      
+              var sum_string = '';
+              var ew_string = '';
+              var lw_string = '';
+      
+              y = pts[1].year;
+              var sum_points = pts.filter(e => {
+                if (e.earlywood != undefined) {
+                  return !(e.earlywood);
+                } else {
+                  return true;
+                }
+              });
+      
+              if (sum_points[1].year % 10 > 0) {
+                sum_string = sum_string.concat(
+                    toEightCharString(Inte.treering.meta.assetName) +
+                    toFourCharString(sum_points[1].year));
+              }
+      
+              var break_point = false;
+              sum_points.map((e, i, a) => {
+                if (e.start) {
+                  last_latLng = e.latLng;
+                } else if (e.break) {
+                  break_length =
+                    Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
+                    break_point = true;
+                } else {
+                  if (e.year % 10 == 0) {
+                    if(sum_string.length > 0) {
+                      sum_string = sum_string.concat('\n');
+                    }
+                    sum_string = sum_string.concat(
+                        toEightCharString(Inte.treering.meta.assetName) +
+                        toFourCharString(e.year));
+                  }
+                  while (e.year > y) {
+                    sum_string = sum_string.concat('    -1');
+                    y++;
+                    if (y % 10 == 0) {
+                      sum_string = sum_string.concat('\n' +
+                          toFourCharString(e.year));
+                    }
+                  }
+      
+                  if (!last_latLng) {
+                    last_latLng = e.latLng;
+                  };
+      
+                  var length = Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
+                  if (break_point) {
+                    length += break_length;
+                    break_point = false;
+                  }
+                  if (length == 9999) {
+                    length = 9998;
+                  }
+                  if (length == 999) {
+                    length = 998;
+                  }
+      
+                  length_string = toSixCharString(length);
+      
+                  sum_string = sum_string.concat(length_string);
+                  last_latLng = e.latLng;
+                  y++;
+                }
+              });
+      
+              // if we ended at the end of a decade, we need to add a new line
+              if (y % 10 == 0) {
+                sum_string = sum_string.concat('\n' +
+                toEightCharString(Inte.treering.meta.assetName) +
+                toFourCharString(y));
+              }
+              sum_string = sum_string.concat(' -9999');
+      
+              y = pts[1].year;
+      
+              if (pts[1].year % 10 > 0) {
+                ew_string = ew_string.concat(
+                    toEightCharString(Inte.treering.meta.assetName) +
+                    toFourCharString(pts[1].year));
+                lw_string = lw_string.concat(
+                    toEightCharString(Inte.treering.meta.assetName) +
+                    toFourCharString(pts[1].year));
+              }
+      
+              break_point = false;
+              pts.map((e, i, a) => {
+                if (e.start) {
+                  last_latLng = e.latLng;
+                } else if (e.break) {
+                  break_length =
+                    Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
+                  break_point = true;
+                } else {
+                  if (e.year % 10 == 0) {
+                    if (e.earlywood) {
+                      if (ew_string.length >0) {
+                        ew_string = ew_string.concat('\n');
+                      }
+                      ew_string = ew_string.concat(
+                          toEightCharString(Inte.treering.meta.assetName) +
+                          toFourCharString(e.year));
+                    } else {
+                      if (lw_string.length >0) {
+                        lw_string = lw_string.concat('\n');
+                      }
+                      lw_string = lw_string.concat(
+                          toEightCharString(Inte.treering.meta.assetName) +
+                          toFourCharString(e.year));
+                    }
+                  }
+                  while (e.year > y) {
+                    ew_string = ew_string.concat('    -1');
+                    lw_string = lw_string.concat('    -1');
+                    y++;
+                    if (y % 10 == 0) {
+                      ew_string = ew_string.concat('\n' +
+                          toEightCharString(Inte.treering.meta.assetName) +
+                          toFourCharString(e.year));
+                      lw_string = lw_string.concat('\n' +
+                          toEightCharString(Inte.treering.meta.assetName) +
+                          toFourCharString(e.year));
+                    }
+                  }
+      
+                  length = Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
+                  if (break_point) {
+                    length += break_length;
+                    break_point = false;
+                  }
+                  if (length == 9999) {
+                    length = 9998;
+                  }
+                  if (length == 999) {
+                    length = 998;
+                  }
+      
+                  length_string = toSixCharString(length);
+      
+                  if (e.earlywood) {
+                    ew_string = ew_string.concat(length_string);
+                    last_latLng = e.latLng;
+                  } else {
+                    lw_string = lw_string.concat(length_string);
+                    last_latLng = e.latLng;
+                    y++;
+                  }
+                }
+              });
+      
+              if (y % 10 == 0) {
+                ew_string = ew_string.concat('\n' +
+                  toEightCharString(Inte.treering.meta.assetName) +
+                  toFourCharString(y));
+                lw_string = lw_string.concat('\n' +
+                  toEightCharString(Inte.treering.meta.assetName) +
+                  toFourCharString(y));
+              }
+              ew_string = ew_string.concat(' -9999');
+              lw_string = lw_string.concat(' -9999');
+      
+              console.log(sum_string);
+              console.log(ew_string);
+              console.log(lw_string);
+      
+              var zip = new JSZip();
+              zip.file((Inte.treering.meta.assetName + '_TW_rwl.txt'), sum_string);
+              zip.file((Inte.treering.meta.assetName + '_LW_rwl.txt'), lw_string);
+              zip.file((Inte.treering.meta.assetName + '_EW_rwl.txt'), ew_string);
+      
+            } else {
+      
+              var y = pts[1].year;
+              sum_points = pts;
+      
+              if (sum_points[1].year % 10 > 0) {
+                sum_string = sum_string.concat(
+                    toEightCharString(Inte.treering.meta.assetName) +
+                    toFourCharString(sum_points[1].year));
+              }
+              sum_points.map((e, i, a) => {
+                if(e.start) {
+                    last_latLng = e.latLng;
+                  }
+                  else if (e.break) {
+                    break_length =
+                      Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
+                    break_point = true;
+                  } else {
+                  if (e.year % 10 == 0) {
+                    if(sum_string.length > 0) {
+                      sum_string = sum_string.concat('\n');
+                    }
+                    sum_string = sum_string.concat(
+                        toEightCharString(Inte.treering.meta.assetName) +
+                        toFourCharString(e.year));
+                  }
+                  while (e.year > y) {
+                    sum_string = sum_string.concat('    -1');
+                    y++;
+                    if (y % 10 == 0) {
+                      sum_string = sum_string.concat('\n' +
+                          toFourCharString(e.year));
+                    }
+                  }
+      
+                  length = Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
+                  if (break_point) {
+                    length += break_length;
+                    break_point = false;
+                  }
+                  if (length == 9999) {
+                    length = 9998;
+                  }
+                  if (length == 999) {
+                    length = 998;
+                  }
+      
+                  length_string = toSixCharString(length);
+      
+                  sum_string = sum_string.concat(length_string);
+                  last_latLng = e.latLng;
+                  y++;
+                }
+              });
+      
+              if (y % 10 == 0) {
+                sum_string = sum_string.concat('\n' +
+                  toEightCharString(Inte.treering.meta.assetName) +
+                  toFourCharString(y));
+              }
+              sum_string = sum_string.concat(' -9999');
+      
+              var zip = new JSZip();
+              zip.file((Inte.treering.meta.assetName + '_TW_rwl.txt'), sum_string);
+            }
+      
+            zip.generateAsync({type: 'blob'})
+                .then((blob) => {
+                  saveAs(blob, (Inte.treering.meta.assetName + '_rwl.zip'));
+                });
+          } else {
+            alert('There is no data to download');
+          }
+    }
+
+    /**
+     * Download .json file.
+     * @function
+     */
+    Download.prototype.json = function() {
+        Inte.treering.data.clean();
+        var dataJSON = {
+            'SaveDate': Inte.treering.data.saveDate,
+            'year': Inte.treering.data.year,
+            'forwardDirection': Inte.treering.measurementOptions.forwardDirection,
+            'subAnnual': Inte.treering.measurementOptions.subAnnual,
+            'earlywood': Inte.treering.data.earlywood,
+            'index': Inte.treering.data.index,
+            'points': Inte.treering.data.points,
+            'attributesObjectArray': Inte.treering.annotationAsset.attributesObjectArray,
+            'annotations': Inte.treering.aData.annotations,
+            'ppm': Inte.treering.meta.ppm,
+            'ptWidths': Inte.treering.helper.findDistances(),
+        };
+
+        // Do not serialize our default value
+        if (Inte.treering.meta.ppm != Inte.treering.defaultResolution || Inte.treering.meta.ppmCalibration) {
+            dataJSON.ppm = Inte.treering.meta.ppm;
+        }
+
+        var file = new File([JSON.stringify(dataJSON)], (Inte.treering.meta.assetName + '.json'), {type: 'text/plain;charset=utf-8'});
+        saveAs(file);
+    }
 }
