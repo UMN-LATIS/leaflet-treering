@@ -75,7 +75,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.undo = new Undo(this);
   this.redo = new Redo(this);
 
-  this.viewData = new ViewData(this);
+  // Code hosted in Leaflet.DataAccess.js
+  this.dataAccessInterface = new DataAccessInterface(this);
 
   this.imageAdjustment = new ImageAdjustment(this);
   //this.PixelAdjustment = new PixelAdjustment(this);
@@ -113,7 +114,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.ioTools = new ButtonBar(this, ioBtns, 'folder_open', 'Save or upload a record of measurements, annotations, etc.');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
-  this.tools = [this.viewData, this.calibration, this.dating, this.createPoint, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
+  this.tools = [this.dataAccessInterface.viewData, this.calibration, this.dating, this.createPoint, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
 
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
@@ -121,9 +122,6 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.areaCaptureInterface.tools.map(tool => {
     this.tools.push(tool);
   });
-
-  // Code hosted in Leaflet.DataAccess.js
-  this.dataAccessInterface = new DataAccessInterface(this);
 
   this.baseLayer = {
     'Tree Ring': base_layer,
@@ -154,13 +152,9 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
     L.control.layers(this.baseLayer, this.overlay).addTo(this.viewer);
 
-    // test placement
-    this.popoutPlots.btn.addTo(this.viewer);
-
     // if popout is opened display measuring tools
     if (window.name.includes('popout')) {
-      this.viewData.btn.addTo(this.viewer);
-      this.ioTools.bar.addTo(this.viewer);
+      this.dataAccessInterface.viewData.btn.addTo(this.viewer);
       this.imageAdjustment.btn.addTo(this.viewer);
       //this.PixelAdjustment.btn.addTo(this.viewer);
       this.createTools.bar.addTo(this.viewer);
@@ -171,8 +165,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       this.undoRedoBar.addTo(this.viewer);
     } else {
       this.popout.btn.addTo(this.viewer);
-      this.viewData.btn.addTo(this.viewer);
-      this.ioTools.bar.addTo(this.viewer);
+      this.dataAccessInterface.viewData.btn.addTo(this.viewer);
       this.imageAdjustment.btn.addTo(this.viewer);
       //this.PixelAdjustment.btn.addTo(this.viewer);
       //defaults overlay 'points' option to disabled

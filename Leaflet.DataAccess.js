@@ -5,163 +5,146 @@
  */
 
 /**
- * @constructor
- * @param {object} Lt   // LTreering from Leaflet-treeing.js
- */
-
-/** 
- * Temporary Function used for testing data window without full codebase integration. 
- * @function
- */
-function createMockData(yearStart = 1800, yearEnd = 2020, widthMin = 0.05, widthMax = 50) {
-    let x = [];
-    let yTW = [];
-    let yEW = [];
-    let yLW = [];
-
-    let nrows = yearEnd - yearStart + 1;
-    for (i = 0; i < nrows; i++) {
-        let width = Math.random() * (widthMax - widthMin) + widthMin;
-
-        x.push(yearStart + i);
-        yTW.push(width);
-        yEW.push(width * (1/3));
-        yLW.push(width * (2/3));
-    }
-
-    let jsonTW = {
-        "x": x,
-        "y": yTW,
-    }
-    let jsonEW = {
-        "x": x,
-        "y": yEW,
-    }
-    let jsonLW = {
-        "x": x,
-        "y": yLW,
-    }
-
-    return {
-        "tw": jsonTW,
-        "ew": jsonEW,
-        "lw": jsonLW
-    };
-}
-
-/**  
- * Interface for data access tools. Coexists with preexisting download types and tools
- * @fconstructor
- * 
- *  @param {object} Lt   // LTreering from Leaflet-treeing.js
-*/
-function DataAccessInterface(Lt){
-    this.treering = Lt; // assign thie given leaflet treering data to this.treering
-    console.log("Data Access");
-    this.dataAccessDialog = new DataAccessDialog(this); // create new dialog, linking dialog with interface
-}
-/** 
- * Generates dialog window to view given data points
+ * Interface for data access tools. 
  * @constructor
  * 
- *  @param {object} Inte   // DataAccessInterface objects. Allows access to dataaccess tools
+ * @param {object} Lt - LTreering object from leaflet-treering.js. 
+ */
+function DataAccessInterface(Lt) {
+    this.treering = Lt;
+    this.viewData = new ViewData(this);
+    this.viewDataDialog = new ViewDataDialog(this);
+
+    console.log("DataAccessInterface loaded.");
+}
+
+/**
+ * Tool for viewing data. 
+ * @constructor
+ * 
+ * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
+ */
+function ViewData(Inte) {
+    this.btn = new Button (
+        'view_list',
+        'View & download measurement data',
+        () => { this.enable() },
+        () => { this.disable() })
+    
+    ViewData.prototype.enable = function() {
+        this.btn.state('active');
+        Inte.viewDataDialog.open();
+    }
+
+    ViewData.prototype.disable = function() {
+        this.btn.state('inactive');
+        Inte.viewDataDialog.close();
+    }
+}
+
+/** 
+ * Generates dialog window to view data. 
+ * @constructor
+ * 
+ * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
 */
-function DataAccessDialog(Inte){
-    var window_ele = document.getElementById("DataAccess-Window-ID");
-    var table_ele = document.getElementById("DataAccess-Table-ID");
-    var html = table_ele.innerHTML;
-    var tableTemplate = Handlebars.compile(html);
-    var data = Inte.treering.helper.findDistances();
-    var content = tableTemplate({
-        "initialData" : data
+function ViewDataDialog(Inte) {
+    Handlebars.registerHelper('numToFourDigits', function(decimal) {
+        if (decimal) {
+            decimal = decimal.toString() + "0000"; // Add zeroes for already truncated values (i.e. 0.3 -> 0.300).
+            let dec_idx = decimal.indexOf('.');
+            let rounded = decimal.slice(0, dec_idx + 4);
+            return rounded;
+        }
+        
+        console.log("Error: ", typeof(decimal));
     });
-    document.getElementById("DataAccess-Table").innerHTML = content;
+
+    let html = document.getElementById("DataAccess-dialog-template").innerHTML;
+    this.template = Handlebars.compile(html);
+      
     this.dialog = L.control.dialog({
-        "size": [400, 250],
+        "size": [0, 0],
         "anchor": [50, 0],
-        "initOpen": true,
+        "initOpen": false,
         'position': 'topleft',
         "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
-        'minSize': [0, 0]
-    }).setContent(window_ele).addTo(Inte.treering.viewer);
+        "minSize": [0, 0],
+    }).addTo(Inte.treering.viewer);
+    this.dialog.hideResize();
+
+    /**
+     * Opens dialog window.
+     * @function
+     */
+    ViewDataDialog.prototype.open = function() { 
+        let dat = Inte.treering.helper.findDistances();
+        let content = this.template({
+            data: dat,
+        });
+
+        let size = dat?.ew ? [290, 220] : [220, 220];
+        
+        this.dialog.setContent(content);
+        this.dialog.setSize(size);
+        this.dialog.open();
+        this.createEventListeners();
+    }
+
+    /**
+     * Opens dialog window.
+     * @function
+     */
+    ViewDataDialog.prototype.close = function() {
+        this.dialog.close();
+    }
     
-    // this.createEventListeners();
-    DataAccessDialog.prototype.createEventListeners = function () {
+    /**
+     * Creates all event listeners for HTML elements in dialog window. 
+     * @function
+     */
+    ViewDataDialog.prototype.createEventListeners = function () {
         $("#insert_chart").on("click", () => {
             console.log("Insert Chart Click");
         });
+
         $("#new_window").on("click", () => {
-            console.log("New Window CLick");
+            console.log("New Window Click");
         });
+
         $("#upload_file").on("click", () => {
-            console.log("Upload File CLick");
+            console.log("Upload File Click");
         });
+
         $("#cloud_upload").on("click", () => {
-            console.log("Cloud Upload CLick");
+            console.log("Cloud Upload Click");
         });
+
         $("#delete").on("click", () => {
-            console.log("Delete CLick");
+            console.log("Delete Click");
         });
+
         $("#copy").on("click",() => {
             console.log("Copy Click");
         });
+
         $("#csv").on("click", () => {
-            console.log("CSV CLick");
+            console.log("CSV Click");
         });
+
         $("#tsv").on("click", () => {
-            console.log("CSV CLick");
+            console.log("TSV Click");
         });
+
         $("#rwl").on("click", () => {
-            console.log("CSV CLick");
+            console.log("RWL Click");
         });
+
         $("#json").on("click", () => {
-            console.log("CSV CLick");
+            console.log("JSON Click");
         });
     }
-        // Inte.createEventListeners();
 }
 
 
-// dialogue class
-// different functions for the varying onclick events
-    // popout 
-    // download
-    // upload/saving
-    // dialog
-
-
-/**
- * Helper function to round to a fixed decimal place
- * @function
- */
-Handlebars.registerHelper('decimalFixed', function(decimal) {
-    // console.log(decimal, typeof(decimal));
-    if(decimal){
-        decimal = decimal.toString()
-        var dec_idx = decimal.indexOf('.');
-        var rounded = decimal.slice(0,dec_idx+4);
-        return rounded;
-    }
-    return typeof(decimal);
-});
-
-// var initialData = createMockData()
-
-// console.log(initialData);
-// var element = document.getElementById("DataAccess-Table-ID")
-// var html = element.innerHTML;
-// var tableTemplate = Handlebars.compile(html);
-// console.log(html);
-
-// var content = tableTemplate({"initialData" : initialData});
-// console.log(content);
-
-// var parentDocument = document.getElementById("DataAccess-Table");
-// parentDocument.innerHTML = content;
-
-
-
-
-// Find distances from leaflet-treering has a find disance prototype that 
-// I can reference for the data formatting
 

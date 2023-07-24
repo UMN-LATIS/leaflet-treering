@@ -5,7 +5,7 @@
  */
 
 /**
- * Interface for area capture tools. Instantiates & connects all area or supprting tools. 
+ * Interface for area capture tools. Instantiates & connects all area or supporting tools. 
  * @constructor
  * 
  * @param {object} Lt - LTreering object from leaflet-treering.js. 
