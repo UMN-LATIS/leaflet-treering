@@ -105,8 +105,6 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
   this.keyboardShortCutDialog = new KeyboardShortCutDialog(this);
 
-  this.popoutPlots = new PopoutPlots(this);
-
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
   this.annotationTools = new ButtonBar(this, [this.annotationAsset.createBtn, this.annotationAsset.deleteBtn], 'comment', 'Manage annotations');
   this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
@@ -222,8 +220,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       // load the save information in buttom left corner
       this.saveCloud.displayDate();
     };
-    if (this.popoutPlots.win) {
-      this.popoutPlots.sendData();
+    if (this.dataAccessInterface.popoutPlots.win) {
+      this.dataAccessInterface.popoutPlots.sendData();
     }
     this.metaDataText.updateText();
   };
@@ -330,8 +328,8 @@ function MeasurementData (dataObject, Lt) {
     // update every time a point is placed
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.popoutPlots.win) {
+      Lt.dataAccessInterface.popoutPlots.sendData();
     }
   };
 
@@ -420,8 +418,8 @@ function MeasurementData (dataObject, Lt) {
 
     Lt.metaDataText.updateText(); // updates after a point is deleted
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.popoutPlots.win) {
+      Lt.dataAccessInterface.popoutPlots.sendData();
     }
   };
 
@@ -509,8 +507,8 @@ function MeasurementData (dataObject, Lt) {
 
     Lt.metaDataText.updateText(); // updates after points are cut
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.popoutPlots.win) {
+      Lt.dataAccessInterface.popoutPlots.sendData();
     }
   };
 
@@ -615,8 +613,8 @@ function MeasurementData (dataObject, Lt) {
     // Update other features after point inserted.
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.popoutPlots.win) {
+      Lt.dataAccessInterface.popoutPlots.sendData();
     }
     return i;
   };
@@ -695,8 +693,8 @@ function MeasurementData (dataObject, Lt) {
 
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.popoutPlots.win) {
+      Lt.dataAccessInterface.popoutPlots.sendData();
     }
   }
 
@@ -827,8 +825,8 @@ function MeasurementData (dataObject, Lt) {
     // Update other features after point inserted.
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.popoutPlots.win) {
+      Lt.dataAccessInterface.popoutPlots.sendData();
     }
 
     return k;
@@ -1456,8 +1454,8 @@ function VisualAsset (Lt) {
       }
 
       Lt.annotationAsset.reloadAssociatedYears();
-      if (Lt.popoutPlots.win) {
-        Lt.popoutPlots.sendData();
+      if (Lt.dataAccessInterface.popoutPlots.win) {
+        Lt.dataAccessInterface.popoutPlots.sendData();
       }
     });
 
@@ -1500,21 +1498,21 @@ function VisualAsset (Lt) {
     // Line below disables flashing when measuring.
     // && !Lt.createPoint.active
     this.markers[i].on('mouseover', e => {
-      if (Lt.popoutPlots.win && !Lt.createPoint.active) {
+      if (Lt.dataAccessInterface.popoutPlots.win && !Lt.createPoint.active) {
         // Do not highlight end point when measuring backward, but highlight start point.
         if (forward || (backward && i < pts.length - 1)) {
           var year = pts[i].year;
           if (backward && i === 0) {
             year = (annual && pts[i + 1]) ? pts[i + 1].year + 1 : pts[i + 1].year;
           }
-          Lt.popoutPlots.highlightYear(year);
+          Lt.dataAccessInterface.popoutPlots.highlightYear(year);
         }
       }
     })
 
     this.markers[i].on('mouseout', e => {
-      if (Lt.popoutPlots.win && !Lt.createPoint.active) {
-        Lt.popoutPlots.highlightYear(false)
+      if (Lt.dataAccessInterface.popoutPlots.win && !Lt.createPoint.active) {
+        Lt.dataAccessInterface.popoutPlots.highlightYear(false)
       }
     })
 
@@ -3104,43 +3102,6 @@ function Popout(Lt) {
   });
 };
 
-/** A popout with time series plots
- * @constructor
- * @param {Ltreering} Lt - Leaflet treering object
- */
- function PopoutPlots (Lt) {
-   var height = (4/9) * screen.height;
-   var top = (2/3) * screen.height;
-   var width = screen.width;
-   this.childSite = null
-   this.win = null
-
-   // prev icon: insights
-   this.btn = new Button('insert_chart_outlined',
-                         'Open time series plots in a new window',
-                         () => {
-                           //this.childSite = 'http://localhost:8080/dendro-plots/'
-                           this.childSite = 'https://umn-latis.github.io/dendro-plots/'
-                           this.win = window.open(this.childSite, 'popout' + Math.round(Math.random()*10000),
-                                       'location=yes,height=' + height + ',width=' + width + ',scrollbars=yes,status=yes, top=' + top);
-
-                           let data = { points: Lt.helper.findDistances(), annotations: Lt.aData.annotations };
-                           window.addEventListener('message', () => {
-                             this.win.postMessage(data, this.childSite);
-                           }, false)
-                         });
-
-    PopoutPlots.prototype.sendData = function() {
-      let data = { points: Lt.helper.findDistances(), annotations: Lt.aData.annotations };
-      this.win.postMessage(data, this.childSite);
-    }
-
-    PopoutPlots.prototype.highlightYear = function(year) {
-      this.win.postMessage(year, this.childSite);
-    }
-
-};
-
 /**
  * Undo actions
  * @constructor
@@ -3151,8 +3112,8 @@ function Undo(Lt) {
   this.btn = new Button('undo', 'Undo', () => {
     this.pop();
     Lt.metaDataText.updateText();
-    if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.popoutPlots.win) {
+      Lt.dataAccessInterface.popoutPlots.sendData();
     }
   });
   this.btn.disable();
@@ -3222,8 +3183,8 @@ function Redo(Lt) {
   this.btn = new Button('redo', 'Redo', () => {
     this.pop();
     Lt.metaDataText.updateText();
-    if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.popoutPlots.win) {
+      Lt.dataAccessInterface.popoutPlots.sendData();
     }
   });
   this.btn.disable();
@@ -3500,8 +3461,8 @@ function Dating(Lt) {
   Dating.prototype.disable = function() {
     Lt.metaDataText.updateText(); // updates once user hits enter
     Lt.annotationAsset.reloadAssociatedYears();
-    if (Lt.popoutPlots.win) {
-      Lt.popoutPlots.sendData();
+    if (Lt.dataAccessInterface.popoutPlots.win) {
+      Lt.dataAccessInterface.popoutPlots.sendData();
     }
 
     this.btn.state('inactive');
@@ -3702,8 +3663,8 @@ function CreateZeroGrowth(Lt) {
 
       Lt.metaDataText.updateText(); // updates after point is inserted
       Lt.annotationAsset.reloadAssociatedYears();
-      if (Lt.popoutPlots.win) {
-        Lt.popoutPlots.sendData();
+      if (Lt.dataAccessInterface.popoutPlots.win) {
+        Lt.dataAccessInterface.popoutPlots.sendData();
       }
 
     } else {
@@ -4267,8 +4228,8 @@ function InsertBreak(Lt) {
         Lt.data.points.splice(this.closestSecondIndex, 0, secondBreakPt);
         Lt.data.index = Lt.data.points.length;
         Lt.visualAsset.reload();
-        if (Lt.popoutPlots.win) {
-          Lt.popoutPlots.sendData();
+        if (Lt.dataAccessInterface.popoutPlots.win) {
+          Lt.dataAccessInterface.popoutPlots.sendData();
         }
 
         this.disable();

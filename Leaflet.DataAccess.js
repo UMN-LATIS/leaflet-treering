@@ -1,6 +1,6 @@
 /**
  * @file Leaflet Data Access
- * @author Daniel Binsfeld <binsf024@umn.edu>
+ * @author Daniel Binsfeld <binsf024@umn.edu> & Jessica Thorne <thorn572@umn.edu>
  * @version 1.0.0
  */
 
@@ -12,10 +12,11 @@
  */
 function DataAccessInterface(Lt) {
     this.treering = Lt;
+
     this.viewData = new ViewData(this);
     this.viewDataDialog = new ViewDataDialog(this);
 
-    console.log("DataAccessInterface loaded.");
+    this.popoutPlots = new PopoutPlots(this);
 }
 
 /**
@@ -105,7 +106,7 @@ function ViewDataDialog(Inte) {
      */
     ViewDataDialog.prototype.createEventListeners = function () {
         $("#insert_chart").on("click", () => {
-            console.log("Insert Chart Click");
+            Inte.popoutPlots.action();
         });
 
         $("#new_window").on("click", () => {
@@ -146,5 +147,37 @@ function ViewDataDialog(Inte) {
     }
 }
 
+/** A popout with time series plots
+ * @constructor
+ * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
+ */
+function PopoutPlots (Inte) {
+    var height = (4/9) * screen.height;
+    var top = (2/3) * screen.height;
+    var width = screen.width;
+    this.childSite = null
+    this.win = null
+    
+    PopoutPlots.prototype.action = function() {
+        //this.childSite = 'http://localhost:8080/dendro-plots/'
+        this.childSite = 'https://umn-latis.github.io/dendro-plots/'
+        this.win = window.open(this.childSite, 'popout' + Math.round(Math.random()*10000),
+                    'location=yes,height=' + height + ',width=' + width + ',scrollbars=yes,status=yes, top=' + top);
 
+        let data = { points: Inte.treering.helper.findDistances(), annotations: Inte.treering.aData.annotations };
+        window.addEventListener('message', () => {
+          this.win.postMessage(data, this.childSite);
+        }, false)
+    }
+ 
+     PopoutPlots.prototype.sendData = function() {
+       let data = { points: Inte.treering.helper.findDistances(), annotations: Inte.treering.aData.annotations };
+       this.win.postMessage(data, this.childSite);
+     }
+ 
+     PopoutPlots.prototype.highlightYear = function(year) {
+       this.win.postMessage(year, this.childSite);
+     }
+ 
+ };
 
