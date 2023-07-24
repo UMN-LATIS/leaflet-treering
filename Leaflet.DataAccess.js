@@ -17,6 +17,8 @@ function DataAccessInterface(Lt) {
     this.viewDataDialog = new ViewDataDialog(this);
 
     this.popoutPlots = new PopoutPlots(this);
+    this.jsonFileUpload = new JSONFileUpload(this);
+    this.cloudUpload = new CloudUpload(this);
 }
 
 /**
@@ -74,6 +76,8 @@ function ViewDataDialog(Inte) {
     }).addTo(Inte.treering.viewer);
     this.dialog.hideResize();
 
+    $(this.dialog._map).on('dialog:closed', (dialog) => { Inte.viewData.btn.state('inactive') });
+
     /**
      * Opens dialog window.
      * @function
@@ -82,6 +86,7 @@ function ViewDataDialog(Inte) {
         let dat = Inte.treering.helper.findDistances();
         let content = this.template({
             data: dat,
+            savePermissions: Inte.treering.meta.savePermission,
         });
 
         let size = dat?.ew ? [290, 220] : [220, 220];
@@ -93,11 +98,27 @@ function ViewDataDialog(Inte) {
     }
 
     /**
-     * Opens dialog window.
+     * Closes dialog window.
      * @function
      */
     ViewDataDialog.prototype.close = function() {
         this.dialog.close();
+    }
+    
+    /**
+     * Reloads dialog window.
+     * @function
+     */
+    ViewDataDialog.prototype.reload = function() {
+        let dat = Inte.treering.helper.findDistances();
+        let content = this.template({
+            data: dat,
+            savePermissions: Inte.treering.meta.savePermission,
+        });
+        
+        this.dialog.setContent(content);
+        this.dialog.open();
+        this.createEventListeners();
     }
     
     /**
@@ -114,11 +135,11 @@ function ViewDataDialog(Inte) {
         });
 
         $("#upload_file").on("click", () => {
-            console.log("Upload File Click");
+            Inte.jsonFileUpload.input();
         });
 
         $("#cloud_upload").on("click", () => {
-            console.log("Cloud Upload Click");
+            Inte.cloudUpload.action();
         });
 
         $("#delete").on("click", () => {
@@ -147,11 +168,12 @@ function ViewDataDialog(Inte) {
     }
 }
 
-/** A popout with time series plots
+/** 
+ * A popout window with time series plots.
  * @constructor
  * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
  */
-function PopoutPlots (Inte) {
+function PopoutPlots(Inte) {
     var height = (4/9) * screen.height;
     var top = (2/3) * screen.height;
     var width = screen.width;
@@ -181,3 +203,163 @@ function PopoutPlots (Inte) {
  
  };
 
+/** 
+ * Allows user to upload local JSON files. 
+ * @constructor
+ * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
+ */
+function JSONFileUpload(Inte) {
+    /**
+     * Create an input div on the UI and click it.
+     * @function
+     */
+    JSONFileUpload.prototype.input = function() {
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.id = 'file';
+        input.style = 'display: none';
+        input.addEventListener('change', () => {this.action(input)});
+        input.click();
+    };
+
+    /**
+     * Load the file selected in the input.
+     * @function 
+     */
+    JSONFileUpload.prototype.action = function(inputElement) {
+        var files = inputElement.files;
+        console.log(files);
+        if (files.length <= 0) {
+            return false;
+        }
+
+        var fr = new FileReader();
+
+        fr.onload = function(e) {
+            let newDataJSON = JSON.parse(e.target.result);
+
+            Inte.treering.preferences = {
+                'forwardDirection': newDataJSON.forwardDirection,
+                'subAnnual': newDataJSON.subAnnual,
+            };
+
+            Inte.treering.data = new MeasurementData(newDataJSON, Inte.treering);
+            Inte.treering.aData = new AnnotationData(newDataJSON.annotations);
+
+            // If the JSON has PPM data, use that instead of loaded data.
+            if (newDataJSON.ppm) {
+                Inte.treering.meta.ppm = newDataJSON.ppm;
+                Inte.treering.options.ppm = newDataJSON.ppm;
+            }
+
+            Inte.treering.loadData();
+            Inte.treering.metaDataText.updateText();
+        };
+
+        fr.readAsText(files.item(0));
+    };
+}
+
+/**
+ * Save JSON to cloud.
+ * @constructor
+ * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
+ */
+function CloudUpload(Inte) {
+    // Trigger save action with CTRL-S
+    L.DomEvent.on(window, 'keydown', (e) => {
+        if (e.keyCode == 83 && e.getModifierState("Control") && window.name.includes('popout')) { // 83 refers to 's'
+        e.preventDefault();
+        e.stopPropagation();
+        this.action();
+        };
+    });
+
+    this.date = new Date();
+
+    /**
+     * Update the save date & meta data.
+     * @function
+     */
+    CloudUpload.prototype.updateDate = function() {
+        this.date = new Date();
+        var day = this.date.getDate();
+        var month = this.date.getMonth() + 1;
+        var year = this.date.getFullYear();
+        var minute = this.date.getMinutes();
+        var hour = this.date.getHours();
+        Inte.treering.data.saveDate = {'day': day, 'month': month, 'year': year, 'hour': hour, 'minute': minute};
+    };
+
+    /**
+     * Display the save date in the bottom left corner.
+     * @function 
+     */
+    CloudUpload.prototype.displayDate = function() {
+        var date = Inte.treering.data.saveDate;
+        console.log(date);
+        if (date.day != undefined && date.hour != undefined) {
+        var am_pm = 'am';
+        if (date.hour >= 12) {
+            date.hour -= 12;
+            am_pm = 'pm';
+        }
+        if (date.hour == 0) {
+            date.hour += 12;
+        }
+        var minute_string = date.minute;
+        if (date.minute < 10) {
+            minute_string = '0' + date.minute;
+        }
+
+        this.saveText =
+            "Saved to cloud " + date.year + '/' + date.month + '/' + date.day + ' ' + date.hour + ':' + minute_string + am_pm;
+        } else if (date.day != undefined) {
+        this.saveText =
+            "Saved to cloud " + date.year + '/' + date.month + '/' + date.day;
+        } else {
+        this.saveText =
+            'No data saved to cloud';
+        };
+
+        Inte.treering.data.saveDate;
+    };
+
+    /**
+     * Save the measurement data to the cloud.
+     * @function 
+     */
+    CloudUpload.prototype.action = function() {
+        if (Inte.treering.meta.savePermission && Inte.treering.meta.saveURL != "") {
+        Inte.treering.data.clean();
+        this.updateDate();
+        var dataJSON = {
+            'SaveDate': Inte.treering.data.saveDate,
+            'year': Inte.treering.data.year,
+            'forwardDirection': Inte.treering.measurementOptions.forwardDirection,
+            'subAnnual': Inte.treering.measurementOptions.subAnnual,
+            'earlywood': Inte.treering.data.earlywood,
+            'index': Inte.treering.data.index,
+            'points': Inte.treering.data.points,
+            'attributesObjectArray': Inte.treering.annotationAsset.attributesObjectArray,
+            'annotations': Inte.treering.aData.annotations,
+            'ppm': Inte.treering.meta.ppm,
+        };
+
+        // Do not serialize our default value.
+        if (Inte.treering.meta.ppm != Inte.treering.defaultResolution || Inte.treering.meta.ppmCalibration) {
+            dataJSON.ppm = Inte.treering.meta.ppm;
+        }
+        $.post(Inte.treering.meta.saveURL, {sidecarContent: JSON.stringify(dataJSON)})
+            .done((msg) => {
+                this.displayDate();
+                Inte.treering.metaDataText.updateText();
+            })
+            .fail((xhr, status, error) => {
+                alert('Error: Failed to save changes.');
+            });
+        } else {
+            alert('Authentication Error: Save to cloud permission not granted.');
+        };
+    };
+}

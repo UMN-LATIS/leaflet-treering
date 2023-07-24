@@ -75,9 +75,6 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.undo = new Undo(this);
   this.redo = new Redo(this);
 
-  // Code hosted in Leaflet.DataAccess.js
-  this.dataAccessInterface = new DataAccessInterface(this);
-
   this.imageAdjustment = new ImageAdjustment(this);
   //this.PixelAdjustment = new PixelAdjustment(this);
   this.calibration = new Calibration(this);
@@ -95,24 +92,15 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.insertZeroGrowth = new InsertZeroGrowth(this);
   this.insertBreak = new InsertBreak(this);
 
-  this.saveLocal = new SaveLocal(this);
-  this.loadLocal = new LoadLocal(this);
-  var ioBtns = [this.saveLocal.btn, this.loadLocal.btn];
-  if (options.savePermission) {
-    this.saveCloud = new SaveCloud(this);
-    ioBtns.push(this.saveCloud.btn);
-  }
-
   this.keyboardShortCutDialog = new KeyboardShortCutDialog(this);
 
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
   this.annotationTools = new ButtonBar(this, [this.annotationAsset.createBtn, this.annotationAsset.deleteBtn], 'comment', 'Manage annotations');
   this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
   this.editTools = new ButtonBar(this, [this.dating.btn, this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.deletePoint.btn, this.insertZeroGrowth.btn, this.cut.btn], 'edit', 'Edit existing measurements');
-  this.ioTools = new ButtonBar(this, ioBtns, 'folder_open', 'Save or upload a record of measurements, annotations, etc.');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
-  this.tools = [this.dataAccessInterface.viewData, this.calibration, this.dating, this.createPoint, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
+  this.tools = [this.calibration, this.dating, this.createPoint, this.createBreak, this.deletePoint, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
 
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
@@ -120,6 +108,9 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.areaCaptureInterface.tools.map(tool => {
     this.tools.push(tool);
   });
+
+  // Code hosted in Leaflet.DataAccess.js
+  this.dataAccessInterface = new DataAccessInterface(this);
 
   this.baseLayer = {
     'Tree Ring': base_layer,
@@ -218,7 +209,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     this.annotationAsset.reload();
     if ( this.meta.savePermission ) {
       // load the save information in buttom left corner
-      this.saveCloud.displayDate();
+      this.dataAccessInterface.cloudUpload.displayDate();
     };
     if (this.dataAccessInterface.popoutPlots.win) {
       this.dataAccessInterface.popoutPlots.sendData();
@@ -252,7 +243,6 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     this.annotationTools.collapse();
     this.createTools.collapse();
     this.editTools.collapse();
-    this.ioTools.collapse();
     this.settings.collapse();
     this.areaTools.collapse();
   };
@@ -5229,117 +5219,6 @@ function SaveLocal(Lt) {
 }
 
 /**
- * Save a copy of the measurement data to the cloud
- * @constructor
- * @param {Ltreering} Lt - Leaflet treering object
- */
-function SaveCloud(Lt) {
-  this.btn = new Button(
-    'cloud_upload',
-    'Save the current measurements, annotations, etc.\nto the cloud-hosted .json file (Ctrl-s)',
-    () => { this.action() }
-  );
-
-  // save w. ctrl-s
-  L.DomEvent.on(window, 'keydown', (e) => {
-     if (e.keyCode == 83 && e.getModifierState("Control") && window.name.includes('popout')) { // 83 refers to 's'
-       e.preventDefault();
-       e.stopPropagation();
-       this.action();
-     };
-  });
-
-  this.date = new Date(),
-
-  /**
-   * Update the save date & meta data
-   * @function updateDate
-   */
-  SaveCloud.prototype.updateDate = function() {
-    this.date = new Date();
-    var day = this.date.getDate();
-    var month = this.date.getMonth() + 1;
-    var year = this.date.getFullYear();
-    var minute = this.date.getMinutes();
-    var hour = this.date.getHours();
-    Lt.data.saveDate = {'day': day, 'month': month, 'year': year, 'hour': hour,
-      'minute': minute};
-  };
-
-  /**
-   * Display the save date in the bottom left corner
-   * @function displayDate
-   */
-  SaveCloud.prototype.displayDate = function() {
-    var date = Lt.data.saveDate;
-    console.log(date);
-    if (date.day != undefined && date.hour != undefined) {
-      var am_pm = 'am';
-      if (date.hour >= 12) {
-        date.hour -= 12;
-        am_pm = 'pm';
-      }
-      if (date.hour == 0) {
-        date.hour += 12;
-      }
-      var minute_string = date.minute;
-      if (date.minute < 10) {
-        minute_string = '0' + date.minute;
-      }
-
-      this.saveText =
-          "Saved to cloud " + date.year + '/' + date.month + '/' + date.day + ' ' + date.hour + ':' + minute_string + am_pm;
-    } else if (date.day != undefined) {
-      this.saveText =
-          "Saved to cloud " + date.year + '/' + date.month + '/' + date.day;
-    } else {
-      this.saveText =
-          'No data saved to cloud';
-    };
-
-    Lt.data.saveDate;
-  };
-
-  /**
-   * Save the measurement data to the cloud
-   * @function action
-   */
-  SaveCloud.prototype.action = function() {
-    if (Lt.meta.savePermission && Lt.meta.saveURL != "") {
-      Lt.data.clean();
-      this.updateDate();
-      var dataJSON = {
-        'SaveDate': Lt.data.saveDate,
-        'year': Lt.data.year,
-        'forwardDirection': Lt.measurementOptions.forwardDirection,
-        'subAnnual': Lt.measurementOptions.subAnnual,
-        'earlywood': Lt.data.earlywood,
-        'index': Lt.data.index,
-        'points': Lt.data.points,
-        'attributesObjectArray': Lt.annotationAsset.attributesObjectArray,
-        'annotations': Lt.aData.annotations,
-        'ppm': Lt.meta.ppm,
-      };
-
-      // don't serialize our default value
-      if (Lt.meta.ppm != Lt.defaultResolution || Lt.meta.ppmCalibration) {
-        dataJSON.ppm = Lt.meta.ppm;
-      }
-      $.post(Lt.meta.saveURL, {sidecarContent: JSON.stringify(dataJSON)})
-          .done((msg) => {
-            this.displayDate();
-            Lt.metaDataText.updateText();
-          })
-          .fail((xhr, status, error) => {
-            alert('Error: failed to save changes');
-          });
-    } else {
-      alert('Authentication Error: save to cloud permission not granted');
-    };
-  };
-};
-
-/**
  * Display assets meta data as text
  * @constructor
  * @param {Ltreering} Lt - Leaflet treering object
@@ -5405,7 +5284,7 @@ function MetaDataText (Lt) {
 
     let speciesID = this.speciesID + " &nbsp;|&nbsp; ";
     let branding = 'DendroElevator developed at <a href="http://z.umn.edu/treerings" target="_blank"> UMN </a>';
-    let saveText = (Lt.meta.savePermission) ? Lt.saveCloud.saveText + " &nbsp;|&nbsp; " : '';
+    let saveText = (Lt.meta.savePermission) ? Lt.dataAccessInterface.cloudUpload.saveText + " &nbsp;|&nbsp; " : '';
     let increment = (Lt.measurementOptions.subAnnual) ? 'sub-annual increments' : 'annual increments';
     let direction = (Lt.measurementOptions.forwardDirection) ? 'Measuring forward, ' : 'Measuring backward, ';
 
@@ -5421,70 +5300,6 @@ function MetaDataText (Lt) {
     document.getElementById("meta-data-bottom-text").innerHTML = saveText + branding;
   };
 };
-
-/**
- * Load a local copy of the measurement data
- * @constructor
- * @param {Ltreering} Lt - Leaflet treering object
- */
-function LoadLocal(Lt) {
-  this.btn = new Button(
-    'file_upload',
-    'Upload .json file with measurements, annotations, etc.',
-    () => { this.input() }
-  );
-
-  /**
-   * Create an input div on the ui and click it
-   * @function input
-   */
-  LoadLocal.prototype.input = function() {
-    var input = document.createElement('input');
-    input.type = 'file';
-    input.id = 'file';
-    input.style = 'display: none';
-    input.addEventListener('change', () => {this.action(input)});
-    input.click();
-  };
-
-  /**
-   * Load the file selected in the input
-   * @function action
-   */
-  LoadLocal.prototype.action = function(inputElement) {
-    var files = inputElement.files;
-    console.log(files);
-    if (files.length <= 0) {
-      return false;
-    }
-
-    var fr = new FileReader();
-
-    fr.onload = function(e) {
-      let newDataJSON = JSON.parse(e.target.result);
-
-      Lt.preferences = {
-        'forwardDirection': newDataJSON.forwardDirection,
-        'subAnnual': newDataJSON.subAnnual,
-      };
-
-      Lt.data = new MeasurementData(newDataJSON, Lt);
-      Lt.aData = new AnnotationData(newDataJSON.annotations);
-
-      // if the JSON has PPM data, use that instead of loaded data.
-      if(newDataJSON.ppm) {
-        Lt.meta.ppm = newDataJSON.ppm;
-        Lt.options.ppm = newDataJSON.ppm;
-      }
-
-      Lt.loadData();
-      Lt.metaDataText.updateText();
-    };
-
-    fr.readAsText(files.item(0));
-  };
-
-}
 
 function Panhandler(La) {
   var map = La.viewer;
