@@ -34,7 +34,7 @@ function DataAccessInterface(Lt) {
  */
 function ViewData(Inte) {
     this.btn = new Button (
-        'view_list',
+        'fact_check',
         'View & download measurement data',
         () => { this.enable() },
         () => { this.disable() })
@@ -57,6 +57,10 @@ function ViewData(Inte) {
  * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
 */
 function ViewDataDialog(Inte) {
+    Handlebars.registerHelper('decadeCheck', function(year) {
+        return year % 10 == 0;
+    });
+
     Handlebars.registerHelper('numToFourDigits', function(decimal) {
         if (decimal || decimal == 0) {
             let rounded = "0.000"
@@ -75,8 +79,8 @@ function ViewDataDialog(Inte) {
     let html = document.getElementById("DataAccess-dialog-template").innerHTML;
     this.template = Handlebars.compile(html);
     
-    this.dialogHeight = 220;
-    this.tableHeight = 175;
+    this.dialogHeight = 260;
+    this.tableHeight = 215;
       
     this.dialog = L.control.dialog({
         "size": [0, 0],
@@ -107,13 +111,13 @@ function ViewDataDialog(Inte) {
             savePermissions: Inte.treering.meta.savePermission,
         });
 
-        let size = dat?.ew ? [290, this.dialogHeighteight] : [220, this.dialogHeight];
+        let size = dat?.ew ? [240, this.dialogHeight] : [156, this.dialogHeight];
         
         this.dialog.setContent(content);
 
         this.dialog.setSize(size);
         this.dialog.options.maxSize = [size[0], Number.MAX_SAFE_INTEGER];
-        this.dialog.options.minSize = [size[0], 220];
+        this.dialog.options.minSize = [size[0], 260];
 
         document.getElementById('DataAccess-table-body').style.height = this.tableHeight + "px";
         document.getElementById('DataAccess-table-id').style.height = this.tableHeight + "px"; 
@@ -192,7 +196,7 @@ function ViewDataDialog(Inte) {
  */
 function PopoutPlots(Inte) {
     this.btn = new Button (
-        'insert_chart',
+        'timeline',
         'Open time series plots in new window',
         () => { this.action() });
 

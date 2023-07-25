@@ -154,8 +154,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       this.areaTools.bar.addTo(this.viewer);
       this.undoRedoBar.addTo(this.viewer);
     } else {
-      this.popout.btn.addTo(this.viewer);
       this.dataAccessInterface.popoutPlots.btn.addTo(this.viewer);
+      this.popout.btn.addTo(this.viewer);
       this.dataAccessInterface.viewData.btn.addTo(this.viewer);
       this.imageAdjustment.btn.addTo(this.viewer);
       //this.PixelAdjustment.btn.addTo(this.viewer);

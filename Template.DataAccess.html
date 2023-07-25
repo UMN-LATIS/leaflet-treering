@@ -1,5 +1,5 @@
 <link rel="stylesheet" href="../Style.DataAccess.css">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,0,0" />    
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@48,400,1,0" />  
 <link rel="stylesheet" href="../assets/font-awesome/css/font-awesome.css">
 
 <script src="https://cdn.jsdelivr.net/npm/handlebars@latest/dist/handlebars.js"></script>
@@ -14,13 +14,31 @@
                         insert_chart
                     </span>
                 </div> -->
-    
-                <div id = "upload_file" class= "DataAccess-UploadFile-Buttons DataAccess-Icon-Buttons" title="Upload .json file with measurements, annotations, etc.">
-                    <span class="material-symbols-outlined DataAccess-material-symbols">
-                        upload_file
-                    </span>
+
+                <div id = "rwl" class= "DataAccess-RwlDownload-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center" 
+                     style="margin-top: 2px;" title="Download .rwl file of measurements">
+                    RWL
                 </div>
-                
+    
+                <div id = "csv" class= "DataAccess-TsvDownload-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center" title="Download .csv file of measurements">
+                    CSV
+                </div>
+        
+                <div id = "tsv" class= "DataAccess-CsvDownload-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center" title="Download .tsv file of measurements">
+                    TSV
+                </div>
+        
+                <div id = "json" class= "DataAccess-JsonDownload-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center" title="Download .json file of current measurements, annotations, etc.">
+                    JSON
+                </div>
+    
+                <div id = "copy" class= "DataAccess-Copy-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center" 
+                     style="margin: 0;" title="Copy measurement data to clipboard">
+                    COPY
+                </div>
+
+                <br>
+
                 {{#if savePermissions}}
                 <div id = "cloud_upload" class= "DataAccess-CloudUpload-Buttons DataAccess-Icon-Buttons" title="Save the current measurements, annotations, etc. to the cloud-hosted .json file (Ctrl-s)">
                     <span class="material-symbols-outlined DataAccess-material-symbols">
@@ -28,34 +46,20 @@
                     </span>
                 </div>
                 {{/if}}
-            </div>
     
-            <div id = "delete" class= "DataAccess-Delete-Buttons DataAccess-Delete DataAccess-Icon-Buttons" title="Delete all measurement data">
+                <div id = "upload_file" class= "DataAccess-UploadFile-Buttons DataAccess-Icon-Buttons" title="Upload .json file with measurements, annotations, etc.">
+                    <span class="material-symbols-outlined DataAccess-material-symbols">
+                        upload
+                    </span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 12px;" />
+    
+            <div id = "delete" class="DataAccess-Delete-Buttons DataAccess-Delete DataAccess-Icon-Buttons" title="Delete all measurement data">
                 <span class="material-symbols-outlined ">
                     delete
                 </span>
-            </div>
-        </div>
-    
-        <div class = "DataAccess-Buttons-Container">
-            <div id = "copy" class= "DataAccess-Copy-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center" title="Copy measurement data to clipboard">
-                COPY
-            </div>
-    
-            <div id = "csv" class= "DataAccess-TsvDownload-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center" title="Download .csv file of measurements">
-                CSV
-            </div>
-    
-            <div id = "tsv" class= "DataAccess-CsvDownload-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center" title="Download .tsv file of measurements">
-                TSV
-            </div>
-    
-            <div id = "rwl" class= "DataAccess-RwlDownload-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center" title="Download .rwl file of measurements">
-                RWL
-            </div>
-    
-            <div id = "json" class= "DataAccess-JsonDownload-Buttons DataAccess-Text DataAccess-Text-Buttons DataAccess-Center" title="Download .json file of current measurements, annotations, etc.">
-                JSON
             </div>
         </div>
 
@@ -74,8 +78,8 @@
 
                         {{#with data}}
                             {{#each tw.x}}
-                            <tr>
-                                <td>{{this}}</td>
+                            <tr {{#if (decadeCheck this)}} style="background-color: rgba(255, 0, 0, 0.233);"{{/if}}>
+                                <td><b>{{this}}</b></td>
                                 <td>{{numToFourDigits (lookup ../tw.y @index)}} </td>
             
                                 {{#if ../ew}}
@@ -87,7 +91,7 @@
                             {{/each}}
                         {{/with}}
                     {{else}}
-                        Missing measurement data
+                        Missing data
                     {{/if}}
                 </tbody>
 
