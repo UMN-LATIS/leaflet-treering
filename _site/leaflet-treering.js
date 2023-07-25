@@ -143,6 +143,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
     // if popout is opened display measuring tools
     if (window.name.includes('popout')) {
+      this.dataAccessInterface.popoutPlots.btn.addTo(this.viewer);
       this.dataAccessInterface.viewData.btn.addTo(this.viewer);
       this.imageAdjustment.btn.addTo(this.viewer);
       //this.PixelAdjustment.btn.addTo(this.viewer);
@@ -154,6 +155,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       this.undoRedoBar.addTo(this.viewer);
     } else {
       this.popout.btn.addTo(this.viewer);
+      this.dataAccessInterface.popoutPlots.btn.addTo(this.viewer);
       this.dataAccessInterface.viewData.btn.addTo(this.viewer);
       this.imageAdjustment.btn.addTo(this.viewer);
       //this.PixelAdjustment.btn.addTo(this.viewer);

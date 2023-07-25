@@ -74,6 +74,9 @@ function ViewDataDialog(Inte) {
 
     let html = document.getElementById("DataAccess-dialog-template").innerHTML;
     this.template = Handlebars.compile(html);
+    
+    this.dialogHeight = 220;
+    this.tableHeight = 175;
       
     this.dialog = L.control.dialog({
         "size": [0, 0],
@@ -83,7 +86,6 @@ function ViewDataDialog(Inte) {
         "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
         "minSize": [0, 0],
     }).addTo(Inte.treering.viewer);
-    this.dialog.hideResize();
 
     $(this.dialog._map).on('dialog:closed', (dialog) => { 
         Inte.viewData.btn.state('inactive'); 
@@ -105,11 +107,19 @@ function ViewDataDialog(Inte) {
             savePermissions: Inte.treering.meta.savePermission,
         });
 
-        let size = dat?.ew ? [290, 220] : [220, 220];
+        let size = dat?.ew ? [290, this.dialogHeighteight] : [220, this.dialogHeight];
         
         this.dialog.setContent(content);
+
         this.dialog.setSize(size);
+        this.dialog.options.maxSize = [size[0], Number.MAX_SAFE_INTEGER];
+        this.dialog.options.minSize = [size[0], 220];
+
+        document.getElementById('DataAccess-table-body').style.height = this.tableHeight + "px";
+        document.getElementById('DataAccess-table-id').style.height = this.tableHeight + "px"; 
+
         this.dialog.open();
+
         document.getElementById("DataAccess-table-body").scrollTop = this.scrollPositionFromTop;
         this.createEventListeners();
     }
@@ -133,9 +143,14 @@ function ViewDataDialog(Inte) {
             data: dat,
             savePermissions: Inte.treering.meta.savePermission,
         });
-        
+
         this.dialog.setContent(content);
+
+        document.getElementById('DataAccess-table-body').style.height = this.tableHeight + "px";
+        document.getElementById('DataAccess-table-id').style.height = this.tableHeight + "px";
+
         this.dialog.open();
+
         document.getElementById("DataAccess-table-body").scrollTop = this.scrollPositionFromTop;
         this.createEventListeners();
     }
@@ -147,47 +162,25 @@ function ViewDataDialog(Inte) {
     ViewDataDialog.prototype.createEventListeners = function () {
         $("#DataAccess-table-body").on("scroll", () => {
             this.scrollPositionFromTop = document.getElementById("DataAccess-table-body").scrollTop;
-        })
-
-        $("#insert_chart").on("click", () => {
-            Inte.popoutPlots.action();
         });
 
-        $("#new_window").on("click", () => {
-            console.log("New Window Click");
+        $(this.dialog._map).on('dialog:resizeend', () => { 
+            this.dialogHeight = this.dialog.options.size[1];
+            this.tableHeight = this.dialogHeight - 45; // Adjust by 45 to ensure data is not cut off. 
+            document.getElementById('DataAccess-table-body').style.height = this.tableHeight + "px";
+            document.getElementById('DataAccess-table-id').style.height = this.tableHeight + "px";
         });
 
-        $("#upload_file").on("click", () => {
-            Inte.jsonFileUpload.input();
-        });
+        // $("#insert_chart").on("click", () => { Inte.popoutPlots.action() });
+        $("#upload_file").on("click", () => { Inte.jsonFileUpload.input() });
+        $("#cloud_upload").on("click", () => { Inte.cloudUpload.action() });
+        $("#delete").on("click", () => { if (Inte.treering.data.points.length) Inte.deleteDataDialog.open() });
 
-        $("#cloud_upload").on("click", () => {
-            Inte.cloudUpload.action();
-        });
-
-        $("#delete").on("click", () => {
-            if (Inte.treering.data.points.length) Inte.deleteDataDialog.open();
-        });
-
-        $("#copy").on("click",() => {
-            Inte.download.copy();
-        });
-
-        $("#csv").on("click", () => {
-            Inte.download.csv();
-        });
-
-        $("#tsv").on("click", () => {
-            Inte.download.tsv();
-        });
-
-        $("#rwl").on("click", () => {
-            Inte.download.rwl();
-        });
-
-        $("#json").on("click", () => {
-            Inte.download.json();
-        });
+        $("#copy").on("click",() => { Inte.download.copy() });
+        $("#csv").on("click", () => { Inte.download.csv() });
+        $("#tsv").on("click", () => { Inte.download.tsv() });
+        $("#rwl").on("click", () => { Inte.download.rwl() });
+        $("#json").on("click", () => { Inte.download.json() });
     }
 }
 
@@ -198,14 +191,19 @@ function ViewDataDialog(Inte) {
  * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
  */
 function PopoutPlots(Inte) {
-    var height = (4/9) * screen.height;
-    var top = (2/3) * screen.height;
-    var width = screen.width;
+    this.btn = new Button (
+        'insert_chart',
+        'Open time series plots in new window',
+        () => { this.action() });
+
+    let height = (4/9) * screen.height;
+    let top = (2/3) * screen.height;
+    let width = screen.width;
     this.childSite = null
     this.win = null
     
     /**
-     * Opens popout plit window.  
+     * Opens popout plot window.  
      * @function
      */
     PopoutPlots.prototype.action = function() {
@@ -219,17 +217,26 @@ function PopoutPlots(Inte) {
           this.win.postMessage(data, this.childSite);
         }, false)
     }
- 
-     PopoutPlots.prototype.sendData = function() {
-       let data = { points: Inte.treering.helper.findDistances(), annotations: Inte.treering.aData.annotations };
-       this.win.postMessage(data, this.childSite);
-     }
- 
-     PopoutPlots.prototype.highlightYear = function(year) {
-       this.win.postMessage(year, this.childSite);
-     }
- 
- };
+    
+    /**
+     * Sends data to plotting child site. 
+     * @function
+     */
+    PopoutPlots.prototype.sendData = function() {
+        let data = { points: Inte.treering.helper.findDistances(), annotations: Inte.treering.aData.annotations };
+        this.win.postMessage(data, this.childSite);
+    }
+
+    /**
+     * Highlights year on child site. 
+     * @function
+     * 
+     * @param {number} year - Value to highlight on plot.  
+     */
+    PopoutPlots.prototype.highlightYear = function(year) {
+        this.win.postMessage(year, this.childSite);
+    }
+}
 
 /** 
  * Allows user to upload local JSON files. 

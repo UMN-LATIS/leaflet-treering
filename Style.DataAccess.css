@@ -2,6 +2,9 @@
     display: flex;
     flex-direction: row;
     justify-content: flex-start;
+}
+
+.DataAccess-StatsUploadDelete-Container, .DataAccess-Buttons-Container {
     max-height: 175px;
 }
 
@@ -98,7 +101,7 @@ th, td, tr {
 
 .DataAccess-Table, .DataAccess-Table tbody {
     display: block;
-    max-height: 175px;
+    height: 175px;
 }
 
 .DataAccess-Table tbody {
