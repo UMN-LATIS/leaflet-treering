@@ -189,6 +189,19 @@ function EllipseCSVDownload(Inte) {
      * @function
      */
     EllipseCSVDownload.prototype.action = function() {
+        // Sort ellipses by year before downloading.
+        Inte.ellipseData.data.sort((a, b) => {
+            if (a.year < b.year) {
+              return -1;
+            }
+            
+            if (a.year > b.year) {
+              return 1;
+            }
+          
+            return 0;
+          });
+
         let csvString = "year,area_mm2\n";
         for (let obj of Inte.ellipseData.data) {
             csvString += obj.year + "," + obj.area.toFixed(3) + "\n";
@@ -312,7 +325,7 @@ function EllipseVisualAssets(Inte) {
      */
     EllipseVisualAssets.prototype.cycleColorsMulti = function(year) {
         let n = this.colorScheme.length;
-        this.colorIndex = year % n;
+        this.colorIndex = Math.abs(Math.floor(year)) % n;
         this.ellipseBaseColor = this.colorScheme[this.colorIndex];
     }
 
@@ -324,7 +337,7 @@ function EllipseVisualAssets(Inte) {
      */
     EllipseVisualAssets.prototype.getColorFromCycle = function(year) {
         let n = this.colorScheme.length;
-        let index = Math.abs(year) % n;
+        let index = Math.abs(Math.floor(year)) % n;
         let color = this.colorScheme[index];
 
         return color;
@@ -1198,7 +1211,7 @@ function DateEllipsesDialog(Inte) {
      */
     DateEllipsesDialog.prototype.createDialogEventListeners = function() {
         $("#AreaCapture-confirmDate-btn").on("click", () => {
-            let year = parseInt($("#AreaCapture-newDate-input").val());
+            let year = parseFloat($("#AreaCapture-newDate-input").val());
             if (year || year == 0) {
                 Inte.dateEllipses.action(year);
             }
