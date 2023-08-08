@@ -196,7 +196,7 @@ function ViewDataDialog(Inte) {
  */
 function PopoutPlots(Inte) {
     this.btn = new Button (
-        'timeline',
+        'insert_chart',
         'Open time series plots in new window',
         () => { this.action() });
 
