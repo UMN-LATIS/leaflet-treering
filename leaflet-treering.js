@@ -111,7 +111,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.betaToggle = true;
   $(this.areaTools.btn.button).on("click", () => {
     if (this.betaToggle) {
-      alert("Area measurement tools for beta testing & provisional data development. Please direct any issues or feedback to: thorn573@umn.edu.");
+      //alert("Area measurement tools for beta testing & provisional data development. Please direct any issues or feedback to: thorn573@umn.edu.");
       this.betaToggle = false;
     }
   })
@@ -155,9 +155,9 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
     // if popout is opened display measuring tools
     if (window.name.includes('popout')) {
-      this.dataAccessInterface.popoutPlots.btn.addTo(this.viewer);
-      this.dataAccessInterface.viewData.btn.addTo(this.viewer);
       this.imageAdjustment.btn.addTo(this.viewer);
+      this.dataAccessInterface.viewData.btn.addTo(this.viewer);
+      this.dataAccessInterface.popoutPlots.btn.addTo(this.viewer);
       //this.PixelAdjustment.btn.addTo(this.viewer);
       this.createTools.bar.addTo(this.viewer);
       this.editTools.bar.addTo(this.viewer);
@@ -167,10 +167,10 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       this.areaTools.bar.addTo(this.viewer);
       this.undoRedoBar.addTo(this.viewer);
     } else {
+      this.imageAdjustment.btn.addTo(this.viewer);
+      this.dataAccessInterface.viewData.btn.addTo(this.viewer);
       this.dataAccessInterface.popoutPlots.btn.addTo(this.viewer);
       this.popout.btn.addTo(this.viewer);
-      this.dataAccessInterface.viewData.btn.addTo(this.viewer);
-      this.imageAdjustment.btn.addTo(this.viewer);
       //this.PixelAdjustment.btn.addTo(this.viewer);
       //defaults overlay 'points' option to disabled
       map.removeLayer(this.visualAsset.markerLayer);
@@ -392,7 +392,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
-    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+    if (Lt.dataAccessInterface.viewData.active && Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   };
 
   /**
@@ -481,7 +481,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText(); // updates after a point is deleted
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
-    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+    if (Lt.dataAccessInterface.viewData.active && Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   };
 
   /**
@@ -569,7 +569,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText(); // updates after points are cut
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
-    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+    if (Lt.dataAccessInterface.viewData.active && Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   };
 
   /**
@@ -674,7 +674,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
-    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+    if (Lt.dataAccessInterface.viewData.active && Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
 
     return i;
   };
@@ -754,7 +754,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
-    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+    if (Lt.dataAccessInterface.viewData.active && Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   }
 
   /**
@@ -885,7 +885,7 @@ function MeasurementData (dataObject, Lt) {
     Lt.metaDataText.updateText();
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
-    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+    if (Lt.dataAccessInterface.viewData.active && Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
 
     return k;
   };
@@ -3162,7 +3162,7 @@ function Undo(Lt) {
     this.pop();
     Lt.metaDataText.updateText();
     if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
-    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+    if (Lt.dataAccessInterface.viewData.active && Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   });
   this.btn.disable();
 
@@ -3232,7 +3232,7 @@ function Redo(Lt) {
     this.pop();
     Lt.metaDataText.updateText();
     if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
-    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+    if (Lt.dataAccessInterface.viewData.active && Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
   });
   this.btn.disable();
 
@@ -3512,7 +3512,7 @@ function Dating(Lt) {
     Lt.metaDataText.updateText(); // updates once user hits enter
     Lt.annotationAsset.reloadAssociatedYears();
     if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
-    if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+    if (Lt.dataAccessInterface.viewData.active && Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
 
     this.btn.state('inactive');
     $(Lt.viewer.getContainer()).off('click');
@@ -3713,7 +3713,7 @@ function CreateZeroGrowth(Lt) {
       Lt.metaDataText.updateText(); // updates after point is inserted
       Lt.annotationAsset.reloadAssociatedYears();
       if (Lt.dataAccessInterface.popoutPlots.win) Lt.dataAccessInterface.popoutPlots.sendData();
-      if (Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
+      if (Lt.dataAccessInterface.viewData.active && Lt.dataAccessInterface.viewDataDialog?.dialog) Lt.dataAccessInterface.viewDataDialog.reload();
 
     } else {
       alert('First year cannot be missing!');

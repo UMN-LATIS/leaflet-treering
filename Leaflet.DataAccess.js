@@ -34,18 +34,22 @@ function DataAccessInterface(Lt) {
  */
 function ViewData(Inte) {
     this.btn = new Button (
-        'fact_check',
+        'find_in_page',
         'View & download measurement data',
         () => { this.enable() },
-        () => { this.disable() })
+        () => { this.disable() });
+
+    this.active= false;
     
     ViewData.prototype.enable = function() {
         this.btn.state('active');
+        this.active= true;
         Inte.viewDataDialog.open();
     }
 
     ViewData.prototype.disable = function() {
         this.btn.state('inactive');
+        this.active= false;
         Inte.viewDataDialog.close();
     }
 }
@@ -93,6 +97,7 @@ function ViewDataDialog(Inte) {
 
     $(this.dialog._map).on('dialog:closed', (dialog) => { 
         Inte.viewData.btn.state('inactive'); 
+        Inte.viewData.active= false;
         if (Inte.deleteData?.dialog) Inte.deleteData.dialog.close() 
     });
 
@@ -196,7 +201,7 @@ function ViewDataDialog(Inte) {
  */
 function PopoutPlots(Inte) {
     this.btn = new Button (
-        'insert_chart',
+        'query_stats',
         'Open time series plots in new window',
         () => { this.action() });
 

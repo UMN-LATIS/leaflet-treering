@@ -4,6 +4,8 @@
  * @version 1.0.0
  */
 
+const { marker } = require("leaflet");
+
 /**
  * Interface for area capture tools. Instantiates & connects all area or supporting tools. 
  * @constructor
@@ -28,10 +30,13 @@ function AreaCaptureInterface(Lt) {
 
     this.dateEllipses = new DateEllipses(this);
     this.dateEllipsesDialog = new DateEllipsesDialog(this);
+
+    this.assistBoundaryLines = new AssistBoundaryLines(this);
     
     // Order in btns array dictates order in button dropdown in browser. 
     this.btns = [
         this.newEllipse.btn, 
+        this.assistBoundaryLines.btn,
         this.lassoEllipses.btn, 
         this.dateEllipses.btn, 
         this.deleteEllipses.btn,
@@ -39,6 +44,7 @@ function AreaCaptureInterface(Lt) {
     ];
     this.tools = [
         this.newEllipse, 
+        this.assistBoundaryLines,
         this.lassoEllipses, 
         this.dateEllipses, 
         this.deleteEllipses
@@ -194,7 +200,7 @@ function EllipseCSVDownload(Inte) {
             if (a.year < b.year) {
               return -1;
             }
-            
+
             if (a.year > b.year) {
               return 1;
             }
@@ -227,8 +233,13 @@ function EllipseVisualAssets(Inte) {
     this.selectedElements = [];
     
     this.ellipseLayer = L.layerGroup().addTo(Inte.treering.viewer);
+
     this.guideMarkerLayer = L.layerGroup().addTo(Inte.treering.viewer);
     this.guideLineLayer = L.layerGroup().addTo(Inte.treering.viewer);
+
+    this.boundaryMarkerLayer = L.layerGroup().addTo(Inte.treering.viewer);
+    this.boundaryLineLayer = L.layerGroup().addTo(Inte.treering.viewer);
+    this.boundaryGuideLineLayer = L.layerGroup().addTo(Inte.treering.viewer);
 
     /* Full color scheme for when EW/LW difference enabled. 
     this.colorScheme = [
@@ -1235,6 +1246,148 @@ function DateEllipsesDialog(Inte) {
                 this.close();
             }
          }, this);        
+    }
+}
+
+/**
+ * Draws two parallel lines to bound where ellipses are drawn.  
+ * @constructor
+ * 
+ * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
+ */
+function AssistBoundaryLines(Inte) {
+    this.btn = new Button (
+        'text_select_move_forward_word',
+        'Draw boundary lines',
+        () => { this.enable() },
+        () => { this.disable() },
+    );
+    
+    /**
+     * Enables boundary drawing. 
+     * @function
+     */
+    AssistBoundaryLines.prototype.enable = function() {
+        this.btn.state('active');
+        Inte.treering.viewer.getContainer().style.cursor = 'pointer';
+
+        this.placeGuideMarker();
+    }
+
+    /**
+     * Disables boundary drawing. 
+     * @function
+     */
+    AssistBoundaryLines.prototype.disable = function() {
+        this.btn.state('inactive');
+        Inte.treering.viewer.getContainer().style.cursor = 'default';
+        $(Inte.treering.viewer.getContainer()).off('click');
+
+        Inte.ellipseVisualAssets.boundaryMarkerLayer.clearLayers();
+        Inte.ellipseVisualAssets.boundaryGuideLineLayer.clearLayers();
+    }
+
+    /**
+     * Places marker and allows user to decide width of lines. 
+     * @function
+     */
+    AssistBoundaryLines.prototype.placeGuideMarker = function() {
+        $(Inte.treering.viewer.getContainer()).on('click', (e) => {
+            $(Inte.treering.viewer.getContainer()).off('click');
+
+            let latlng = Inte.treering.viewer.mouseEventToLatLng(e);
+            this.marker = L.marker(latlng, { icon: L.divIcon({className: "fa fa-plus guide"}) }); 
+            Inte.ellipseVisualAssets.boundaryMarkerLayer.addLayer(this.marker);
+
+            let content = document.getElementById("AreaCapture-guideMarkerWidth-template").innerHTML;
+            this.marker.bindPopup(content, {closeButton: false, closeOnEscapeKey: false, closeOnClick: false}).openPopup();
+            document.getElementById("AreaCapture-guideWidth-input").select();
+
+            // Close dialog box with enter/return and draw guide lines. 
+            L.DomEvent.on(window, 'keydown', this.drawGuideLines, this);
+        });
+    }
+
+    AssistBoundaryLines.prototype.drawGuideLines = function(event) {
+        // Keycode 13 refers to Enter/Return buttons. 
+        if (event.keyCode == 13) {
+            let viewer = Inte.treering.viewer;
+            let halfWidthMillimeter = parseFloat(document.getElementById("AreaCapture-guideWidth-input").value) / 2; 
+            let halfWidthPixel = Inte.treering.meta.ppm * halfWidthMillimeter;
+
+            this.marker.closePopup();
+            let markerPoint = viewer.project(this.marker.getLatLng(), Inte.treering.getMaxNativeZoom());
+
+            let topLine, bottomLine;
+            let opacity = "0.75";
+            let color  = "#49c4d9";
+            let weight = "5";
+            
+            $(viewer.getContainer()).on("mousemove", e => {
+                Inte.ellipseVisualAssets.boundaryGuideLineLayer.clearLayers();
+
+                // Get four locations of points for guidelines. Order of points determines rotation. 
+                // Based on: https://math.stackexchange.com/questions/2043054/find-a-point-on-a-perpendicular-line-a-given-distance-from-another-point
+                let mousePoint = viewer.project(viewer.mouseEventToLatLng(e), Inte.treering.getMaxNativeZoom());
+
+                let slope = (mousePoint.y - markerPoint.y) / (mousePoint.x - markerPoint.x);
+                if (slope == 0) slope = 0.00000001; // Set slope to be near 0 to avoid dividing by 0 errors. 
+                let addative = Math.sqrt((halfWidthPixel**2) / (1 + (1/(slope**2))));
+
+                let topLeftX = markerPoint.x + addative;
+                let topRightX = mousePoint.x + addative;
+                let bottomLeftX = markerPoint.x - addative;
+                let bottomRightX = mousePoint.x - addative;
+
+                let topLeftY = ((-1/slope) * (topLeftX - markerPoint.x)) + markerPoint.y;
+                let topRightY = ((-1/slope) * (topRightX - mousePoint.x)) + mousePoint.y;
+                let bottomLeftY = ((-1/slope) * (bottomLeftX - markerPoint.x)) + markerPoint.y;
+                let bottomRightY = ((-1/slope) * (bottomRightX - mousePoint.x)) + mousePoint.y;
+
+                let topLeftLatLng = viewer.unproject([topLeftX, topLeftY], Inte.treering.getMaxNativeZoom());
+                let topRightLatLng = viewer.unproject([topRightX, topRightY], Inte.treering.getMaxNativeZoom());
+                let bottomLeftLatLng = viewer.unproject([bottomLeftX, bottomLeftY], Inte.treering.getMaxNativeZoom());
+                let bottomRightLatLng = viewer.unproject([bottomRightX, bottomRightY], Inte.treering.getMaxNativeZoom());
+
+                topLine = L.polyline([topLeftLatLng, topRightLatLng], {
+                    interactive: false, 
+                    color: color, 
+                    opacity: opacity,
+                    weight: weight
+                });
+                Inte.ellipseVisualAssets.boundaryGuideLineLayer.addLayer(topLine);
+
+                let mainLine = L.polyline([this.marker.getLatLng(), viewer.mouseEventToLatLng(e)], {
+                    interactive: false, 
+                    color: color, 
+                    opacity: opacity,
+                    weight: weight
+                });
+                Inte.ellipseVisualAssets.boundaryGuideLineLayer.addLayer(mainLine);
+
+                bottomLine = L.polyline([bottomLeftLatLng, bottomRightLatLng], {
+                    interactive: false, 
+                    color: color, 
+                    opacity: opacity,
+                    weight: weight
+                });
+                Inte.ellipseVisualAssets.boundaryGuideLineLayer.addLayer(bottomLine);
+            });
+
+            $(Inte.treering.viewer.getContainer()).on('click', (e) => {
+                // Remove placement events. 
+                $(Inte.treering.viewer.getContainer()).off('mousemove');
+                $(Inte.treering.viewer.getContainer()).off('click');
+
+                // Clear marker & guide lines. 
+                Inte.ellipseVisualAssets.boundaryMarkerLayer.clearLayers();
+                Inte.ellipseVisualAssets.boundaryGuideLineLayer.clearLayers();
+
+                // Add boundary lines. 
+                Inte.ellipseVisualAssets.boundaryLineLayer.addLayer(topLine);
+                Inte.ellipseVisualAssets.boundaryLineLayer.addLayer(bottomLine);
+            });
+        }
     }
 }
 
