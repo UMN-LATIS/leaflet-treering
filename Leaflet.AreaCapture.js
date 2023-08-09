@@ -1323,6 +1323,7 @@ function AssistBoundaryLines(Inte) {
             let color  = "#49c4d9";
             let weight = "5";
             
+            // Mouse movement events: 
             $(viewer.getContainer()).on("mousemove", e => {
                 Inte.ellipseVisualAssets.boundaryGuideLineLayer.clearLayers();
 
@@ -1374,20 +1375,28 @@ function AssistBoundaryLines(Inte) {
                 Inte.ellipseVisualAssets.boundaryGuideLineLayer.addLayer(bottomLine);
             });
 
+            // Click events: 
             $(Inte.treering.viewer.getContainer()).on('click', (e) => {
-                // Remove placement events. 
-                $(Inte.treering.viewer.getContainer()).off('mousemove');
-                $(Inte.treering.viewer.getContainer()).off('click');
-
-                // Clear marker & guide lines. 
-                Inte.ellipseVisualAssets.boundaryMarkerLayer.clearLayers();
-                Inte.ellipseVisualAssets.boundaryGuideLineLayer.clearLayers();
-
-                // Add boundary lines. 
-                Inte.ellipseVisualAssets.boundaryLineLayer.addLayer(topLine);
-                Inte.ellipseVisualAssets.boundaryLineLayer.addLayer(bottomLine);
+                if (topLine && bottomLine) this.placeBoundaryLines(topLine, bottomLine);
             });
         }
+    }
+
+    AssistBoundaryLines.prototype.placeBoundaryLines = function(top, bot) {
+        // Remove placement events. 
+        $(Inte.treering.viewer.getContainer()).off('mousemove');
+        $(Inte.treering.viewer.getContainer()).off('click');
+
+        // Clear marker & guide lines. 
+        Inte.ellipseVisualAssets.boundaryMarkerLayer.clearLayers();
+        Inte.ellipseVisualAssets.boundaryGuideLineLayer.clearLayers();
+
+        // Add boundary lines. 
+        Inte.ellipseVisualAssets.boundaryLineLayer.addLayer(top);
+        Inte.ellipseVisualAssets.boundaryLineLayer.addLayer(bot);
+
+        // Start call chain again.
+        this.placeGuideMarker();
     }
 }
 
