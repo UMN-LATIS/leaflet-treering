@@ -74,11 +74,14 @@
                             {{#ifDecadeCheck this}}<tr  style="background-color: rgba(255, 0, 0, 0.233);">{{else}}<tr>{{/ifDecadeCheck}}
                                 <td><b>{{this}}</b></td>
                                 <td>{{fourDigitlookup ../tw.y @index}} </td>
-            
-                                {{#if ../ew}}
-                                    <td>{{fourDigitlookup ../ew.y @index}} </td>
-                                    <td>{{fourDigitlookup ../lw.y @index}} </td>
-                                {{/if}}
+                                <td>{{fourDigitlookup ../ew.y @index}} </td>
+                                <td>{{fourDigitlookup ../lw.y @index}} </td>
+
+                                
+                                <!-- {{#if ../ew}} -->
+                                    <!-- <td>{{fourDigitlookup ../ew.y @index}} </td> -->
+                                    <!-- <td>{{fourDigitlookup ../lw.y @index}} </td> -->
+                                <!-- {{/if}} -->
             
                             </tr>
                             {{/each}}
