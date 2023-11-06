@@ -69,7 +69,10 @@ function ViewDataDialog(Inte) {
     });
 
     Handlebars.registerHelper('fourDigitlookup', function(obj, key) {
-      decimal = obj[key];
+      decimal = null
+      if(obj !== undefined && obj !== null &&  obj[key] !== undefined && obj[key] !== null) {
+        decimal = obj[key];
+      }
       if (decimal || decimal == 0) {
             let rounded = "0.000"
             if (decimal > 0) {
