@@ -61,10 +61,26 @@ function ViewData(Inte) {
  * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
 */
 function ViewDataDialog(Inte) {
-    Handlebars.registerHelper('decadeCheck', function(year) {
-        return year % 10 == 0;
+    Handlebars.registerHelper('ifDecadeCheck', function(year, block) {
+        var selected = year % 10 == 0;
+        if(selected) {
+          return block.fn(this)
+        }
     });
 
+    Handlebars.registerHelper('fourDigitlookup', function(obj, key) {
+      decimal = obj[key];
+      if (decimal || decimal == 0) {
+            let rounded = "0.000"
+            if (decimal > 0) {
+                decimal = decimal.toString() + "000"; // Add zeroes for already truncated values (i.e. 0.3 -> 0.300).
+                let dec_idx = decimal.indexOf('.');
+                rounded = decimal.slice(0, dec_idx + 4);
+            }
+            
+            return rounded;
+        }
+    });
     Handlebars.registerHelper('numToFourDigits', function(decimal) {
         if (decimal || decimal == 0) {
             let rounded = "0.000"
