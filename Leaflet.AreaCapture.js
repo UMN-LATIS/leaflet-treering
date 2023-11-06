@@ -4,8 +4,6 @@
  * @version 1.0.0
  */
 
-const { marker } = require("leaflet");
-
 /**
  * Interface for area capture tools. Instantiates & connects all area or supporting tools. 
  * @constructor
@@ -95,19 +93,43 @@ function EllipseData(Inte) {
     }
 
     /**
-     * Increase current year.
+     * Increase current year while maintaining decimal value.
      * @function
      */
     EllipseData.prototype.increaseYear = function() {
-        this.year++;
+        let floatYear = parseFloat(this.year);
+        let intYear = Math.floor(this.year);
+
+        // Special case when transitioning from negative to positive years (crossing 0).
+        if (intYear < floatYear) intYear++; 
+
+        let trailingNums = parseFloat((floatYear - intYear).toFixed(2));
+
+        // Special case cont.
+        if (intYear == 0) trailingNums = Math.abs(trailingNums);
+
+        let newYear = intYear + 1;
+        this.year = newYear + trailingNums;
     }
 
     /**
-     * Decrease current year. 
+     * Decrease current year while maintaining decimal value. 
      * @function
      */
     EllipseData.prototype.decreaseYear = function() {
-        this.year--;
+        let floatYear = parseFloat(this.year);
+        let intYear = Math.floor(this.year);
+
+        // Special case when transitioning from positive to negative years (crossing 0).
+        if (intYear > floatYear) intYear--; 
+
+        let trailingNums = parseFloat((floatYear - intYear).toFixed(2));
+
+        // Special case cont.
+        if (intYear == 0) trailingNums = -1 * trailingNums;
+
+        let newYear = intYear - 1;
+        this.year = newYear + trailingNums;
     }
 
     /**
@@ -753,7 +775,7 @@ function LassoEllipses(Inte) {
     this.active = false;
     this.eventListenersEnabled = false;
     this.btn = new Button (
-        "settings_backup_restore",
+        "lasso_select",
         "Lasso existing ellipses",
         () => {
             Inte.treering.disableTools(); 
@@ -1146,7 +1168,7 @@ function DateEllipsesDialog(Inte) {
         "shiftDisabled": true, 
     });
 
-    let size = [350, 296];
+    let size = [360, 296];
     this.fromLeft = ($(window).width() - size[0]) / 2;
     this.fromTop = ($(window).height() - size[1]) / 2;
     
@@ -1258,7 +1280,7 @@ function DateEllipsesDialog(Inte) {
 function AssistBoundaryLines(Inte) {
     this.btn = new Button (
         'text_select_move_forward_word',
-        'Draw boundary lines',
+        'Draw boundary lines (currently cannot be removed)',
         () => { this.enable() },
         () => { this.disable() },
     );
@@ -1308,6 +1330,12 @@ function AssistBoundaryLines(Inte) {
         });
     }
 
+    /**
+     * Draws temporary guidelines for user to rotate around previously decided anchor. 
+     * @function
+     * 
+     * @param {object} event - Keydown event
+     */
     AssistBoundaryLines.prototype.drawGuideLines = function(event) {
         // Keycode 13 refers to Enter/Return buttons. 
         if (event.keyCode == 13) {
@@ -1382,6 +1410,13 @@ function AssistBoundaryLines(Inte) {
         }
     }
 
+    /**
+     * Draws boundary lines on semi-permanent layer. 
+     * @function
+     * 
+     * @param {object} top - Leaflet polyline for top boundary.
+     * @param {*} bot - Leaflet polyline for bottom boundary. 
+     */
     AssistBoundaryLines.prototype.placeBoundaryLines = function(top, bot) {
         // Remove placement events. 
         $(Inte.treering.viewer.getContainer()).off('mousemove');

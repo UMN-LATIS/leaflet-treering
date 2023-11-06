@@ -291,7 +291,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 function UniversalDelete(Lt) {
   this.btn = new Button(
     'delete',
-    'Delete an object (marker or annotation)',
+    'Delete points or annotations (not ellipses)',
     () => { Lt.disableTools(); this.enable() },
     () => { this.disable() }
   );
