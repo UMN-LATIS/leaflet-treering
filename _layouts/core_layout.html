@@ -113,7 +113,7 @@
         layers: [],
         doubleClickZoom: false,
         zoomControl: false,
-        trackResize: true
+        trackResize: true,
     }).setView([0, 0], 0);
 
     var baseLayer = L.tileLayer.elevator(function(coords, tile, done) {
@@ -122,13 +122,13 @@
 		return "https://s3.amazonaws.com/" + params.Bucket + "/" + params.Key;
     },
     {
-				width: width,
+		width: width,
         height: height,
         tileSize :254,
-				maxNativeZoom: maxNativeZoom,
+		maxNativeZoom: maxNativeZoom,
         maxZoom: maxNativeZoom + 1,
         overlap: 1,
-				detectRetina: false,
+		detectRetina: false,
         pixelsPerMillimeter: 480, //(NEW)
         lineColor: 'blue'
     }).addTo(map);
