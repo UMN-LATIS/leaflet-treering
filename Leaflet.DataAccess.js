@@ -326,9 +326,9 @@ function JSONFileUpload(Inte) {
  * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
  */
 function CloudUpload(Inte) {
-    // Trigger save action with CTRL-S
+    // Trigger save action with Shift-S
     L.DomEvent.on(window, 'keydown', (e) => {
-        if (e.keyCode == 83 && e.getModifierState("Control") && window.name.includes('popout')) { // 83 refers to 's'
+        if (e.keyCode == 83 && e.getModifierState("Shift") && !e.getModifierState("Control") && window.name.includes('popout')) { // 83 refers to 's'
         e.preventDefault();
         e.stopPropagation();
         this.action();
