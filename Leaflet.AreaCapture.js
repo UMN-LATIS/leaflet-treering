@@ -179,6 +179,15 @@ function EllipseData(Inte) {
     }
 
     /**
+     * Clear JSON data. 
+     * @function
+     */
+    EllipseData.prototype.clearJSON = function() {
+        this.data = [];
+        this.reloadJSON();
+    }
+
+    /**
      * Undo recent changes.
      * @function
      * 

@@ -39,17 +39,17 @@ function ViewData(Inte) {
         () => { this.enable() },
         () => { this.disable() });
 
-    this.active= false;
+    this.active = false;
     
     ViewData.prototype.enable = function() {
         this.btn.state('active');
-        this.active= true;
+        this.active = true;
         Inte.viewDataDialog.open();
     }
 
     ViewData.prototype.disable = function() {
         this.btn.state('inactive');
-        this.active= false;
+        this.active = false;
         Inte.viewDataDialog.close();
     }
 }
@@ -85,10 +85,6 @@ function ViewDataDialog(Inte) {
         }
     });
 
-    Handlebars.registerHelper("log", function(something) {
-      console.log(something);
-    });
-
     let html = document.getElementById("DataAccess-dialog-template").innerHTML;
     this.template = Handlebars.compile(html);
     
@@ -106,7 +102,7 @@ function ViewDataDialog(Inte) {
 
     $(this.dialog._map).on('dialog:closed', (dialog) => { 
         Inte.viewData.btn.state('inactive'); 
-        Inte.viewData.active= false;
+        Inte.viewData.active = false;
         if (Inte.deleteData?.dialog) Inte.deleteData.dialog.close() 
     });
 
@@ -162,7 +158,7 @@ function ViewDataDialog(Inte) {
             data: dat,
             savePermissions: Inte.treering.meta.savePermission,
         });
-
+        
         this.dialog.setContent(content);
 
         document.getElementById('DataAccess-table-body').style.height = this.tableHeight + "px";
@@ -300,7 +296,8 @@ function JSONFileUpload(Inte) {
 
             Inte.treering.data = new MeasurementData(newDataJSON, Inte.treering);
             Inte.treering.aData = new AnnotationData(newDataJSON.annotations);
-            Inte.treering.areaCaptureInterface.ellipseData.loadJSON(newDataJSON.ellipses);
+            if (newDataJSON?.ellipses) Inte.treering.areaCaptureInterface.ellipseData.loadJSON(newDataJSON.ellipses); 
+            else Inte.treering.areaCaptureInterface.ellipseData.clearJSON();
 
             // If the JSON has PPM data, use that instead of loaded data.
             if (newDataJSON.ppm) {
@@ -310,6 +307,12 @@ function JSONFileUpload(Inte) {
 
             Inte.treering.loadData();
             Inte.treering.metaDataText.updateText();
+
+            // Temporary solution to refresh data. Size does not update unless opened twice. Race condition?
+            Inte.viewDataDialog.close();
+            Inte.viewDataDialog.open();
+            Inte.viewData.disable();
+            Inte.viewData.enable();
         };
 
         fr.readAsText(files.item(0));
@@ -541,7 +544,7 @@ function Download(Inte) {
 
         for (var i = 0; i < dat.tw.x.length; i++) {
             outStr += dat.tw.x[i] + sep + dat.tw.y[i].toFixed(3);
-            if (dat?.ew) outStr += sep + dat.ew.y[i].toFixed(3) + sep + dat.ew.y[i].toFixed(3);
+            if (dat?.ew) outStr += sep + dat.ew.y[i].toFixed(3) + sep + dat.lw.y[i].toFixed(3);
             
             if (i < dat.tw.x.length - 1) outStr += "\n"
         }
@@ -585,25 +588,29 @@ function Download(Inte) {
      * Create zip folder.
      * @function
      * 
-     * @param {string} fileExt - File type (i.e. csv, tsv).
+     * @param {string} fileType - File type (i.e. csv, tsv).
+     * @param {string} fileExt - Extension at end of file. 
      * @param {string} twDatString - String of total width data.
      * @param {string} [o] allDatString - Optional string of all data.
      * @param {string} [o] ewDatString - Optional string of earlywood width data. 
      * @param {string} [o] lwDatString - Optional string of latewood width data.
      */
-    Download.prototype.zipFiles = function(fileExt, twDatString, allDatString, ewDatString, lwDatString) {
+    Download.prototype.zipFiles = function(fileType, fileExt, twDatString, allDatString, ewDatString, lwDatString) {
         let zip = new JSZip();
 
         if (ewDatString && lwDatString) {
-            zip.file((Inte.treering.meta.assetName + "_EW_" + fileExt + "." + fileExt), ewDatString);
-            zip.file((Inte.treering.meta.assetName + "_LW_" + fileExt + "." + fileExt), lwDatString);
-            zip.file((Inte.treering.meta.assetName + "_all_" + fileExt + "." + fileExt), allDatString);
+          zip.file((Inte.treering.meta.assetName + "_EW_" + fileType + "." + fileExt), ewDatString);
+          zip.file((Inte.treering.meta.assetName + "_LW_" + fileType + "." + fileExt), lwDatString);
         }
 
-        zip.file((Inte.treering.meta.assetName + "_TW_" + fileExt + "." + fileExt), twDatString);
+        if (allDatString) {
+          zip.file((Inte.treering.meta.assetName + "_all_" + fileType + "." + fileExt), allDatString);
+        }
+
+        zip.file((Inte.treering.meta.assetName + "_TW_" + fileType + "." + fileExt), twDatString);
         zip.generateAsync({type: 'blob'})
             .then((blob) => {
-                saveAs(blob, (Inte.treering.meta.assetName + "_" + fileExt + ".zip"));
+                saveAs(blob, (Inte.treering.meta.assetName + "_" + fileType + ".zip"));
             });
     }
 
@@ -622,8 +629,8 @@ function Download(Inte) {
     Download.prototype.csv = function() {
         let allDatString = this.seperateDataCombined(",");
         let datStringLst = this.seperateDataDifferent(",");
-        if (datStringLst.length > 1) this.zipFiles("csv", datStringLst[0], allDatString, datStringLst[1], datStringLst[2]);
-        else this.zipFiles("csv", datStringLst[0]);
+        if (datStringLst.length > 1) this.zipFiles("csv", "csv", datStringLst[0], allDatString, datStringLst[1], datStringLst[2]);
+        else this.zipFiles("csv", "csv", datStringLst[0]);
     }
 
     /**
@@ -633,353 +640,83 @@ function Download(Inte) {
     Download.prototype.tsv = function() {
         let allDatString = this.seperateDataCombined("\t");
         let datStringLst = this.seperateDataDifferent("\t");
-        if (datStringLst.length > 1) this.zipFiles("tsv", datStringLst[0], allDatString, datStringLst[1], datStringLst[2]);
-        else this.zipFiles("tsv", datStringLst[0]);
+        if (datStringLst.length > 1) this.zipFiles("tsv", "tsv", datStringLst[0], allDatString, datStringLst[1], datStringLst[2]);
+        else this.zipFiles("tsv", "tsv", datStringLst[0]);
     }
 
     /**
-     * Download .rwl file. REFACTOR
+     * Download .rwl file. 
      * @function
      */
     Download.prototype.rwl = function() {
-        var toFourCharString = function(n) {
-            var string = n.toString();
-      
-            if (string.length == 1) {
-              string = '   ' + string;
-            } else if (string.length == 2) {
-              string = '  ' + string;
-            } else if (string.length == 3) {
-              string = ' ' + string;
-            } else if (string.length == 4) {
-              string = string;
-            } else if (string.length >= 5) {
-              alert('Value exceeds 4 characters');
-              throw 'error in toFourCharString(n)';
-            } else {
-              alert('toFourCharString(n) unknown error');
-              throw 'error';
+        let dat = Inte.treering.helper.findDistances();
+
+        let name = this.constructNameRWL(Inte.treering.meta.assetName);
+        let stopMarker = " -9999";
+
+        let outTWStr = name + dat.tw.x[0] + this.formatDataPointRWL(dat.tw.y[0]);
+        let outEWStr = "";
+        let outLWStr = "";
+
+        if (dat?.ew) {
+            outEWStr = name + dat.ew.x[0] + this.formatDataPointRWL(dat.ew.y[0]);
+            outLWStr = name + dat.lw.x[0] + this.formatDataPointRWL(dat.lw.y[0]);
+        }
+
+        for (let i = 1; i < dat.tw.x.length; i++) {
+            let year = dat.tw.x[i];
+            outTWStr += this.formatDataPointRWL(dat.tw.y[i]);
+
+            if (dat?.ew) {
+                outEWStr += this.formatDataPointRWL(dat.ew.y[i]);
+                outLWStr += this.formatDataPointRWL(dat.lw.y[i]);
             }
-            return string;
-          };
-      
-          var toSixCharString = function(n) {
-            var string = n.toString();
-      
-            if (string.length == 1) {
-              string = '     ' + string;
-            } else if (string.length == 2) {
-              string = '    ' + string;
-            } else if (string.length == 3) {
-              string = '   ' + string;
-            } else if (string.length == 4) {
-              string = '  ' + string;
-            } else if (string.length == 5) {
-              string = ' ' + string;
-            } else if (string.length >= 6) {
-              alert('Value exceeds 5 characters');
-              throw 'error in toSixCharString(n)';
-            } else {
-              alert('toSixCharString(n) unknown error');
-              throw 'error';
+    
+            if ((year + 1) % 10 == 0) {
+                outTWStr += "\n" + name + (year + 1);
+
+                if (dat?.ew) {
+                    outEWStr += "\n" + name + (year + 1);
+                    outLWStr += "\n" + name + (year + 1);
+                }
             }
-            return string;
-          };
-      
-          var toEightCharString = function(n) {
-            var string = n.toString();
-      
-            if (string.length == 0) {
-              string = string + '        ';
-            } else if (string.length == 1) {
-              string = string + '       ';
-            } else if (string.length == 2) {
-              string = string + '      ';
-            } else if (string.length == 3) {
-              string = string + '     ';
-            } else if (string.length == 4) {
-              string = string + '    ';
-            } else if (string.length == 5) {
-              string = string + '   ';
-            } else if (string.length == 6) {
-              string = string + '  ';
-            } else if (string.length == 7) {
-              string = string + ' ';
-            } else if (string.length == 8) {
-              return string;
-            } else if (string.length > 8) {
-              alert('Value exceeds 8 characters');
-              throw 'error in toEightCharString(n)';
-            } else {
-              alert('toEightCharString(n) unknown error');
-              throw 'error';
-            }
-            return string;
-          };
-      
-          if (Inte.treering.measurementOptions.forwardDirection) { // years ascend in value
-            var pts = Inte.treering.data.points;
-          } else { // otherwise years descend in value
-            var pts = Inte.treering.helper.reverseData();
-          }
-      
-          if (Inte.treering.data.points != undefined && Inte.treering.data.points[1] != undefined) {
-      
-            var sum_points;
-            var sum_string = '';
-            var last_latLng;
-            var break_length;
-            var length_string;
-      
-            if (Inte.treering.measurementOptions.subAnnual) {
-      
-              var sum_string = '';
-              var ew_string = '';
-              var lw_string = '';
-      
-              y = pts[1].year;
-              var sum_points = pts.filter(e => {
-                if (e.earlywood != undefined) {
-                  return !(e.earlywood);
-                } else {
-                  return true;
-                }
-              });
-      
-              if (sum_points[1].year % 10 > 0) {
-                sum_string = sum_string.concat(
-                    toEightCharString(Inte.treering.meta.assetName) +
-                    toFourCharString(sum_points[1].year));
-              }
-      
-              var break_point = false;
-              sum_points.map((e, i, a) => {
-                if (e.start) {
-                  last_latLng = e.latLng;
-                } else if (e.break) {
-                  break_length =
-                    Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
-                    break_point = true;
-                } else {
-                  if (e.year % 10 == 0) {
-                    if(sum_string.length > 0) {
-                      sum_string = sum_string.concat('\n');
-                    }
-                    sum_string = sum_string.concat(
-                        toEightCharString(Inte.treering.meta.assetName) +
-                        toFourCharString(e.year));
-                  }
-                  while (e.year > y) {
-                    sum_string = sum_string.concat('    -1');
-                    y++;
-                    if (y % 10 == 0) {
-                      sum_string = sum_string.concat('\n' +
-                          toFourCharString(e.year));
-                    }
-                  }
-      
-                  if (!last_latLng) {
-                    last_latLng = e.latLng;
-                  };
-      
-                  var length = Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
-                  if (break_point) {
-                    length += break_length;
-                    break_point = false;
-                  }
-                  if (length == 9999) {
-                    length = 9998;
-                  }
-                  if (length == 999) {
-                    length = 998;
-                  }
-      
-                  length_string = toSixCharString(length);
-      
-                  sum_string = sum_string.concat(length_string);
-                  last_latLng = e.latLng;
-                  y++;
-                }
-              });
-      
-              // if we ended at the end of a decade, we need to add a new line
-              if (y % 10 == 0) {
-                sum_string = sum_string.concat('\n' +
-                toEightCharString(Inte.treering.meta.assetName) +
-                toFourCharString(y));
-              }
-              sum_string = sum_string.concat(' -9999');
-      
-              y = pts[1].year;
-      
-              if (pts[1].year % 10 > 0) {
-                ew_string = ew_string.concat(
-                    toEightCharString(Inte.treering.meta.assetName) +
-                    toFourCharString(pts[1].year));
-                lw_string = lw_string.concat(
-                    toEightCharString(Inte.treering.meta.assetName) +
-                    toFourCharString(pts[1].year));
-              }
-      
-              break_point = false;
-              pts.map((e, i, a) => {
-                if (e.start) {
-                  last_latLng = e.latLng;
-                } else if (e.break) {
-                  break_length =
-                    Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
-                  break_point = true;
-                } else {
-                  if (e.year % 10 == 0) {
-                    if (e.earlywood) {
-                      if (ew_string.length >0) {
-                        ew_string = ew_string.concat('\n');
-                      }
-                      ew_string = ew_string.concat(
-                          toEightCharString(Inte.treering.meta.assetName) +
-                          toFourCharString(e.year));
-                    } else {
-                      if (lw_string.length >0) {
-                        lw_string = lw_string.concat('\n');
-                      }
-                      lw_string = lw_string.concat(
-                          toEightCharString(Inte.treering.meta.assetName) +
-                          toFourCharString(e.year));
-                    }
-                  }
-                  while (e.year > y) {
-                    ew_string = ew_string.concat('    -1');
-                    lw_string = lw_string.concat('    -1');
-                    y++;
-                    if (y % 10 == 0) {
-                      ew_string = ew_string.concat('\n' +
-                          toEightCharString(Inte.treering.meta.assetName) +
-                          toFourCharString(e.year));
-                      lw_string = lw_string.concat('\n' +
-                          toEightCharString(Inte.treering.meta.assetName) +
-                          toFourCharString(e.year));
-                    }
-                  }
-      
-                  length = Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
-                  if (break_point) {
-                    length += break_length;
-                    break_point = false;
-                  }
-                  if (length == 9999) {
-                    length = 9998;
-                  }
-                  if (length == 999) {
-                    length = 998;
-                  }
-      
-                  length_string = toSixCharString(length);
-      
-                  if (e.earlywood) {
-                    ew_string = ew_string.concat(length_string);
-                    last_latLng = e.latLng;
-                  } else {
-                    lw_string = lw_string.concat(length_string);
-                    last_latLng = e.latLng;
-                    y++;
-                  }
-                }
-              });
-      
-              if (y % 10 == 0) {
-                ew_string = ew_string.concat('\n' +
-                  toEightCharString(Inte.treering.meta.assetName) +
-                  toFourCharString(y));
-                lw_string = lw_string.concat('\n' +
-                  toEightCharString(Inte.treering.meta.assetName) +
-                  toFourCharString(y));
-              }
-              ew_string = ew_string.concat(' -9999');
-              lw_string = lw_string.concat(' -9999');
-      
-              console.log(sum_string);
-              console.log(ew_string);
-              console.log(lw_string);
-      
-              var zip = new JSZip();
-              zip.file((Inte.treering.meta.assetName + '_TW_rwl.txt'), sum_string);
-              zip.file((Inte.treering.meta.assetName + '_LW_rwl.txt'), lw_string);
-              zip.file((Inte.treering.meta.assetName + '_EW_rwl.txt'), ew_string);
-      
-            } else {
-      
-              var y = pts[1].year;
-              sum_points = pts;
-      
-              if (sum_points[1].year % 10 > 0) {
-                sum_string = sum_string.concat(
-                    toEightCharString(Inte.treering.meta.assetName) +
-                    toFourCharString(sum_points[1].year));
-              }
-              sum_points.map((e, i, a) => {
-                if(e.start) {
-                    last_latLng = e.latLng;
-                  }
-                  else if (e.break) {
-                    break_length =
-                      Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
-                    break_point = true;
-                  } else {
-                  if (e.year % 10 == 0) {
-                    if(sum_string.length > 0) {
-                      sum_string = sum_string.concat('\n');
-                    }
-                    sum_string = sum_string.concat(
-                        toEightCharString(Inte.treering.meta.assetName) +
-                        toFourCharString(e.year));
-                  }
-                  while (e.year > y) {
-                    sum_string = sum_string.concat('    -1');
-                    y++;
-                    if (y % 10 == 0) {
-                      sum_string = sum_string.concat('\n' +
-                          toFourCharString(e.year));
-                    }
-                  }
-      
-                  length = Math.round(Inte.treering.helper.trueDistance(last_latLng, e.latLng) * 1000);
-                  if (break_point) {
-                    length += break_length;
-                    break_point = false;
-                  }
-                  if (length == 9999) {
-                    length = 9998;
-                  }
-                  if (length == 999) {
-                    length = 998;
-                  }
-      
-                  length_string = toSixCharString(length);
-      
-                  sum_string = sum_string.concat(length_string);
-                  last_latLng = e.latLng;
-                  y++;
-                }
-              });
-      
-              if (y % 10 == 0) {
-                sum_string = sum_string.concat('\n' +
-                  toEightCharString(Inte.treering.meta.assetName) +
-                  toFourCharString(y));
-              }
-              sum_string = sum_string.concat(' -9999');
-      
-              var zip = new JSZip();
-              zip.file((Inte.treering.meta.assetName + '_TW_rwl.txt'), sum_string);
-            }
-      
-            zip.generateAsync({type: 'blob'})
-                .then((blob) => {
-                  saveAs(blob, (Inte.treering.meta.assetName + '_rwl.zip'));
-                });
-          } else {
-            alert('There is no data to download');
-          }
+        }
+        outTWStr += stopMarker;
+        if (dat?.ew) {
+            outEWStr += stopMarker;
+            outLWStr += stopMarker;
+        }
+
+        if (outEWStr.length > 1) this.zipFiles("rwl", "txt", outTWStr, null, outEWStr, outLWStr);
+        else this.zipFiles("rwl", "txt", outTWStr);
+    }
+
+    /**
+     * Converts measurement points into RWL format. 
+     * @function
+     *  
+     * @param {float} dataPoint - Measurement value. 
+     */
+    Download.prototype.formatDataPointRWL = function(dataPoint) {
+        dataPoint *= 1000;
+        dataPoint = Math.round(dataPoint);
+        dataPoint = String(dataPoint);
+        dataPoint = " ".repeat(6 - dataPoint.length) + dataPoint;
+
+        return dataPoint;
+    }
+    
+    /**
+     * Converts asset name into RWL format. 
+     * @function
+     * 
+     * @param {strong} str - Name of asset. 
+     */
+    Download.prototype.constructNameRWL = function(str) {
+        let nameSpaces = 8 - str.length;
+        let name = str + " ".repeat(nameSpaces);
+
+        return name;
     }
 
     /**
