@@ -300,6 +300,7 @@ function JSONFileUpload(Inte) {
 
             Inte.treering.data = new MeasurementData(newDataJSON, Inte.treering);
             Inte.treering.aData = new AnnotationData(newDataJSON.annotations);
+            Inte.treering.areaCaptureInterface.ellipseData.loadJSON(newDataJSON.ellipses);
 
             // If the JSON has PPM data, use that instead of loaded data.
             if (newDataJSON.ppm) {
@@ -389,23 +390,13 @@ function CloudUpload(Inte) {
         if (Inte.treering.meta.savePermission && Inte.treering.meta.saveURL != "") {
         Inte.treering.data.clean();
         this.updateDate();
-        var dataJSON = {
-            'SaveDate': Inte.treering.data.saveDate,
-            'year': Inte.treering.data.year,
-            'forwardDirection': Inte.treering.measurementOptions.forwardDirection,
-            'subAnnual': Inte.treering.measurementOptions.subAnnual,
-            'earlywood': Inte.treering.data.earlywood,
-            'index': Inte.treering.data.index,
-            'points': Inte.treering.data.points,
-            'attributesObjectArray': Inte.treering.annotationAsset.attributesObjectArray,
-            'annotations': Inte.treering.aData.annotations,
-            'ppm': Inte.treering.meta.ppm,
-        };
+        var dataJSON = Inte.download.formatJSON();
 
         // Do not serialize our default value.
         if (Inte.treering.meta.ppm != Inte.treering.defaultResolution || Inte.treering.meta.ppmCalibration) {
             dataJSON.ppm = Inte.treering.meta.ppm;
         }
+
         $.post(Inte.treering.meta.saveURL, {sidecarContent: JSON.stringify(dataJSON)})
             .done((msg) => {
                 this.displayDate();
@@ -511,6 +502,30 @@ function DeleteDataDialog(Inte) {
  * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
  */
 function Download(Inte) {
+    /**
+     * Format data into full JSON data package. 
+     * @function
+     */
+    Download.prototype.formatJSON = function() {
+      Inte.treering.data.clean();
+      let data = {
+          'SaveDate': Inte.treering.data.saveDate,
+          'year': Inte.treering.data.year,
+          'forwardDirection': Inte.treering.measurementOptions.forwardDirection,
+          'subAnnual': Inte.treering.measurementOptions.subAnnual,
+          'earlywood': Inte.treering.data.earlywood,
+          'index': Inte.treering.data.index,
+          'points': Inte.treering.data.points,
+          'attributesObjectArray': Inte.treering.annotationAsset.attributesObjectArray,
+          'annotations': Inte.treering.aData.annotations,
+          'ppm': Inte.treering.meta.ppm,
+          'ptWidths': Inte.treering.helper.findDistances(),
+          'ellipses': Inte.treering.areaCaptureInterface.ellipseData.getJSON(),
+      };
+
+      return data;
+    }
+
     /**
      * Format data into seperated text and return as a single string.
      * @function
@@ -972,20 +987,7 @@ function Download(Inte) {
      * @function
      */
     Download.prototype.json = function() {
-        Inte.treering.data.clean();
-        var dataJSON = {
-            'SaveDate': Inte.treering.data.saveDate,
-            'year': Inte.treering.data.year,
-            'forwardDirection': Inte.treering.measurementOptions.forwardDirection,
-            'subAnnual': Inte.treering.measurementOptions.subAnnual,
-            'earlywood': Inte.treering.data.earlywood,
-            'index': Inte.treering.data.index,
-            'points': Inte.treering.data.points,
-            'attributesObjectArray': Inte.treering.annotationAsset.attributesObjectArray,
-            'annotations': Inte.treering.aData.annotations,
-            'ppm': Inte.treering.meta.ppm,
-            'ptWidths': Inte.treering.helper.findDistances(),
-        };
+        let dataJSON = this.formatJSON();
 
         // Do not serialize our default value
         if (Inte.treering.meta.ppm != Inte.treering.defaultResolution || Inte.treering.meta.ppmCalibration) {

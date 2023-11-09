@@ -502,9 +502,9 @@ function NewEllipse(Inte) {
         () => { this.disable() },
     );
 
-    // Crtl-E to create a new ellipse. 
+    // Shift-E to create a new ellipse. 
     L.DomEvent.on(window, 'keydown', (e) => {
-        if (e.keyCode == 69 && e.getModifierState("Control") && window.name.includes('popout')) {
+        if (e.keyCode == 69 && e.getModifierState("Shift") && !e.getModifierState("Control") && window.name.includes('popout')) {
         e.preventDefault();
         e.stopPropagation();
         Inte.treering.disableTools();
