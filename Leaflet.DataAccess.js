@@ -710,6 +710,10 @@ function Download(Inte) {
     Download.prototype.formatDataPointRWL = function(dataPoint) {
         dataPoint *= 1000;
         dataPoint = Math.round(dataPoint);
+
+        // Change 0.999mm measurements to 0.998mm for software compatibility. 
+        if (dataPoint == 999) dataPoint = 998;
+
         dataPoint = String(dataPoint);
         dataPoint = " ".repeat(6 - dataPoint.length) + dataPoint;
 
