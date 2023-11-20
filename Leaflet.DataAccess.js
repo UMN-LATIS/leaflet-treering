@@ -652,19 +652,29 @@ function Download(Inte) {
         let dat = Inte.treering.helper.findDistances();
 
         let name = this.constructNameRWL(Inte.treering.meta.assetName);
+        let year = dat.tw.x[0];
         let stopMarker = " -9999";
-
+        
         let outTWStr = name + dat.tw.x[0] + this.formatDataPointRWL(dat.tw.y[0]);
+        // If data begins on a year ending in '9', begin newline immediately.
+        if ((year + 1) % 10 == 0) outTWStr += "\n" + name + (year + 1);;
+
         let outEWStr = "";
         let outLWStr = "";
 
         if (dat?.ew) {
-            outEWStr = name + dat.ew.x[0] + this.formatDataPointRWL(dat.ew.y[0]);
-            outLWStr = name + dat.lw.x[0] + this.formatDataPointRWL(dat.lw.y[0]);
+            let yearEW = dat.ew.x[0];
+            let yearLW = dat.lw.x[0];
+
+            outEWStr = name + yearEW + this.formatDataPointRWL(dat.ew.y[0]);
+            outLWStr = name + yearLW + this.formatDataPointRWL(dat.lw.y[0]);
+
+            if ((yearEW + 1) % 10 == 0) outEWStr += "\n" + name + (yearEW + 1);;
+            if ((yearLW + 1) % 10 == 0) outLWStr += "\n" + name + (yearLW + 1);;
         }
 
         for (let i = 1; i < dat.tw.x.length; i++) {
-            let year = dat.tw.x[i];
+            year = dat.tw.x[i];
             outTWStr += this.formatDataPointRWL(dat.tw.y[i]);
 
             if (dat?.ew) {
