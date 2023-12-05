@@ -239,17 +239,29 @@ function EllipseCSVDownload(Inte) {
             return 0;
           });
 
+        let csvString = this.raw(false);
+        console.log(csvString);
+
+        // let zip = new JSZip();
+        // zip.file((Inte.treering.meta.assetName + '_ellipses.csv'), csvString)
+        // zip.generateAsync({type: 'blob'})
+        //     .then((blob) => {
+        //         saveAs(blob, (Inte.treering.meta.assetName + '_ellipses_csv.zip'));
+        //     });
+    }
+
+    /**
+     * 
+     * @param {*} wantNA 
+     * @returns 
+     */
+    EllipseCSVDownload.prototype.raw = function(wantNA) {
         let csvString = "year,area_mm2\n";
         for (let obj of Inte.ellipseData.data) {
             csvString += obj.year + "," + obj.area.toFixed(3) + "\n";
         }
 
-        let zip = new JSZip();
-        zip.file((Inte.treering.meta.assetName + '_ellipses.csv'), csvString)
-        zip.generateAsync({type: 'blob'})
-            .then((blob) => {
-                saveAs(blob, (Inte.treering.meta.assetName + '_ellipses_csv.zip'));
-            });
+        return csvString
     }
 }
 
