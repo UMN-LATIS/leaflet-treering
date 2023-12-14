@@ -102,27 +102,20 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
   this.tools = [this.calibration, this.dating, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
-  // --- //
+  
+  // Tools in external files: 
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
   this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'hdr_strong', 'Manage ellipses');
-
-  // Alert for Beta purposes: 
-  this.betaToggle = true;
-  $(this.areaTools.btn.button).on("click", () => {
-    if (this.betaToggle) {
-      //alert("Area measurement tools for beta testing & provisional data development. Please direct any issues or feedback to: thorn573@umn.edu.");
-      this.betaToggle = false;
-    }
-  })
-
   this.areaCaptureInterface.tools.map(tool => {
     this.tools.push(tool);
   });
-  // --- //
-
+  
   // Code hosted in Leaflet.DataAccess.js
   this.dataAccessInterface = new DataAccessInterface(this);
+
+  // Code hosted in Leaflet.PithEstimate.js
+  this.pithEstimateInterface = new PithEstimateInterface(this);
 
   this.baseLayer = {
     'Tree Ring': base_layer,

@@ -12,4 +12,5 @@
  */
 function PithEstimateInterface(Lt) {
     this.treering = Lt;
+    console.log("connected")
 }

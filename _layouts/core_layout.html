@@ -24,6 +24,7 @@
 
 		<link rel="stylesheet" href="../Style.AreaCapture.css">
 		<link rel="stylesheet" href="../Style.DataAccess.css"> 
+		<link rel="stylesheet" href="../Style.PithEstimate.css"> 
 
 		<script src="https://cdn.jsdelivr.net/npm/handlebars@1.1.2/dist/handlebars.js"></script>
 
@@ -57,8 +58,8 @@
 <script type="text/javascript" src="../leaflet-treering.js"></script>
 
 <script type="application/javascript" src="../Leaflet.AreaCapture.js"></script>
-
 <script type = "application/javascript" src= "../Leaflet.DataAccess.js"></script>
+<script type = "application/javascript" src= "../Leaflet.PithEstimate.js"></script>
 
 <script>
 	var fragmentShader2 = `
@@ -150,12 +151,15 @@
 	$.get("templates.html", function (coreassestsData) {
 		$.get("../Template.AreaCapture.html", function (areaCaptureData) {
 			$.get("../Template.DataAccess.html", function (dataAccessData) {
-				$("body").append(coreassestsData);
-				$("body").append(areaCaptureData);
-				$("body").append(dataAccessData);
+				$.get("../Template.PithEstimate.html", function (pithEstimateData) {
+					$("body").append(coreassestsData);
+					$("body").append(areaCaptureData);
+					$("body").append(dataAccessData);
+					$("body").append(pithEstimateData);
 
-				var treering = new LTreering(map, "../", coreData, baseLayer, layer);
-				treering.loadInterface();
+					var treering = new LTreering(map, "../", coreData, baseLayer, layer);
+					treering.loadInterface();
+				})
 			})
 		})
 		
