@@ -307,20 +307,21 @@ EllipseCSVDownload.prototype.stats = function(wantNA) {
         }
 
         //Constructs the CSV string with stats
-        csvStatsString = "year,mean,SD,min,Q1,median,Q3,max";
+        csvStatsString = "year,mean,SD,count,min,Q1,median,Q3,max";
         for(let year of Object.keys(yearDataPairings)) {
             if(yearDataPairings[year] == "NA" && wantNA) {
                 csvStatsString += "\n" + year + ",NA".repeat(7);
             } else if (yearDataPairings[year] != "NA"){
                 let mean = this.mean(yearDataPairings[year]).toFixed(3);
                 let SD = this.standardDeviation(yearDataPairings[year]).toFixed(3);
+                let count = yearDataPairings[year].length;
                 let min = Math.min(...yearDataPairings[year]).toFixed(3);
                 let Q1 = this.lowerQuartile(yearDataPairings[year]).toFixed(3);
                 let median = this.median(yearDataPairings[year]).toFixed(3);
                 let Q3 = this.upperQuartile(yearDataPairings[year]).toFixed(3);
                 let max = Math.max(...yearDataPairings[year]).toFixed(3);
     
-                csvStatsString += "\n" + year + "," + mean + "," + SD + "," + min + "," + Q1 + ","
+                csvStatsString += "\n" + year + "," + mean + "," + SD + "," + count + "," + min + "," + Q1 + ","
                  + median + "," + Q3 + "," + max;
             }
         }
