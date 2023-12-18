@@ -116,6 +116,10 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
   // Code hosted in Leaflet.PithEstimate.js
   this.pithEstimateInterface = new PithEstimateInterface(this);
+  this.pithEstimateTools = new ButtonBar(this, this.pithEstimateInterface.btns, 'filter_tilt_shift', 'Manage pith (inner year) estimates');
+  this.pithEstimateInterface.tools.map(tool => {
+    this.tools.push(tool);
+  });
 
   this.baseLayer = {
     'Tree Ring': base_layer,
@@ -158,6 +162,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       this.universalDelete.btn.addTo(this.viewer);
       this.settings.bar.addTo(this.viewer);
       this.areaTools.bar.addTo(this.viewer);
+      this.pithEstimateTools.bar.addTo(this.viewer);
       this.undoRedoBar.addTo(this.viewer);
     } else {
       this.imageAdjustment.btn.addTo(this.viewer);
@@ -254,6 +259,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     this.editTools.collapse();
     this.settings.collapse();
     this.areaTools.collapse();
+    this.pithEstimateTools.collapse();
   };
 
   // we need the max native zoom, which is set on the tile layer and not the map. getMaxZoom will return a synthetic value which is no good for measurement

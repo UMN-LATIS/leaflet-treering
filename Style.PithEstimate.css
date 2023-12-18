@@ -1,0 +1,59 @@
+.PithEstimate-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.PithEstimate-btn-container {
+    display: flex;
+    flex-direction: row;
+}
+
+.PithEstimate-sub-container {
+    margin: 0;
+}
+
+.PithEstimate-title {
+    margin: 0;
+    margin-bottom: 2px;
+    padding: 4px;
+
+    font-weight: bolder;
+    font-size: 14px;
+
+    background-color: #d9f0a3;
+    border-radius: 4px;
+}
+
+.PithEstimate-subTitle {
+    margin: 0;
+
+    font-weight: bolder;
+    font-size: 12px;
+}
+
+.PithEstimate-info {
+    margin: 0;
+    margin-left: 12px;
+}
+
+.PithEstimate-label {
+    margin: 0;
+
+    font-weight: normal;
+    font-size: 12px;
+}
+
+#PithEstimate-confirm-btn {
+    margin-top: 4px;
+
+    font-weight: bolder;
+    font-size: 14px;
+    color: white;
+
+    text-align: center;
+
+    background-color: #71b54c;
+    border-radius: 4px;
+
+    cursor: pointer;
+}
