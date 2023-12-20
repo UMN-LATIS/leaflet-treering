@@ -261,7 +261,8 @@ function EllipseCSVDownload(Inte) {
      * @returns {String} - CSV with year & area for each measurement
      */
     EllipseCSVDownload.prototype.raw = function(wantNA) {
-        let csvString = "year,area_mm2";
+        let assetName = Inte.treering.meta.assetName;
+        let csvString = `${assetName}_year,${assetName}_area_mm2`;
         let startYear = Inte.ellipseData.data[0].year;
         let endYear = Inte.ellipseData.data[Inte.ellipseData.data.length - 1].year;
         let n = 0;
@@ -307,7 +308,8 @@ EllipseCSVDownload.prototype.stats = function(wantNA) {
         }
 
         //Constructs the CSV string with stats
-        csvStatsString = "year,mean,SD,count,min,Q1,median,Q3,max";
+        let assetName = Inte.treering.meta.assetName;
+        let csvStatsString = `${assetName}_year,${assetName}_mean,${assetName}_SD,${assetName}_count,${assetName}_min,${assetName}_Q1,${assetName}_median,${assetName}_Q3,${assetName}_max`;
         for(let year of Object.keys(yearDataPairings)) {
             if(yearDataPairings[year] == "NA" && wantNA) {
                 csvStatsString += "\n" + year + ",NA".repeat(7);
