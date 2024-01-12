@@ -31,12 +31,18 @@ function PithEstimateInterface(Lt) {
  */
 function EstimateData(Inte) {
     this.data = [];
+    this.recent = null;
 
     /**
+     * Save estimate data to array.
+     * @function
      * 
-     * @param {*} innerHeight 
-     * @param {*} innerWidth 
-     * @param {*} growthRate 
+     * @param {float} innerHeight - 
+     * @param {float} innerWidth -
+     * @param {float} innerRadius -
+     * @param {integer} growthRate -
+     * @param {integer} innerYear - 
+     * @param {integer} estYear -
      */
     EstimateData.prototype.saveEstimateData = function(innerHeight, innerLength, innerRadius, growthRate, innerYear, estYear) {
         let newDataElement = {
@@ -49,6 +55,17 @@ function EstimateData(Inte) {
         }
 
         this.data.push(newDataElement);
+    }
+
+    /**
+     * Update value which controls what is shown to user. 
+     * @function
+     * 
+     * @param {integer} estYear - Estimated inner year value.
+     */
+    EstimateData.prototype.updateRecent = function(estYear) {
+        this.recent = estYear;
+        Inte.treering.metaDataText.updateText();
     }
 }
 
@@ -157,7 +174,7 @@ function NewEstimate(Inte) {
 
         // Push change to undo stack: 
         // Inte.treering.undo.push();
-
+        Inte.newEstimateDialog.openInstructions();
         this.action();
     }
 
@@ -223,7 +240,7 @@ function NewEstimate(Inte) {
                     // Equation found by Duncan in 1989 paper:
                     this.innerRadius = ((this.innerLength**2) / (8*this.innerHeight)) + (this.innerHeight/2);
                     
-                    Inte.newEstimateDialog.open(this.innerLength, this.innerHeight, this.innerRadius);
+                    Inte.newEstimateDialog.openInterface(this.innerLength, this.innerHeight, this.innerRadius);
                     break;
             }
         });
@@ -231,6 +248,8 @@ function NewEstimate(Inte) {
 
     /**
      * 
+     * @param {*} numYears 
+     * @returns 
      */
     NewEstimate.prototype.findYear = function(numYears) {
         let allDistances = Inte.treering.helper.findDistances();
@@ -239,11 +258,11 @@ function NewEstimate(Inte) {
         let totalGrowth = twDistances.slice(0, numYears).reduce((partialSum, x) => partialSum + x, 0);
         let growthRate = totalGrowth / numYears;
         let innerYear = this.innerRadius / growthRate;
-        let estYear = allDistances.tw.x[0] - innerYear;
+        let estYear = Math.round(allDistances.tw.x[0] - innerYear);
 
         Inte.estimateData.saveEstimateData(this.innerHeight, this.innerLength, this.innerRadius, growthRate, innerYear, estYear);
-        alert(`Estimated innermost year value: ${estYear.toFixed(3)}`);
-        this.disable();
+        
+        return estYear;
     }
 }
 
@@ -258,17 +277,9 @@ function NewEstimateDialog(Inte) {
     this.numAvailableYears = 0;
 
     let minWidth = 200;
-    let minHeight = 260;
+    let minHeight = 290;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
-
-    let html = document.getElementById("PithEstimate-growthRateDialog-template").innerHTML;
-    this.template = Handlebars.compile(html);
-    let content = this.template({
-        l: 0,
-        h: 0,
-        r: 0
-    });
     
     this.dialog = L.control.dialog({
         "size": this.size,
@@ -277,16 +288,31 @@ function NewEstimateDialog(Inte) {
         "position": 'topleft',
         "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
         "minSize": [minWidth, minHeight],
-    }).setContent(content).addTo(Inte.treering.viewer);
+    }).addTo(Inte.treering.viewer);
     this.dialog.hideClose();
 
     this.dialogOpen = false;
 
     /**
-     * Opens dialog window. 
+     * Opens instructional dialog window.
      * @function
      */
-    NewEstimateDialog.prototype.open = function(length, height, radius) {
+    NewEstimateDialog.prototype.openInstructions = function() {
+        let content = document.getElementById("PithEstimate-instructionDialog-template").innerHTML;
+        this.dialog.setContent(content);
+        this.dialog.open();
+        this.dialogOpen = true;
+    }
+
+    /**
+     * Opens interactable dialog window. 
+     * @function
+     * 
+     * @param {float} length - Number representing length of arc in mm. 
+     * @param {float} height - Number representing height of arc in mm. 
+     * @param {float} radius - Number representing radius of arc in mm. 
+     */
+    NewEstimateDialog.prototype.openInterface = function(length, height, radius) {
         let allDistances = Inte.treering.helper.findDistances();
         this.numAvailableYears = allDistances.tw.x.length;
 
@@ -296,11 +322,18 @@ function NewEstimateDialog(Inte) {
         let year30DNE = this.numAvailableYears < 30;
         let customMax = this.numAvailableYears;
 
-        let content = this.template({
+        let html = document.getElementById("PithEstimate-growthRateDialog-template").innerHTML;
+        let template = Handlebars.compile(html);
+
+        let content = template({
             l: length.toFixed(3),
             h: height.toFixed(3),
             r: radius.toFixed(3),
-            customLimit: customMax
+            customLimit: customMax,
+            yearEst5: Inte.newEstimate.findYear(5),
+            yearEst10: Inte.newEstimate.findYear(10),
+            yearEst20: Inte.newEstimate.findYear(20),
+            yearEst30: Inte.newEstimate.findYear(30),
         });
 
         this.dialog.setContent(content);
@@ -330,37 +363,51 @@ function NewEstimateDialog(Inte) {
      * @function
      */
     NewEstimateDialog.prototype.createDialogEventListeners = function () {
-        $("#PithEstimate-5-btn").on("click", () => {
-            $("#PithEstimate-customYearInput").hide();
-            $("#PithEstimate-customBtn-container").show();
-            this.numYears = parseInt($("#PithEstimate-5-btn").val());
+        $("#PithEstimate-5-row").on("click", () => {
+            this.disableCustom();
+            this.highlightRow("#PithEstimate-5-row");
+            this.numYears = 5;
         });
 
-        $("#PithEstimate-10-btn").on("click", () => {
-            $("#PithEstimate-customYearInput").hide();
-            $("#PithEstimate-customBtn-container").show();
-            this.numYears = parseInt($("#PithEstimate-10-btn").val());
+        $("#PithEstimate-10-row").on("click", () => {
+            this.disableCustom();
+            this.highlightRow("#PithEstimate-10-row");
+            this.numYears = 10;
         });
 
-        $("#PithEstimate-20-btn").on("click", () => {
-            $("#PithEstimate-customYearInput").hide();
-            $("#PithEstimate-customBtn-container").show();
-            this.numYears = parseInt($("#PithEstimate-20-btn").val());
+        $("#PithEstimate-20-row").on("click", () => {
+            this.disableCustom();
+            this.highlightRow("#PithEstimate-20-row");
+            this.numYears = 20;
         });
 
-        $("#PithEstimate-30-btn").on("click", () => {
-            $("#PithEstimate-customYearInput").hide();
-            $("#PithEstimate-customBtn-container").show();
-            this.numYears = parseInt($("#PithEstimate-30-btn").val());
+        $("#PithEstimate-30-row").on("click", () => {
+            this.disableCustom();
+            this.highlightRow("#PithEstimate-30-row");
+            this.numYears = 30;
         });
 
-        $("#PithEstimate-custom-btn").on("click", () => {
+        $("#PithEstimate-custom-row").on("click", () => {
             $("#PithEstimate-customYearInput").show();
-            $("#PithEstimate-customBtn-container").hide();
-        })
+            $("#PithEstimate-customBtn-text").hide();
+
+            this.highlightRow("#PithEstimate-custom-row");
+        });
 
         $("#PithEstimate-customYearInput").on("input", () => {
             this.numYears = parseInt($("#PithEstimate-customYearInput").val());
+
+            if (this.numYears > this.numAvailableYears) {
+                let yearDiff = this.numYears - this.numAvailableYears;
+                alert(`Error: Need ${yearDiff} more measurements to use selected growth rate.`);
+                return
+            } else if (this.numYears < 1) {
+                alert("Error: Growth rate must be calculated from >0 years.");
+                return
+            }
+
+            let yearEst = Inte.newEstimate.findYear(this.numYears);
+            $("#PithEstimate-customBtn-estimate").html(yearEst);
         })
 
         $("#PithEstimate-confirm-btn").on("click", () => {
@@ -372,7 +419,39 @@ function NewEstimateDialog(Inte) {
                 alert("Error: Growth rate must be calculated from >0 years.");
                 return
             }
-            Inte.newEstimate.findYear(this.numYears);
+
+            let yearEst = Inte.newEstimate.findYear(this.numYears);
+            Inte.estimateData.updateRecent(yearEst);
+            console.log(Inte.estimateData.recent);
+            Inte.newEstimate.disable();
         });
+    }
+
+    /**
+     * Changes which row in 'Inner Year Estimate' table is highlighted.  
+     * @function
+     * 
+     * @param {string} rowID - HTML element id of table row. 
+     */
+    NewEstimateDialog.prototype.highlightRow = function (rowID) {
+        let highlightColor = "#e6f0ce";
+        
+        $("#PithEstimate-5-row").css("background-color", "");
+        $("#PithEstimate-10-row").css("background-color", "");
+        $("#PithEstimate-20-row").css("background-color", "");
+        $("#PithEstimate-30-row").css("background-color", "");
+        $("#PithEstimate-custom-row").css("background-color", "");
+
+        $(rowID).css("background-color", highlightColor);
+    }
+
+    /**
+     * Disables custom input in 'Inner Year Estimate' table.
+     * @function
+     */
+    NewEstimateDialog.prototype.disableCustom = function() {
+        $("#PithEstimate-customYearInput").hide();
+        $("#PithEstimate-customBtn-text").show();
+        $("#PithEstimate-customBtn-estimate").html("NaN");
     }
 }

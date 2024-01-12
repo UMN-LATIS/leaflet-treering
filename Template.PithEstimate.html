@@ -16,37 +16,50 @@
             </p>
         </div>
         <div class="PithEstimate-sub-container">
-            <p class="PithEstimate-subTitle">
-                Growth Rate:
-            </p>
-            <div class="PithEstimate-btn-container">
-                <div class="PithEstimate-sub-container">
-                    <input id="PithEstimate-5-btn" type="radio" name="PithEstimate-yearInput" value="5"> 
-                    <label class="PithEstimate-label" for="PithEstimate-5-btn">5 years</label><br>
-
-                    <input id="PithEstimate-10-btn" type="radio" name="PithEstimate-yearInput" value="10"> 
-                    <label class="PithEstimate-label"  for="PithEstimate-10-btn">10 years</label><br>
-                </div>
-                <div class="PithEstimate-sub-container" style="margin-left: 8px;">
-                    <input id="PithEstimate-20-btn" type="radio" name="PithEstimate-yearInput" value="20"> 
-                    <label class="PithEstimate-label" for="PithEstimate-20-btn">20 years</label><br>
-                    
-                    <input id="PithEstimate-30-btn" type="radio" name="PithEstimate-yearInput" value="30"> 
-                    <label class="PithEstimate-label" for="PithEstimate-30-btn">30 years</label><br>
-                </div>
+            <div class="PithEstimate-table-container">
+                <table class="PithEstimate-table">
+                    <tr><th>Growth Rate</th><th>Year Est.</th></tr>
+                    <tr id="PithEstimate-5-row"><td>5 years</td><td>{{yearEst5}}</td></tr>
+                    <tr id="PithEstimate-10-row"><td>10 years</td><td>{{yearEst10}}</td></tr>
+                    <tr id="PithEstimate-20-row"><td>20 years</td><td>{{yearEst20}}</td></tr>
+                    <tr id="PithEstimate-30-row"><td>30 years</td><td>{{yearEst30}}</td></tr>
+                    <tr id="PithEstimate-custom-row">
+                        <td>
+                            <span id="PithEstimate-customBtn-text">Custom</span>
+                            <input id="PithEstimate-customYearInput" type="number" min="0" max="{{customLimit}}" style="width: 52px;" hidden>
+                        </td>
+                        <td>
+                            <span id="PithEstimate-customBtn-estimate">NaN</span>
+                        </td></tr>
+                </table>
             </div>
-            <div class="PithEstimate-btn-container" style="justify-content: center;">
-                <div id="PithEstimate-customBtn-container" class="PithEstimate-sub-container">
-                    <input id="PithEstimate-custom-btn" type="radio" name="PithEstimate-yearInput" value="custom"> 
-                    <label class="PithEstimate-label" for="PithEstimate-custom-btn">Custom</label><br>
-                </div>
-            </div>
-            <input id="PithEstimate-customYearInput" type="number" min="0" max="{{customLimit}}" style="width: 160px;" hidden>
+            
         </div>
         <div class="PithEstimate-sub-container">
             <div id="PithEstimate-confirm-btn">
                 C o n f i r m
             </div>
         </div>
+    </div>
+</script>
+
+<script id="PithEstimate-instructionDialog-template" type="text/x-handlebars-template">
+    <div class="PithEstimate-container">
+        <p class="PithEstimate-title">
+            Geometric / Duncan &nbsp;
+            Inner Year Estimate:
+        </p>
+        <p class="PithEstimate-instruction-text">
+            <b>1)</b> Click to place first width point
+        </p>
+        <p class="PithEstimate-instruction-text">
+            <b>2)</b> Click to place right width point
+        </p>
+        <p class="PithEstimate-instruction-text">
+            <b>3)</b> Click along generated line to place midpoint
+        </p>
+        <p class="PithEstimate-instruction-text">
+            <b>4)</b> Click to place height point
+        </p>
     </div>
 </script>

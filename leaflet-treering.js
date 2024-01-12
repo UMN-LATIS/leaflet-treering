@@ -4678,6 +4678,12 @@ function MetaDataText (Lt) {
         startAddition = (startPt.earlywood) ? ew + " " : lw + " ";
         endAddition = (endPt.earlywood) ? " " + ew : " " + lw;
       }
+
+      let estInnerYear = Lt.pithEstimateInterface.estimateData.recent;
+      if (estInnerYear) {
+        startAddition = `(est. ${estInnerYear}) ` + startAddition;
+      }
+
       years = startAddition + String(startPt.year) + " — " + String(endPt.year) + endAddition + " &nbsp;|&nbsp; ";
     };
 
