@@ -30,11 +30,11 @@
 }
 
 .PithEstimate-table tr:nth-child(even) {
-    background-color: #f5f5f5;
+    background-color: #e6e5e5;
 }
 
 .PithEstimate-table tr:hover {
-    background-color: #d6d6d6;
+    background-color: #cbcbcb;
     cursor: pointer;
 }
 
@@ -78,7 +78,7 @@
     font-size: 12px;
 }
 
-#PithEstimate-confirm-btn {
+.PithEstimate-big-btn {
     margin-top: 4px;
 
     font-weight: bolder;
@@ -87,8 +87,23 @@
 
     text-align: center;
 
-    background-color: #71b54c;
     border-radius: 4px;
 
     cursor: pointer;
+}
+
+#PithEstimate-confirm-btn {
+    background-color: #71b54c;
+}
+
+#PithEstimate-confirm-btn:hover {
+    background-color: #5f9740;
+}
+
+#PithEstimate-copy-btn {
+    background-color: #bababa;
+}
+
+#PithEstimate-copy-btn:hover {
+    background-color: #a2a2a2;
 }

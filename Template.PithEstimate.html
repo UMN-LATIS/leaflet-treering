@@ -19,10 +19,10 @@
             <div class="PithEstimate-table-container">
                 <table class="PithEstimate-table">
                     <tr><th>Growth Rate</th><th>Year Est.</th></tr>
-                    <tr id="PithEstimate-5-row"><td>5 years</td><td>{{yearEst5}}</td></tr>
-                    <tr id="PithEstimate-10-row"><td>10 years</td><td>{{yearEst10}}</td></tr>
-                    <tr id="PithEstimate-20-row"><td>20 years</td><td>{{yearEst20}}</td></tr>
-                    <tr id="PithEstimate-30-row"><td>30 years</td><td>{{yearEst30}}</td></tr>
+                    <tr id="PithEstimate-5-row"><td>5 years</td><td id="PithEstimate-5-estimate">{{yearEst5}}</td></tr>
+                    <tr id="PithEstimate-10-row"><td>10 years</td><td id="PithEstimate-10-estimate">{{yearEst10}}</td></tr>
+                    <tr id="PithEstimate-20-row"><td>20 years</td><td id="PithEstimate-20-estimate">{{yearEst20}}</td></tr>
+                    <tr id="PithEstimate-30-row"><td>30 years</td><td id="PithEstimate-30-estimate">{{yearEst30}}</td></tr>
                     <tr id="PithEstimate-custom-row">
                         <td>
                             <span id="PithEstimate-customBtn-text">Custom</span>
@@ -36,7 +36,13 @@
             
         </div>
         <div class="PithEstimate-sub-container">
-            <div id="PithEstimate-confirm-btn">
+            <div id="PithEstimate-copy-btn" class="PithEstimate-big-btn">
+                C o p y  &nbsp;  (C S V)
+            </div>
+        </div>
+
+        <div class="PithEstimate-sub-container">
+            <div id="PithEstimate-confirm-btn" class="PithEstimate-big-btn">
                 C o n f i r m
             </div>
         </div>

@@ -275,9 +275,10 @@ function NewEstimate(Inte) {
 function NewEstimateDialog(Inte) {
     this.numYears = 0;
     this.numAvailableYears = 0;
+    this.customEnabled = false;
 
     let minWidth = 200;
-    let minHeight = 290;
+    let minHeight = 316;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
@@ -395,6 +396,7 @@ function NewEstimateDialog(Inte) {
         });
 
         $("#PithEstimate-customYearInput").on("input", () => {
+            this.customEnabled = true;
             this.numYears = parseInt($("#PithEstimate-customYearInput").val());
 
             if (this.numYears > this.numAvailableYears) {
@@ -408,6 +410,22 @@ function NewEstimateDialog(Inte) {
 
             let yearEst = Inte.newEstimate.findYear(this.numYears);
             $("#PithEstimate-customBtn-estimate").html(yearEst);
+        })
+
+        $("#PithEstimate-copy-btn").on("click", () => {
+            let header = "growth_rate, year_est\n";
+            let year5row = `5, ${$("#PithEstimate-5-estimate").html()}\n`;
+            let year10row = `10, ${$("#PithEstimate-10-estimate").html()}\n`;
+            let year20row = `20, ${$("#PithEstimate-20-estimate").html()}\n`;
+            let year30row = `30, ${$("#PithEstimate-30-estimate").html()}\n`;
+
+            let customRate = (this.customEnabled) ? $("#PithEstimate-customYearInput").val() : "Custom";
+            let customVal = (this.customEnabled) ? $("#PithEstimate-customBtn-estimate").html() : "NaN";
+            let yearCustomRow = `${customRate}, ${customVal}\n`;
+
+            let text = header + year5row + year10row + year20row + year30row + yearCustomRow;
+            navigator.clipboard.writeText(text);
+            console.log(text);
         })
 
         $("#PithEstimate-confirm-btn").on("click", () => {
@@ -450,6 +468,7 @@ function NewEstimateDialog(Inte) {
      * @function
      */
     NewEstimateDialog.prototype.disableCustom = function() {
+        this.customEnabled = false;
         $("#PithEstimate-customYearInput").hide();
         $("#PithEstimate-customBtn-text").show();
         $("#PithEstimate-customBtn-estimate").html("NaN");
