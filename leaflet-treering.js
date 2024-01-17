@@ -96,8 +96,11 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
   this.universalDelete = new UniversalDelete(this);
 
+  // Code hosted in Leaflet.PithEstimate.js
+  this.pithEstimateInterface = new PithEstimateInterface(this);
+
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
-  this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
+  this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn, this.pithEstimateInterface.btns[0]], 'straighten', 'Create new measurements');
   this.editTools = new ButtonBar(this, [this.dating.btn, this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.insertZeroGrowth.btn, this.cut.btn], 'edit', 'Edit existing measurements');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
@@ -110,16 +113,13 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.areaCaptureInterface.tools.map(tool => {
     this.tools.push(tool);
   });
-  
-  // Code hosted in Leaflet.DataAccess.js
-  this.dataAccessInterface = new DataAccessInterface(this);
 
-  // Code hosted in Leaflet.PithEstimate.js
-  this.pithEstimateInterface = new PithEstimateInterface(this);
-  this.pithEstimateTools = new ButtonBar(this, this.pithEstimateInterface.btns, 'filter_tilt_shift', 'Manage pith (inner year) estimates');
   this.pithEstimateInterface.tools.map(tool => {
     this.tools.push(tool);
   });
+  
+  // Code hosted in Leaflet.DataAccess.js
+  this.dataAccessInterface = new DataAccessInterface(this);
 
   this.baseLayer = {
     'Tree Ring': base_layer,
@@ -162,7 +162,6 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       this.universalDelete.btn.addTo(this.viewer);
       this.settings.bar.addTo(this.viewer);
       this.areaTools.bar.addTo(this.viewer);
-      this.pithEstimateTools.bar.addTo(this.viewer);
       this.undoRedoBar.addTo(this.viewer);
     } else {
       this.imageAdjustment.btn.addTo(this.viewer);
@@ -259,7 +258,6 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     this.editTools.collapse();
     this.settings.collapse();
     this.areaTools.collapse();
-    this.pithEstimateTools.collapse();
   };
 
   // we need the max native zoom, which is set on the tile layer and not the map. getMaxZoom will return a synthetic value which is no good for measurement
@@ -3734,21 +3732,37 @@ function CreateBreak(Lt) {
     'broken_image',
     'Create a within-year break in measurement path\n(Avoid measuring physical specimen gaps & cracks!)',
     () => {
-      Lt.disableTools();
-      this.enable();
-      Lt.mouseLine.from(Lt.data.points[Lt.data.index - 1].latLng);
+      // Code for breaking a pith measurement exists in Leaflet.PithEstimate.js
+      let pithEnabled = Lt.pithEstimateInterface.newEstimate.enabled; 
+      if (pithEnabled) { 
+        Lt.pithEstimateInterface.breakEstimate.enable() 
+      } else { 
+        Lt.disableTools();
+        this.enable(); 
+        Lt.mouseLine.from(Lt.data.points[Lt.data.index - 1].latLng);
+      }
     },
-    () => { this.disable }
+    () => { 
+      Lt.pithEstimateInterface.breakEstimate.disable();
+      this.disable();
+    }
   );
 
   L.DomEvent.on(window, 'keydown', (e) => {
      if (e.keyCode == 66 && e.getModifierState("Shift") && !e.getModifierState("Control") && // 66 refers to 'b'
      window.name.includes('popout') && !Lt.annotationAsset.dialogAnnotationWindow) { // Dialog windows w/ text cannot be active
-       e.preventDefault();
-       e.stopPropagation();
-       Lt.disableTools();
-       this.enable();
-       Lt.mouseLine.from(Lt.data.points[Lt.data.index - 1].latLng);
+        e.preventDefault();
+        e.stopPropagation();
+
+       // Code for breaking a pith measurement exists in Leaflet.PithEstimate.js
+        let pithEnabled = Lt.pithEstimateInterface.newEstimate.enabled; 
+        if (pithEnabled) { 
+          Lt.pithEstimateInterface.breakEstimate.enable() 
+        } else { 
+          Lt.disableTools();
+          this.enable(); 
+          Lt.mouseLine.from(Lt.data.points[Lt.data.index - 1].latLng);
+        }
      };
   });
 
@@ -4866,7 +4880,7 @@ function KeyboardShortCutDialog (Lt) {
     let anchor = this.anchor || [1, 442];
 
     this.dialog = L.control.dialog ({
-      'size': [310, 380],
+      'size': [310, 400],
       'anchor': anchor,
       'initOpen': true,
       'position': 'topleft',
@@ -4908,6 +4922,10 @@ function KeyboardShortCutDialog (Lt) {
       {
        'key': 'Shift-b',
        'use': 'Create within-year break',
+      },
+      {
+        'key': 'Shift-p',
+        'use': 'Create inner year estimate',
       },
       {
        'key': 'Shift-s',

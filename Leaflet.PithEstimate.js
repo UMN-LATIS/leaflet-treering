@@ -19,8 +19,10 @@ function PithEstimateInterface(Lt) {
     this.newEstimate = new NewEstimate(this);
     this.newEstimateDialog = new NewEstimateDialog(this);
 
+    this.breakEstimate = new BreakEstimate(this);
+
     this.btns = [this.newEstimate.btn];
-    this.tools = [this.newEstimate];
+    this.tools = [this.newEstimate, this.breakEstimate];
 }
 
 /**
@@ -83,10 +85,16 @@ function EstimateVisualAssets(Inte) {
     /**
      * 
      * @param {*} latLng 
+     * @param {*} breakPointBool 
      * @returns 
      */
-    EstimateVisualAssets.prototype.newMarker = function(latLng) {
-        let marker = L.marker(latLng, { icon: L.divIcon({className: "fa fa-plus guide"}) });
+    EstimateVisualAssets.prototype.newMarker = function(latLng, breakPointBool = false) {
+        let markerIcon = L.divIcon({className: "fa fa-plus guide"});
+        if (breakPointBool) {
+            markerIcon = new MarkerIcon("break", "../");
+        }
+
+        let marker = L.marker(latLng, { icon: markerIcon });
         this.markerLayer.addLayer(marker);
 
         return latLng;
@@ -107,15 +115,16 @@ function EstimateVisualAssets(Inte) {
     /**
      * 
      * @param {*} fromLatLng 
+     * @param {*} color 
      */
-    EstimateVisualAssets.prototype.connectMouseToMarker = function(fromLatLng) {
+    EstimateVisualAssets.prototype.connectMouseToMarker = function(fromLatLng, options = {color: "red"}) {
         $(Inte.treering.viewer.getContainer()).off("mousemove");
         $(Inte.treering.viewer.getContainer()).on("mousemove", mouseEvent => {
             this.lineLayer.clearLayers();
 
             let mouseLatLng = Inte.treering.viewer.mouseEventToLatLng(mouseEvent);
 
-            let line = L.polyline([fromLatLng, mouseLatLng], {color: 'red'});
+            let line = L.polyline([fromLatLng, mouseLatLng], options);
             this.lineLayer.addLayer(line);
 
             let marker = L.marker(mouseLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) });
@@ -148,16 +157,33 @@ function EstimateVisualAssets(Inte) {
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.  
  */
 function NewEstimate(Inte) {
+    this.clickCount = 0;
+
+    this.lengthLatLng_1 = null;
+    this.lengthLatLng_2 = null; 
+    this.midLatLng = null;
+    this.heightLatLng = null;
+
     this.innerLength = 0;
     this.innerHeight = 0; 
     this.innerRadius = 0;
 
     this.btn = new Button (
         'looks',
-        'Create inner year estimate',
+        'Create inner year estimate (Shift-p)',
         () => { Inte.treering.disableTools(); this.enable() },
         () => { this.disable() },
     );
+
+    L.DomEvent.on(window, 'keydown', (e) => {
+        if (e.keyCode == 80 && e.getModifierState("Shift") && !e.getModifierState("Control") && // 80 refers to 'p'
+        window.name.includes('popout') && !Inte.treering.annotationAsset.dialogAnnotationWindow) { // Dialog windows w/ text cannot be active
+           e.preventDefault();
+           e.stopPropagation();
+           Inte.treering.disableTools(); 
+           this.enable();
+        }
+    });
     
     /**
      * Enable tool by activating button & starting event chain. 
@@ -170,7 +196,14 @@ function NewEstimate(Inte) {
         }
 
         this.btn.state('active');
+        this.enabled = true;
         Inte.treering.viewer.getContainer().style.cursor = 'pointer';
+
+        this.clickCount = 0;
+        this.lengthLatLng_1 = null;
+        this.lengthLatLng_2 = null; 
+        this.midLatLng = null;
+        this.heightLatLng = null;
 
         // Push change to undo stack: 
         // Inte.treering.undo.push();
@@ -184,6 +217,7 @@ function NewEstimate(Inte) {
      */
     NewEstimate.prototype.disable = function() {
         this.btn.state('inactive');
+        this.enabled = false;
         Inte.treering.viewer.getContainer().style.cursor = 'default';
 
         $(Inte.treering.viewer.getContainer()).off('click');
@@ -194,55 +228,117 @@ function NewEstimate(Inte) {
         Inte.estimateVisualAssets.clearMarkers();
     }
 
+    /**
+     * 
+     */
     NewEstimate.prototype.action = function() {
-        let clickCount = 0;
-        let lengthLatLng_1, lengthLatLng_2, centerLatLng, heightLatLng;
+        // Begins event chain: 
+        this.placeFirstWidthPoint();
+    }
+
+    /**
+     * 
+     */
+    NewEstimate.prototype.placeFirstWidthPoint = function() {
+        $(Inte.treering.viewer.getContainer()).on("click", clickEvent => {
+            // Prevent jQuery event error.
+            if (!clickEvent.originalEvent) return;
+
+            this.clickCount++;
+
+            this.lengthLatLng_1 = Inte.treering.viewer.mouseEventToLatLng(clickEvent);
+            Inte.estimateVisualAssets.newMarker(this.lengthLatLng_1);
+
+            $(Inte.treering.viewer.getContainer()).off('click');
+            $(Inte.treering.viewer.getContainer()).off('mousemove');
+
+            this.placeSecondWidthPoint(this.lengthLatLng_1);
+        });
+    }
+
+    /**
+     * 
+     * @param {*} prevLatLng 
+     */
+    NewEstimate.prototype.placeSecondWidthPoint = function(prevLatLng) {
+        Inte.estimateVisualAssets.connectMouseToMarker(prevLatLng);
+
+        $(Inte.treering.viewer.getContainer()).on("click", clickEvent => {
+            // Prevent jQuery event error.
+            if (!clickEvent.originalEvent) return
+
+            // Check if break needs to be inserted in section. 
+            if (Inte.breakEstimate.enabled) { Inte.breakEstimate.action(clickEvent, prevLatLng); return }
+
+            this.clickCount++;
+
+            this.lengthLatLng_2 = Inte.treering.viewer.mouseEventToLatLng(clickEvent);
+            Inte.estimateVisualAssets.newMarker(this.lengthLatLng_2);
+            Inte.estimateVisualAssets.connectMarkers(prevLatLng, this.lengthLatLng_2);
+
+            Inte.estimateVisualAssets.clearMouseConnection();
+            $(Inte.treering.viewer.getContainer()).off('click');
+            $(Inte.treering.viewer.getContainer()).off('mousemove');
+
+            this.placeMidPoint(this.lengthLatLng_2)
+        });
+    }
+
+    /**
+     * 
+     * @param {*} prevLatLng 
+     */
+    NewEstimate.prototype.placeMidPoint = function(prevLatLng) {
+        // Want marker to snap to line? https://github.com/makinacorpus/Leaflet.Snap
+        let lineOptions = {
+            color: "#49c4d9",
+            opacity: 1,
+            dashArray: "4 8",
+        }
+        Inte.estimateVisualAssets.connectMouseToMarker(prevLatLng, lineOptions);
+
+        $(Inte.treering.viewer.getContainer()).on("click", clickEvent => {
+            // Prevent jQuery event error.
+            if (!clickEvent.originalEvent) return;
+            
+            this.clickCount++;
+
+            this.midLatLng = Inte.treering.viewer.mouseEventToLatLng(clickEvent);
+            Inte.estimateVisualAssets.newMarker(this.midLatLng);
+
+            Inte.estimateVisualAssets.clearMouseConnection();
+            $(Inte.treering.viewer.getContainer()).off('click');
+            $(Inte.treering.viewer.getContainer()).off('mousemove');
+          
+            this.placeHeightPoint(this.midLatLng);
+        });
+    }
+
+    /**
+     * 
+     * @param {*} prevLatLng 
+     */
+    NewEstimate.prototype.placeHeightPoint = function(prevLatLng) {
+        Inte.estimateVisualAssets.connectMouseToMarker(prevLatLng);
 
         $(Inte.treering.viewer.getContainer()).on("click", clickEvent => {
             // Prevent jQuery event error.
             if (!clickEvent.originalEvent) return;
 
-            clickCount++;
+            // Check if break needs to be inserted in section. 
+            if (Inte.breakEstimate.enabled) { Inte.breakEstimate.action(clickEvent, prevLatLng); return }
+            
+            this.clickCount++;
 
-            // Click order determines action. 1 & 2 determine width, 3 determines height. 
-            switch (clickCount) {
-                case 1:
-                    lengthLatLng_1 = Inte.treering.viewer.mouseEventToLatLng(clickEvent);
-                    Inte.estimateVisualAssets.newMarker(lengthLatLng_1);
-                    Inte.estimateVisualAssets.connectMouseToMarker(lengthLatLng_1);
-                    break;
+            this.heightLatLng = Inte.treering.viewer.mouseEventToLatLng(clickEvent);
+            Inte.estimateVisualAssets.newMarker(this.heightLatLng);
+            Inte.estimateVisualAssets.connectMarkers(prevLatLng, this.heightLatLng);
 
-                case 2:
-                    Inte.estimateVisualAssets.clearMouseConnection();
+            Inte.estimateVisualAssets.clearMouseConnection();
+            $(Inte.treering.viewer.getContainer()).off('click');
+            $(Inte.treering.viewer.getContainer()).off('mousemove');
 
-                    lengthLatLng_2 = Inte.treering.viewer.mouseEventToLatLng(clickEvent);
-                    Inte.estimateVisualAssets.newMarker(lengthLatLng_2);
-                    Inte.estimateVisualAssets.connectMarkers(lengthLatLng_1, lengthLatLng_2);
-
-                    // Find center of major axis via midpoint: 
-                    centerLatLng = L.latLng(
-                        (lengthLatLng_1.lat + lengthLatLng_2.lat) / 2,
-                        (lengthLatLng_1.lng + lengthLatLng_2.lng) / 2
-                    );
-                    Inte.estimateVisualAssets.newMarker(centerLatLng);
-                    Inte.estimateVisualAssets.connectMouseToMarker(centerLatLng);
-                    break;
-
-                case 3:
-                    Inte.estimateVisualAssets.clearMouseConnection();
-
-                    heightLatLng = Inte.treering.viewer.mouseEventToLatLng(clickEvent);
-                    Inte.estimateVisualAssets.newMarker(heightLatLng);
-                    Inte.estimateVisualAssets.connectMarkers(centerLatLng, heightLatLng);
-
-                    this.innerLength = Inte.treering.helper.trueDistance(lengthLatLng_1, lengthLatLng_2);
-                    this.innerHeight = Inte.treering.helper.trueDistance(centerLatLng, heightLatLng);
-                    // Equation found by Duncan in 1989 paper:
-                    this.innerRadius = ((this.innerLength**2) / (8*this.innerHeight)) + (this.innerHeight/2);
-                    
-                    Inte.newEstimateDialog.openInterface(this.innerLength, this.innerHeight, this.innerRadius);
-                    break;
-            }
+            this.findLengths();
         });
     }
 
@@ -263,6 +359,23 @@ function NewEstimate(Inte) {
         Inte.estimateData.saveEstimateData(this.innerHeight, this.innerLength, this.innerRadius, growthRate, innerYear, estYear);
         
         return estYear;
+    }
+
+    /**
+     * 
+     */
+    NewEstimate.prototype.findLengths = function() {
+        console.log(Inte.breakEstimate.lengthBreakSectionWidth)
+
+        this.innerLength = Inte.treering.helper.trueDistance(this.lengthLatLng_1, this.lengthLatLng_2) - Inte.breakEstimate.lengthBreakSectionWidth;
+        this.innerHeight = Inte.treering.helper.trueDistance(this.midLatLng, this.heightLatLng) - Inte.breakEstimate.heightBreakSectionWidth;
+        // Equation found by Duncan in 1989 paper:
+        this.innerRadius = ((this.innerLength**2) / (8*this.innerHeight)) + (this.innerHeight/2);
+        
+        Inte.newEstimateDialog.openInterface(this.innerLength, this.innerHeight, this.innerRadius);
+
+        // Reset breakwidths after finding lengths. 
+        Inte.breakEstimate.resetWidths();
     }
 }
 
@@ -472,5 +585,84 @@ function NewEstimateDialog(Inte) {
         $("#PithEstimate-customYearInput").hide();
         $("#PithEstimate-customBtn-text").show();
         $("#PithEstimate-customBtn-estimate").html("NaN");
+    }
+}
+
+function BreakEstimate(Inte) {
+    this.enabled = false;
+    this.btn = Inte.treering.createBreak.btn
+
+    this.lengthBreakSectionWidth = 0;
+    this.heightBreakSectionWidth = 0;
+
+    /**
+     * Enable tool by activating button & starting event chain.
+     */
+    BreakEstimate.prototype.enable = function() {
+        if (Inte.newEstimate.clickCount < 1) {
+            alert("Error: Cannot create break before first width boundary is estbalished.");
+            return
+        } else if (Inte.newEstimate.clickCount == 2) {
+            alert("Error: Must place midpoint before creating a break.")
+        }
+        
+        this.btn.state('active');
+        Inte.treering.viewer.getContainer().style.cursor = 'pointer';
+        Inte.treering.collapseTools();
+
+        this.enabled = true;
+        // Action called in NEwEstimate placement functions. 
+    }
+
+    /**
+     * Disable tool by removing all events & setting button to inactive.
+     * @function disable
+     */
+    BreakEstimate.prototype.disable = function() {
+        $(Inte.treering.viewer.getContainer()).off('click');
+        this.btn.state('inactive');
+        Inte.treering.viewer.dragging.enable();
+
+        this.enabled = false;
+    };
+
+    /**
+     * 
+     */
+    BreakEstimate.prototype.action = function(event, prevLatLng) {
+        $(Inte.treering.viewer.getContainer()).off('click');
+
+        let breakLatLng_1, breakLatLng_2;
+        let clickCount = Inte.newEstimate.clickCount;
+
+        breakLatLng_1 = Inte.treering.viewer.mouseEventToLatLng(event);
+        Inte.estimateVisualAssets.newMarker(breakLatLng_1, true);
+        Inte.estimateVisualAssets.connectMarkers(prevLatLng, breakLatLng_1);
+        Inte.estimateVisualAssets.clearMouseConnection();
+
+        $(Inte.treering.viewer.getContainer()).on("click", clickEvent => {
+            // Prevent jQuery event error.
+            if (!clickEvent.originalEvent) return
+
+            breakLatLng_2 = Inte.treering.viewer.mouseEventToLatLng(clickEvent);
+            Inte.estimateVisualAssets.newMarker(breakLatLng_2, true);
+
+            this.disable();
+
+            // Adjust length sbased on where break occured. 
+            let breakLength = Inte.treering.helper.trueDistance(breakLatLng_1, breakLatLng_2);
+            if (clickCount < 2) {
+                this.lengthBreakSectionWidth += breakLength;
+                Inte.newEstimate.placeSecondWidthPoint(breakLatLng_2);
+            } else if (clickCount > 2) {
+                this.heightBreakSectionWidth += breakLength;
+                Inte.newEstimate.placeHeightPoint(breakLatLng_2);
+            }
+        });
+    }
+
+    BreakEstimate.prototype.resetWidths = function() {
+        this.lengthBreakSectionWidth = 0;
+        this.heightBreakSectionWidth = 0;
     }
 }
