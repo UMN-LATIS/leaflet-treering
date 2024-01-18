@@ -83,9 +83,11 @@ function EstimateVisualAssets(Inte) {
     this.lineLayer = L.layerGroup().addTo(Inte.treering.viewer);
 
     /**
+     * Creates new Leaflet marker (regular or break).
+     * @function
      * 
-     * @param {*} latLng 
-     * @param {*} breakPointBool 
+     * @param {*} latLng - Leaflet location of new marker. 
+     * @param {boolean} [breakPointBool = false] - Indicates if new marker should be a break point. False by default. 
      * @returns 
      */
     EstimateVisualAssets.prototype.newMarker = function(latLng, breakPointBool = false) {
@@ -113,9 +115,11 @@ function EstimateVisualAssets(Inte) {
     }
 
     /**
+     * Connects mouse to a marker via a Leaflet polyline. 
+     * @function
      * 
-     * @param {*} fromLatLng 
-     * @param {*} color 
+     * @param {object} fromLatLng - Starting location of line. 
+     * @param {object} [options =  {color: "red"}] - Visual options of Leaflet polyline. Red by default. 
      */
     EstimateVisualAssets.prototype.connectMouseToMarker = function(fromLatLng, options = {color: "red"}) {
         $(Inte.treering.viewer.getContainer()).off("mousemove");
@@ -174,7 +178,8 @@ function NewEstimate(Inte) {
         () => { Inte.treering.disableTools(); this.enable() },
         () => { this.disable() },
     );
-
+    
+    // Keyboard shortcut: 
     L.DomEvent.on(window, 'keydown', (e) => {
         if (e.keyCode == 80 && e.getModifierState("Shift") && !e.getModifierState("Control") && // 80 refers to 'p'
         window.name.includes('popout') && !Inte.treering.annotationAsset.dialogAnnotationWindow) { // Dialog windows w/ text cannot be active
@@ -229,7 +234,8 @@ function NewEstimate(Inte) {
     }
 
     /**
-     * 
+     * Begins event chain for estimating pith. 
+     * @function
      */
     NewEstimate.prototype.action = function() {
         // Begins event chain: 
@@ -237,7 +243,8 @@ function NewEstimate(Inte) {
     }
 
     /**
-     * 
+     * Creates click event listener for placing first estimate point (width_1). 
+     * @function
      */
     NewEstimate.prototype.placeFirstWidthPoint = function() {
         $(Inte.treering.viewer.getContainer()).on("click", clickEvent => {
@@ -257,8 +264,10 @@ function NewEstimate(Inte) {
     }
 
     /**
+     * Creates click event listener for placing second estimate point. 
+     * @function
      * 
-     * @param {*} prevLatLng 
+     * @param {object} prevLatLng - Leaflet location of previously placed point. Could be regular or break point (width_2). 
      */
     NewEstimate.prototype.placeSecondWidthPoint = function(prevLatLng) {
         Inte.estimateVisualAssets.connectMouseToMarker(prevLatLng);
@@ -285,8 +294,10 @@ function NewEstimate(Inte) {
     }
 
     /**
+     * Creates click event listener for placing third estimate point (midpoint).
+     * @function 
      * 
-     * @param {*} prevLatLng 
+     * @param {object} prevLatLng - Leaflet location of previously placed point. Could be regular or break point. 
      */
     NewEstimate.prototype.placeMidPoint = function(prevLatLng) {
         // Want marker to snap to line? https://github.com/makinacorpus/Leaflet.Snap
@@ -315,8 +326,10 @@ function NewEstimate(Inte) {
     }
 
     /**
+     * Creates click event listener for palcing fourth (final) estimate point (height).
+     * @function
      * 
-     * @param {*} prevLatLng 
+     * @param {object} prevLatLng - Leaflet location of previously placed point. Could be regular or break point. 
      */
     NewEstimate.prototype.placeHeightPoint = function(prevLatLng) {
         Inte.estimateVisualAssets.connectMouseToMarker(prevLatLng);
@@ -343,9 +356,10 @@ function NewEstimate(Inte) {
     }
 
     /**
+     * Calculated estimated year based on width and height measurements drawn by user. 
+     * @function
      * 
-     * @param {*} numYears 
-     * @returns 
+     * @param {integer} numYears - Number of years to base growth rate.  
      */
     NewEstimate.prototype.findYear = function(numYears) {
         let allDistances = Inte.treering.helper.findDistances();
@@ -362,7 +376,8 @@ function NewEstimate(Inte) {
     }
 
     /**
-     * 
+     * Finds lengths between user defined width and height points. Detracts distances created by breaks. 
+     * @function
      */
     NewEstimate.prototype.findLengths = function() {
         console.log(Inte.breakEstimate.lengthBreakSectionWidth)
@@ -588,6 +603,12 @@ function NewEstimateDialog(Inte) {
     }
 }
 
+/**
+ * Create break within length/height measurement. 
+ * @constructor
+ * 
+ * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.  
+ */
 function BreakEstimate(Inte) {
     this.enabled = false;
     this.btn = Inte.treering.createBreak.btn
@@ -597,6 +618,7 @@ function BreakEstimate(Inte) {
 
     /**
      * Enable tool by activating button & starting event chain.
+     * @function
      */
     BreakEstimate.prototype.enable = function() {
         if (Inte.newEstimate.clickCount < 1) {
@@ -616,7 +638,7 @@ function BreakEstimate(Inte) {
 
     /**
      * Disable tool by removing all events & setting button to inactive.
-     * @function disable
+     * @function 
      */
     BreakEstimate.prototype.disable = function() {
         $(Inte.treering.viewer.getContainer()).off('click');
@@ -627,7 +649,11 @@ function BreakEstimate(Inte) {
     };
 
     /**
+     * Creates event listeners for defining 2 break points.
+     * @function
      * 
+     * @param {click event} event - Click event from placement functions (in NewEstimate).
+     * @param {object} prevLatLng - Leaflet location of previously placed point. 
      */
     BreakEstimate.prototype.action = function(event, prevLatLng) {
         $(Inte.treering.viewer.getContainer()).off('click');
@@ -661,6 +687,10 @@ function BreakEstimate(Inte) {
         });
     }
 
+    /**
+     * Resets break widths (length & height).
+     * @function
+     */
     BreakEstimate.prototype.resetWidths = function() {
         this.lengthBreakSectionWidth = 0;
         this.heightBreakSectionWidth = 0;
