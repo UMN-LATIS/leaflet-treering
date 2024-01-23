@@ -803,6 +803,23 @@ function LassoEllipses(Inte) {
         }
     });
 
+    // Content from Templates.AreaCapture.html.
+    let content = document.getElementById("AreaCapture-lassoInstructions-template").innerHTML;
+
+    this.dialog = L.control.dialog({
+        'size': [370, 240],
+        'anchor': [50, 5],
+        'initOpen': false,
+        'position': 'topleft',
+        'minSize': [0, 0]
+    }).setContent(content).addTo(Inte.treering.viewer);
+    this.dialog.hideResize();
+
+    this.disableDialog = false;
+    $("#AreaCapture-lasso-btn").on("change", () => {
+        this.disableDialog = $("#AreaCapture-lasso-btn").is(":checked");
+    });
+
     /**
      * Enable tool & assign shotcuts upon first enable. 
      * @function
@@ -816,6 +833,8 @@ function LassoEllipses(Inte) {
         this.btn.state('active');
         this.active = true;
         Inte.treering.viewer.getContainer().style.cursor = 'crosshair';
+
+        if (!this.disableDialog) this.dialog.open();
 
         if (!this.eventListenersEnabled) {
             // Only do once when instantiated.
@@ -838,6 +857,7 @@ function LassoEllipses(Inte) {
         Inte.treering.viewer.getContainer().style.cursor = 'default';
 
         this.lasso.disable();
+        this.dialog.close();
     }
 
     /**
