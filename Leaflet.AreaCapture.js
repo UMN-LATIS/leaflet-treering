@@ -239,17 +239,187 @@ function EllipseCSVDownload(Inte) {
             return 0;
           });
 
-        let csvString = "year,area_mm2\n";
-        for (let obj of Inte.ellipseData.data) {
-            csvString += obj.year + "," + obj.area.toFixed(3) + "\n";
-        }
+        let csvRaw = this.raw(false);
+        let csvRawNA = this.raw(true);
+        let csvStats = this.stats(false);
+        let csvStatsNA = this.stats(true);
 
         let zip = new JSZip();
-        zip.file((Inte.treering.meta.assetName + '_ellipses.csv'), csvString)
+        zip.file((Inte.treering.meta.assetName + '_ellipse_raw_data_noNA.csv'), csvRaw);
+        zip.file((Inte.treering.meta.assetName + '_ellipse_raw_data_withNA.csv'), csvRawNA);
+        zip.file((Inte.treering.meta.assetName + '_ellipse_summary_data_noNA.csv'), csvStats);
+        zip.file((Inte.treering.meta.assetName + '_ellipse_summary_data_withNA.csv'), csvStatsNA);
         zip.generateAsync({type: 'blob'})
             .then((blob) => {
                 saveAs(blob, (Inte.treering.meta.assetName + '_ellipses_csv.zip'));
             });
+    }
+
+    /**
+     * Create CSV of raw data
+     * @param {Boolean} wantNA - Includes years without data if true
+     * @returns {String} - CSV with year & area for each measurement
+     */
+    EllipseCSVDownload.prototype.raw = function(wantNA) {
+        let assetName = Inte.treering.meta.assetName;
+        let csvString = `${assetName}_year,${assetName}_area_mm2`;
+        let startYear = Inte.ellipseData.data[0].year;
+        let endYear = Inte.ellipseData.data[Inte.ellipseData.data.length - 1].year;
+        let n = 0;
+
+        for (let year = startYear; year <= endYear; year++) {
+            let yearHasData = false
+            for (i = n; i < Inte.ellipseData.data.length && year == Inte.ellipseData.data[i].year; i++) {
+                csvString += "\n" + year + "," + Inte.ellipseData.data[i].area.toFixed(3);
+                yearHasData = true;
+                n++;
+            }
+
+            if (yearHasData == false && wantNA) {
+                csvString += "\n" + year + ",NA";
+            }
+        }
+
+        return csvString
+    }
+
+    /**
+     * Creates CSV of summary statistics for each year in data
+     * @param {Boolean} wantNA - Includes years without data if true
+     * @returns {String} - CSV with summary stats for each year
+     */
+EllipseCSVDownload.prototype.stats = function(wantNA) {
+        //Constructs an object with an array of data for each year
+        let yearDataPairings = {};
+        let startYear = Inte.ellipseData.data[0].year;
+        let endYear = Inte.ellipseData.data[Inte.ellipseData.data.length - 1].year;
+        let n = 0;
+
+        for (let year = startYear; year <= endYear; year++) {
+            yearDataPairings[year] = [];
+            for (let i = n; i < Inte.ellipseData.data.length && year == Inte.ellipseData.data[i].year; i++) {
+                yearDataPairings[year].push(Inte.ellipseData.data[i].area);
+                n++;
+            }
+
+            if (yearDataPairings[year].length == 0) {
+                yearDataPairings[year] = "NA";
+            }
+        }
+
+        //Constructs the CSV string with stats
+        let assetName = Inte.treering.meta.assetName;
+        let csvStatsString = `${assetName}_year,${assetName}_mean,${assetName}_SD,${assetName}_count,${assetName}_min,${assetName}_Q1,${assetName}_median,${assetName}_Q3,${assetName}_max`;
+        for(let year of Object.keys(yearDataPairings)) {
+            if(yearDataPairings[year] == "NA" && wantNA) {
+                csvStatsString += "\n" + year + ",NA".repeat(7);
+            } else if (yearDataPairings[year] != "NA"){
+                let mean = this.mean(yearDataPairings[year]).toFixed(3);
+                let SD = this.standardDeviation(yearDataPairings[year]).toFixed(3);
+                let count = yearDataPairings[year].length;
+                let min = Math.min(...yearDataPairings[year]).toFixed(3);
+                let Q1 = this.lowerQuartile(yearDataPairings[year]).toFixed(3);
+                let median = this.median(yearDataPairings[year]).toFixed(3);
+                let Q3 = this.upperQuartile(yearDataPairings[year]).toFixed(3);
+                let max = Math.max(...yearDataPairings[year]).toFixed(3);
+    
+                csvStatsString += "\n" + year + "," + mean + "," + SD + "," + count + "," + min + "," + Q1 + ","
+                 + median + "," + Q3 + "," + max;
+            }
+        }
+        return csvStatsString
+    }
+    
+    /**
+     * Finds the mean value of an array
+     * @param {Array} arr - Array containing numbers
+     * @returns {Float} - Mean value of array
+     */
+    EllipseCSVDownload.prototype.mean = function(arr) {
+        let sum = 0;
+        for(let i = 0; i < arr.length; i++){
+            sum += arr[i];
+        }
+        let avg = sum / arr.length;
+        return avg;
+    }
+
+    /**
+     * Finds the standard deviation of an array
+     * @param {Array} arr - Array containing numbers
+     * @returns {Float} - Standard deviation of array
+     */
+    EllipseCSVDownload.prototype.standardDeviation = function(arr) {
+        if(arr.length == 1){
+            let SD = 0;
+            return SD;
+        }
+        let total = 0;
+        let avg = this.mean(arr);
+        for(let i = 0; i < arr.length; i++){
+            total += ((arr[i]-avg) ** 2);
+        }
+        let variance = total / (arr.length - 1);
+        let SD = variance ** (1/2);
+        return SD;
+    }
+
+    /**
+     * Finds the median value of an array
+     * @param {Array} arr - Array containing numbers
+     * @returns {Float} - Median of array
+     */
+    EllipseCSVDownload.prototype.median = function(arr) {
+        arr = arr.sort((a,b) => a - b);
+        if(arr.length % 2 == 1){
+            let med = arr[(arr.length - 1)/2];
+            return med
+        } else {
+            let med = (arr[arr.length/2 - 1] + arr[arr.length/2])/2;
+            return med
+        }
+    }
+
+    /**
+     * Finds the upper quartile of an array
+     * @param {Array} arr - Array containing numbers
+     * @returns {Float} Upper Quartile of array
+     */
+    EllipseCSVDownload.prototype.upperQuartile = function(arr) {
+        arr = arr.sort((a,b) => a - b);
+        if(arr.length == 1){
+            let Q3 = arr[0] ;
+            return Q3;
+        } else if(arr.length % 2 == 1){
+            let upperAreas = arr.slice((arr.length + 1)/2, arr.length);
+            let Q3 = this.median(upperAreas);
+            return Q3
+        } else {
+            let upperAreas = arr.slice(arr.length/2, arr.length);
+            let Q3 = this.median(upperAreas);
+            return Q3
+        }
+    }
+
+    /**
+     * Finds the lower quartile of an array
+     * @param {Array} arr - Array containing numbers
+     * @returns {Float} Lower quartile of array
+     */
+    EllipseCSVDownload.prototype.lowerQuartile = function(arr) {
+        arr = arr.sort((a,b) => a - b);
+        if(arr.length == 1){
+            let Q1 = arr[0];
+            return Q1;
+        } else if(arr.length % 2 == 1){
+            let lowerAreas = arr.slice(0, (arr.length - 1)/2);
+            let Q1 = this.median(lowerAreas);
+            return Q1
+        } else {
+            let lowerAreas = arr.slice(0, arr.length/2);
+            let Q1 = this.median(lowerAreas);
+            return Q1
+        }
     }
 }
 
