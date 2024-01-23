@@ -1065,7 +1065,7 @@ function LassoEllipses(Inte) {
      */
     LassoEllipses.prototype.selectEllipses = function(layers) {
         layers.map(layer => {
-            // Ensures measurement markers not included in selection. 
+            // Ensures measurement polylines not included in selection. 
             if (!(layer instanceof L.Marker)) {
                 return
             }
@@ -1522,6 +1522,7 @@ function AssistBoundaryLines(Inte) {
         this.btn.state('inactive');
         Inte.treering.viewer.getContainer().style.cursor = 'default';
         $(Inte.treering.viewer.getContainer()).off('click');
+        $(Inte.treering.viewer.getContainer()).off('mousemove');
 
         Inte.ellipseVisualAssets.boundaryMarkerLayer.clearLayers();
         Inte.ellipseVisualAssets.boundaryGuideLineLayer.clearLayers();
