@@ -226,6 +226,11 @@ function EllipseCSVDownload(Inte) {
      * @function
      */
     EllipseCSVDownload.prototype.action = function() {
+        if (Inte.ellipseData.data.length < 1) {
+            alert("Error: Must create ellipse data ebfore downloading.");
+            return;
+        }
+
         // Sort ellipses by year before downloading.
         Inte.ellipseData.data.sort((a, b) => {
             if (a.year < b.year) {

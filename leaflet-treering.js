@@ -389,7 +389,7 @@ function MeasurementData (dataObject, Lt) {
     this.index++;
 
     // update every time a point is placed
-Lt.helper.updateFunctionContainer(true);
+    Lt.helper.updateFunctionContainer(true);
   };
 
   /**
@@ -537,6 +537,9 @@ Lt.helper.updateFunctionContainer(true);
     if (!this.points[1]) {
       this.earlywood = true;
       this.year = 0;
+
+      // Updates after points are cut
+      Lt.helper.updateFunctionContainer(true);
       return
     }
 
@@ -561,7 +564,7 @@ Lt.helper.updateFunctionContainer(true);
     // If first start point removed, create new one.
     if (!this.points[0].start) this.points[0] =  {'start': true, 'skip': false, 'break': false, 'latLng': this.points[0].latLng};
 
-    // updates after points are cut
+    // Updates after points are cut
     Lt.helper.updateFunctionContainer(true);
   };
 
@@ -3545,6 +3548,10 @@ function Dating(Lt) {
 
       Lt.data.year += shift;
       Lt.visualAsset.reload();
+
+      // Updates once user hits enter
+      Lt.helper.updateFunctionContainer(true);
+
       this.disable();
     }
   }
@@ -3564,9 +3571,6 @@ function Dating(Lt) {
    * @function disable
    */
   Dating.prototype.disable = function() {
-    // updates once user hits enter
-    Lt.helper.updateFunctionContainer(true);
-
     this.btn.state('inactive');
     $(Lt.viewer.getContainer()).off('click');
     $(document).off('keypress');
