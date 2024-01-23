@@ -3870,7 +3870,7 @@ function DeletePoint(Lt) {
    * @function openDialog
    */
   DeletePoint.prototype.openDialog = function(e, i) {
-    if (this.maintainAdjustment || (Lt.data.points[i].start && Lt.data.points[i - 1].break) || Lt.data.points[i].break) {
+    if (this.maintainAdjustment || (i > 0 && Lt.data.points[i].start && Lt.data.points[i - 1].break) || Lt.data.points[i].break) {
       this.action(i);
     } else {
       Lt.helper.createEditToolDialog(e.containerPoint.x, e.containerPoint.y, i, "deletePoint");
