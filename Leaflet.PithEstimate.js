@@ -1,6 +1,6 @@
 /**
  * @file Leaflet Pith Estamte
- * @author Jessica Thorne <thorn572@umn.edu>
+ * @author Jessica Thorne <thorn573@umn.edu>
  * @version 1.0.0
  */
 
@@ -33,7 +33,8 @@ function PithEstimateInterface(Lt) {
  */
 function EstimateData(Inte) {
     this.data = [];
-    this.recent = null;
+    this.shownInner = null;
+    this.shownGrowthRate = null;
 
     /**
      * Save estimate data to array.
@@ -64,9 +65,11 @@ function EstimateData(Inte) {
      * @function
      * 
      * @param {integer} estYear - Estimated inner year value.
+     * @param {integer} growthRate - Calculated growth rate from which estYear was found. 
      */
-    EstimateData.prototype.updateRecent = function(estYear) {
-        this.recent = estYear;
+    EstimateData.prototype.updateShownValues = function(estYear, growthRate) {
+        this.shownInner = estYear;
+        this.shownGrowthRate = growthRate;
         Inte.treering.metaDataText.updateText();
     }
 }
@@ -300,6 +303,13 @@ function NewEstimate(Inte) {
      * @param {object} prevLatLng - Leaflet location of previously placed point. Could be regular or break point. 
      */
     NewEstimate.prototype.placeMidPoint = function(prevLatLng) {
+        // Place true midpoint for visual purpose only. 
+        let trueMidLatLng = L.latLng(
+            (this.lengthLatLng_1.lat + this.lengthLatLng_2.lat) / 2,
+            (this.lengthLatLng_1.lng + this.lengthLatLng_2.lng) / 2
+        );
+        Inte.estimateVisualAssets.newMarker(trueMidLatLng);
+        
         // Want marker to snap to line? https://github.com/makinacorpus/Leaflet.Snap
         let lineOptions = {
             color: "#49c4d9",
@@ -372,7 +382,7 @@ function NewEstimate(Inte) {
 
         Inte.estimateData.saveEstimateData(this.innerHeight, this.innerLength, this.innerRadius, growthRate, innerYear, estYear);
         
-        return estYear;
+        return [estYear, growthRate];
     }
 
     /**
@@ -403,7 +413,6 @@ function NewEstimate(Inte) {
 function NewEstimateDialog(Inte) {
     this.numYears = 0;
     this.numAvailableYears = 0;
-    this.customEnabled = false;
 
     let minWidth = 200;
     let minHeight = 316;
@@ -459,10 +468,10 @@ function NewEstimateDialog(Inte) {
             h: height.toFixed(3),
             r: radius.toFixed(3),
             customLimit: customMax,
-            yearEst5: Inte.newEstimate.findYear(5),
-            yearEst10: Inte.newEstimate.findYear(10),
-            yearEst20: Inte.newEstimate.findYear(20),
-            yearEst30: Inte.newEstimate.findYear(30),
+            yearEst5: Inte.newEstimate.findYear(5)[0],
+            yearEst10: Inte.newEstimate.findYear(10)[0],
+            yearEst20: Inte.newEstimate.findYear(20)[0],
+            yearEst30: Inte.newEstimate.findYear(30)[0],
         });
 
         this.dialog.setContent(content);
@@ -493,38 +502,30 @@ function NewEstimateDialog(Inte) {
      */
     NewEstimateDialog.prototype.createDialogEventListeners = function () {
         $("#PithEstimate-5-row").on("click", () => {
-            this.disableCustom();
             this.highlightRow("#PithEstimate-5-row");
             this.numYears = 5;
         });
 
         $("#PithEstimate-10-row").on("click", () => {
-            this.disableCustom();
             this.highlightRow("#PithEstimate-10-row");
             this.numYears = 10;
         });
 
         $("#PithEstimate-20-row").on("click", () => {
-            this.disableCustom();
             this.highlightRow("#PithEstimate-20-row");
             this.numYears = 20;
         });
 
         $("#PithEstimate-30-row").on("click", () => {
-            this.disableCustom();
             this.highlightRow("#PithEstimate-30-row");
             this.numYears = 30;
         });
 
         $("#PithEstimate-custom-row").on("click", () => {
-            $("#PithEstimate-customYearInput").show();
-            $("#PithEstimate-customBtn-text").hide();
-
             this.highlightRow("#PithEstimate-custom-row");
         });
 
         $("#PithEstimate-customYearInput").on("input", () => {
-            this.customEnabled = true;
             this.numYears = parseInt($("#PithEstimate-customYearInput").val());
 
             if (this.numYears > this.numAvailableYears) {
@@ -536,7 +537,7 @@ function NewEstimateDialog(Inte) {
                 return
             }
 
-            let yearEst = Inte.newEstimate.findYear(this.numYears);
+            let yearEst = Inte.newEstimate.findYear(this.numYears)[0];
             $("#PithEstimate-customBtn-estimate").html(yearEst);
         })
 
@@ -547,8 +548,9 @@ function NewEstimateDialog(Inte) {
             let year20row = `20, ${$("#PithEstimate-20-estimate").html()}\n`;
             let year30row = `30, ${$("#PithEstimate-30-estimate").html()}\n`;
 
-            let customRate = (this.customEnabled) ? $("#PithEstimate-customYearInput").val() : "Custom";
-            let customVal = (this.customEnabled) ? $("#PithEstimate-customBtn-estimate").html() : "NaN";
+            let customHasVal = $("#PithEstimate-customYearInput").val().length;
+            let customRate = (customHasVal) ? $("#PithEstimate-customYearInput").val() : "Custom";
+            let customVal = (customHasVal) ? $("#PithEstimate-customBtn-estimate").html() : "NA";
             let yearCustomRow = `${customRate}, ${customVal}\n`;
 
             let text = header + year5row + year10row + year20row + year30row + yearCustomRow;
@@ -566,9 +568,8 @@ function NewEstimateDialog(Inte) {
                 return
             }
 
-            let yearEst = Inte.newEstimate.findYear(this.numYears);
-            Inte.estimateData.updateRecent(yearEst);
-            console.log(Inte.estimateData.recent);
+            let [yearEst, growthRate] = Inte.newEstimate.findYear(this.numYears);
+            Inte.estimateData.updateShownValues(yearEst, growthRate);
             Inte.newEstimate.disable();
         });
     }
@@ -589,17 +590,6 @@ function NewEstimateDialog(Inte) {
         $("#PithEstimate-custom-row").css("background-color", "");
 
         $(rowID).css("background-color", highlightColor);
-    }
-
-    /**
-     * Disables custom input in 'Inner Year Estimate' table.
-     * @function
-     */
-    NewEstimateDialog.prototype.disableCustom = function() {
-        this.customEnabled = false;
-        $("#PithEstimate-customYearInput").hide();
-        $("#PithEstimate-customBtn-text").show();
-        $("#PithEstimate-customBtn-estimate").html("NaN");
     }
 }
 
