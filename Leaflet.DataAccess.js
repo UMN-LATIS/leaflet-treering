@@ -49,7 +49,7 @@ function ViewData(Inte) {
 
     ViewData.prototype.disable = function() {
         this.btn.state('inactive');
-        this.active = false;
+        // this.active = false;
         Inte.viewDataDialog.close();
     }
 }
@@ -61,6 +61,8 @@ function ViewData(Inte) {
  * @param {object} Inte - DataAccessInterface objects. Allows access to DataAccess tools.
 */
 function ViewDataDialog(Inte) {
+    this.dialogOpen = false;
+
     Handlebars.registerHelper('ifDecadeCheck', function(year, block) {
         var selected = year % 10 == 0;
         if(selected) {
@@ -99,12 +101,14 @@ function ViewDataDialog(Inte) {
         "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
         "minSize": [0, 0],
     }).addTo(Inte.treering.viewer);
+    this.dialog.hideClose();
 
-    $(this.dialog._map).on('dialog:closed', (dialog) => { 
-        Inte.viewData.btn.state('inactive'); 
-        Inte.viewData.active = false;
-        if (Inte.deleteData?.dialog) Inte.deleteData.dialog.close() 
-    });
+    // $(this.dialog._map).on('dialog:closed', (event) => { 
+    //     console.log(this.dialog)
+    //     Inte.viewData.btn.state('inactive'); 
+    //     Inte.viewData.active = false;
+    //     if (Inte.deleteData?.dialog) Inte.deleteData.dialog.close();
+    // });
 
     this.scrollPositionFromTop = 0;
 
@@ -134,6 +138,7 @@ function ViewDataDialog(Inte) {
         document.getElementById('DataAccess-table-id').style.height = this.tableHeight + "px"; 
 
         this.dialog.open();
+        this.dialogOpen = true;
 
         document.getElementById("DataAccess-table-body").scrollTop = this.scrollPositionFromTop;
         this.createEventListeners();
@@ -144,8 +149,9 @@ function ViewDataDialog(Inte) {
      * @function
      */
     ViewDataDialog.prototype.close = function() {
-        this.dialog.close();
-        if (Inte.deleteData.dialog) Inte.deleteData.dialog.close();
+        if (this.dialogOpen) this.dialog.close();
+        if (Inte.deleteData.dialogOpen) Inte.deleteData.dialog.close();
+        this.dialogOpen = false;
     }
     
     /**
@@ -156,6 +162,7 @@ function ViewDataDialog(Inte) {
         let dat = Inte.treering.helper.findDistances();
         let content = this.template({
             data: dat,
+            sub: dat.ew !== undefined && dat.lw !== undefined,
             savePermissions: Inte.treering.meta.savePermission,
         });
         

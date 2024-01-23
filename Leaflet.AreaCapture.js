@@ -682,7 +682,7 @@ function NewEllipseDialog(Inte) {
      * @function
      */
     NewEllipseDialog.prototype.close = function() {
-        this.dialog.close();
+        if (this.dialogOpen) this.dialog.close();
         this.dialogOpen = false;
     }
 
@@ -961,6 +961,8 @@ function LassoEllipses(Inte) {
  * @param {object} Inte - AreaCaptureInterface object. Allows access to all other tools.
  */
 function DeleteEllipses(Inte) {
+    this.dialogOpen = false;
+
     this.btn = new Button (
         'delete',
         'Delete selected ellipses',
@@ -979,6 +981,7 @@ function DeleteEllipses(Inte) {
         }
 
         Inte.deleteEllipsesDialog.open();
+        this.dialogOpen = true;
     }
 
     /**
@@ -986,7 +989,8 @@ function DeleteEllipses(Inte) {
      * @function
      */
     DeleteEllipses.prototype.disable = function() {
-        Inte.deleteEllipsesDialog.close();
+        if (this.dialogOpen) Inte.deleteEllipsesDialog.close();
+        this.dialogOpen = false;
     }
 
     /**
@@ -1231,7 +1235,7 @@ function DateEllipsesDialog(Inte) {
      * @function
      */
     DateEllipsesDialog.prototype.close = function() {
-        this.dialog.close();
+        if (this.dialogOpen) this.dialog.close();
         this.dialogOpen = false;
     }
 

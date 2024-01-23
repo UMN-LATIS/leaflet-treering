@@ -40,8 +40,9 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    color: white;
-    background-color: #18848c;
+    color: #18848c;
+    border: 1px solid #18848c;
+    background-color: white;
     border-radius: 6px;
     width: 30px;
     height: 30px;
@@ -64,7 +65,7 @@
 }
 
 .DataAccess-Text-Buttons:hover {
-    background-color: #757575;
+    background-color: #ced3d9;
 }
 
 .DataAccess-Icon-Buttons:hover {
