@@ -49,7 +49,7 @@ function ViewData(Inte) {
 
     ViewData.prototype.disable = function() {
         this.btn.state('inactive');
-        // this.active = false;
+        this.active = false;
         Inte.viewDataDialog.close();
     }
 }
@@ -102,13 +102,6 @@ function ViewDataDialog(Inte) {
         "minSize": [0, 0],
     }).addTo(Inte.treering.viewer);
     this.dialog.hideClose();
-
-    // $(this.dialog._map).on('dialog:closed', (event) => { 
-    //     console.log(this.dialog)
-    //     Inte.viewData.btn.state('inactive'); 
-    //     Inte.viewData.active = false;
-    //     if (Inte.deleteData?.dialog) Inte.deleteData.dialog.close();
-    // });
 
     this.scrollPositionFromTop = 0;
 

@@ -202,7 +202,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     // Disable all tools w/ esc.
     L.DomEvent.on(window, 'keydown', (e) => {
        if (e.keyCode == 27) {
-         this.disableTools();
+          this.disableTools();
        }
     }, this);
 
@@ -3792,7 +3792,7 @@ function CreateBreak(Lt) {
       this.enable();
       Lt.mouseLine.from(Lt.data.points[Lt.data.index - 1].latLng);
     },
-    () => { this.disable }
+    () => { this.disable() }
   );
 
   L.DomEvent.on(window, 'keydown', (e) => {
@@ -5084,7 +5084,7 @@ function Helper(Lt) {
       document.getElementById("shift-radioB").checked = !Lt[tool].adjustOuter;
 
       $(this.dialog._map).on("dialog:resizeend", () => { console.log(this.dialog) });
-      $(this.dialog._map).on("dialog:closed", () => {
+      $(this.dialog._closeNode).on("click", (e) => {
         if (this.dialog) {
           // Only have user select adjustment once per activation.
           Lt[tool].selectedAdjustment = true;
