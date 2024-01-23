@@ -90,8 +90,8 @@ function ViewDataDialog(Inte) {
     let html = document.getElementById("DataAccess-dialog-template").innerHTML;
     this.template = Handlebars.compile(html);
     
-    this.dialogHeight = 260;
-    this.tableHeight = 215;
+    this.dialogHeight = 290;
+    this.tableHeight = 250;
       
     this.dialog = L.control.dialog({
         "size": [0, 0],
@@ -126,7 +126,7 @@ function ViewDataDialog(Inte) {
             savePermissions: Inte.treering.meta.savePermission,
         });
 
-        let size = dat?.ew ? [240, this.dialogHeight] : [156, this.dialogHeight];
+        let size = dat?.ew ? [260, this.dialogHeight] : [176, this.dialogHeight];
         
         this.dialog.setContent(content);
 
