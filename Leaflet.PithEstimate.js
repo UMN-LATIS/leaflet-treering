@@ -85,6 +85,9 @@ function EstimateVisualAssets(Inte) {
     this.markerLayer = L.layerGroup().addTo(Inte.treering.viewer);
     this.lineLayer = L.layerGroup().addTo(Inte.treering.viewer);
 
+    this.arc = null;
+    this.arcLayer = L.layerGroup().addTo(Inte.treering.viewer);
+
     /**
      * Creates new Leaflet marker (regular or break).
      * @function
@@ -137,6 +140,52 @@ function EstimateVisualAssets(Inte) {
             let marker = L.marker(mouseLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) });
             this.lineLayer.addLayer(marker);
         })
+    }
+
+    EstimateVisualAssets.prototype.drawPithEstimateArc = function(startLatLng, endLatLng, midLatLng, radiusLatLng) {
+        let latLngArr = [startLatLng, endLatLng, midLatLng];
+        for (latLng of latLngArr) {
+            let marker = L.marker(latLng, { icon: L.divIcon({className: "fa fa-plus guide"}) });
+            this.arcLayer.addLayer(marker);
+        }
+
+        // Based on polar coordinates:
+        let getLatLngs_arcFunc = function(radians, center, radius) {
+            let x = radius * Math.cos(radians) + center.x;
+            let y = radius * Math.sin(radians) + center.y;
+            let point = L.point(x, y)
+
+            return Inte.treering.viewer.unproject(point,Inte.treering.getMaxNativeZoom());
+        }
+
+        let startPoint = Inte.treering.viewer.project(startLatLng, Inte.treering.getMaxNativeZoom()); 
+        let endPoint = Inte.treering.viewer.project(endLatLng, Inte.treering.getMaxNativeZoom()); 
+        let midPoint = Inte.treering.viewer.project(midLatLng, Inte.treering.getMaxNativeZoom()); 
+        let radiusPixel = radiusLatLng * Inte.treering.meta.ppm;
+
+        let startRadian = Math.atan2(startPoint.y - midPoint.y, startPoint.x - midPoint.x);
+        let endRadian = Math.atan2(endPoint.y - midPoint.y, endPoint.x - midPoint.x);
+        let totalRadians = endRadian - startRadian;
+        
+        let numSubSections = 100;
+        let subRadian = totalRadians / numSubSections;
+
+        let arcLatLngArr = [];
+        let tempRadian = startRadian;
+        for (let i = 0; i < numSubSections; i++) {
+            let latLngs = getLatLngs_arcFunc(tempRadian, midPoint, radiusPixel);
+            arcLatLngArr.push(latLngs);
+            tempRadian += subRadian;
+        }
+
+        this.arc = L.polyline(arcLatLngArr, {
+            color: "#8153f5", 
+            weight: 6
+        }).addTo(Inte.treering.viewer);
+    }
+
+    EstimateVisualAssets.prototype.addArcPopup = function(latLng, estYear) {
+        this.arc.bindTooltip(`est. ${estYear}`, {permanent: true}).openTooltip();
     }
 
     /**
@@ -386,21 +435,31 @@ function NewEstimate(Inte) {
     }
 
     /**
-     * Finds lengths between user defined width and height points. Detracts distances created by breaks. 
+     * Finds lengths between user defined width and height points. Detracts distances created by breaks. Opens next dialog. 
      * @function
      */
     NewEstimate.prototype.findLengths = function() {
-        console.log(Inte.breakEstimate.lengthBreakSectionWidth)
-
         this.innerLength = Inte.treering.helper.trueDistance(this.lengthLatLng_1, this.lengthLatLng_2) - Inte.breakEstimate.lengthBreakSectionWidth;
         this.innerHeight = Inte.treering.helper.trueDistance(this.midLatLng, this.heightLatLng) - Inte.breakEstimate.heightBreakSectionWidth;
         // Equation found by Duncan in 1989 paper:
         this.innerRadius = ((this.innerLength**2) / (8*this.innerHeight)) + (this.innerHeight/2);
         
-        Inte.newEstimateDialog.openInterface(this.innerLength, this.innerHeight, this.innerRadius);
+        this.openUserOptions();
 
         // Reset breakwidths after finding lengths. 
         Inte.breakEstimate.resetWidths();
+    }
+
+    /**
+     * Opens next view of dialog and arc depiction.
+     * @function
+     */
+    NewEstimate.prototype.openUserOptions = function() {
+        Inte.estimateVisualAssets.clearMouseConnection();
+        Inte.estimateVisualAssets.clearMarkers();
+
+        Inte.estimateVisualAssets.drawPithEstimateArc(this.lengthLatLng_1, this.lengthLatLng_2, this.midLatLng, this.innerRadius);
+        Inte.newEstimateDialog.openInterface(this.innerLength, this.innerHeight, this.innerRadius);
     }
 }
 
@@ -570,6 +629,7 @@ function NewEstimateDialog(Inte) {
 
             let [yearEst, growthRate] = Inte.newEstimate.findYear(this.numYears);
             Inte.estimateData.updateShownValues(yearEst, growthRate);
+            Inte.estimateVisualAssets.addArcPopup(Inte.newEstimate.midLatLng, yearEst);
             Inte.newEstimate.disable();
         });
     }
