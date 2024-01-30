@@ -16,13 +16,13 @@ function PithEstimateInterface(Lt) {
     this.estimateData = new EstimateData(this);
     this.estimateVisualAssets = new EstimateVisualAssets(this);
 
-    this.newEstimate = new NewEstimate(this);
-    this.newEstimateDialog = new NewEstimateDialog(this);
+    this.newGeoEstimate = new NewGeoEstimate(this);
+    this.newGeoEstimateDialog = new NewGeoEstimateDialog(this);
 
     this.breakEstimate = new BreakEstimate(this);
 
-    this.btns = [this.newEstimate.btn];
-    this.tools = [this.newEstimate, this.breakEstimate];
+    this.btns = [this.newGeoEstimate.btn];
+    this.tools = [this.newGeoEstimate, this.breakEstimate];
 }
 
 /**
@@ -32,9 +32,9 @@ function PithEstimateInterface(Lt) {
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.  
  */
 function EstimateData(Inte) {
-    this.data = [];
-    this.shownInner = null;
-    this.shownGrowthRate = null;
+    this.geoData = [];
+    this.shownGeoInnerYear = null;
+    this.shownGeoGrowthRate = null;
 
     /**
      * Save estimate data to array.
@@ -47,7 +47,7 @@ function EstimateData(Inte) {
      * @param {integer} innerYear - 
      * @param {integer} estYear -
      */
-    EstimateData.prototype.saveEstimateData = function(innerHeight, innerLength, innerRadius, growthRate, innerYear, estYear) {
+    EstimateData.prototype.saveGeoEstimateData = function(innerHeight, innerLength, innerRadius, growthRate, innerYear, estYear) {
         let newDataElement = {
             height: innerHeight,
             width: innerLength,
@@ -57,7 +57,7 @@ function EstimateData(Inte) {
             estimatedYear: estYear            
         }
 
-        this.data.push(newDataElement);
+        this.geoData.push(newDataElement);
     }
 
     /**
@@ -68,8 +68,8 @@ function EstimateData(Inte) {
      * @param {integer} growthRate - Calculated growth rate from which estYear was found. 
      */
     EstimateData.prototype.updateShownValues = function(estYear, growthRate) {
-        this.shownInner = estYear;
-        this.shownGrowthRate = growthRate;
+        this.shownGeoInnerYear = estYear;
+        this.shownGeoGrowthRate = growthRate;
         Inte.treering.metaDataText.updateText();
     }
 }
@@ -212,7 +212,7 @@ function EstimateVisualAssets(Inte) {
  * 
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.  
  */
-function NewEstimate(Inte) {
+function NewGeoEstimate(Inte) {
     this.clickCount = 0;
 
     this.lengthLatLng_1 = null;
@@ -246,7 +246,7 @@ function NewEstimate(Inte) {
      * Enable tool by activating button & starting event chain. 
      * @function
      */
-    NewEstimate.prototype.enable = function() {
+    NewGeoEstimate.prototype.enable = function() {
         if (!Inte.treering.data.points.length) {
             alert("Error: Measurements must exist to estimate inner year.");
             return
@@ -264,7 +264,7 @@ function NewEstimate(Inte) {
 
         // Push change to undo stack: 
         // Inte.treering.undo.push();
-        Inte.newEstimateDialog.openInstructions();
+        Inte.newGeoEstimateDialog.openInstructions();
         this.action();
     }
 
@@ -272,7 +272,7 @@ function NewEstimate(Inte) {
      * Disable tool by removing all events & setting button to inactive.  
      * @function
      */
-    NewEstimate.prototype.disable = function() {
+    NewGeoEstimate.prototype.disable = function() {
         this.btn.state('inactive');
         this.enabled = false;
         Inte.treering.viewer.getContainer().style.cursor = 'default';
@@ -280,7 +280,7 @@ function NewEstimate(Inte) {
         $(Inte.treering.viewer.getContainer()).off('click');
         $(Inte.treering.viewer.getContainer()).off('mousemove');
 
-        if (Inte.newEstimateDialog.dialogOpen) Inte.newEstimateDialog.close();
+        if (Inte.newGeoEstimateDialog.dialogOpen) Inte.newGeoEstimateDialog.close();
         Inte.estimateVisualAssets.clearMouseConnection();
         Inte.estimateVisualAssets.clearMarkers();
     }
@@ -289,7 +289,7 @@ function NewEstimate(Inte) {
      * Begins event chain for estimating pith. 
      * @function
      */
-    NewEstimate.prototype.action = function() {
+    NewGeoEstimate.prototype.action = function() {
         // Begins event chain: 
         this.placeFirstWidthPoint();
     }
@@ -298,7 +298,7 @@ function NewEstimate(Inte) {
      * Creates click event listener for placing first estimate point (width_1). 
      * @function
      */
-    NewEstimate.prototype.placeFirstWidthPoint = function() {
+    NewGeoEstimate.prototype.placeFirstWidthPoint = function() {
         $(Inte.treering.viewer.getContainer()).on("click", clickEvent => {
             // Prevent jQuery event error.
             if (!clickEvent.originalEvent) return;
@@ -321,7 +321,7 @@ function NewEstimate(Inte) {
      * 
      * @param {object} prevLatLng - Leaflet location of previously placed point. Could be regular or break point (width_2). 
      */
-    NewEstimate.prototype.placeSecondWidthPoint = function(prevLatLng) {
+    NewGeoEstimate.prototype.placeSecondWidthPoint = function(prevLatLng) {
         Inte.estimateVisualAssets.connectMouseToMarker(prevLatLng);
 
         $(Inte.treering.viewer.getContainer()).on("click", clickEvent => {
@@ -351,7 +351,7 @@ function NewEstimate(Inte) {
      * 
      * @param {object} prevLatLng - Leaflet location of previously placed point. Could be regular or break point. 
      */
-    NewEstimate.prototype.placeMidPoint = function(prevLatLng) {
+    NewGeoEstimate.prototype.placeMidPoint = function(prevLatLng) {
         // Place true midpoint for visual purpose only. 
         let trueMidLatLng = L.latLng(
             (this.lengthLatLng_1.lat + this.lengthLatLng_2.lat) / 2,
@@ -390,7 +390,7 @@ function NewEstimate(Inte) {
      * 
      * @param {object} prevLatLng - Leaflet location of previously placed point. Could be regular or break point. 
      */
-    NewEstimate.prototype.placeHeightPoint = function(prevLatLng) {
+    NewGeoEstimate.prototype.placeHeightPoint = function(prevLatLng) {
         Inte.estimateVisualAssets.connectMouseToMarker(prevLatLng);
 
         $(Inte.treering.viewer.getContainer()).on("click", clickEvent => {
@@ -420,7 +420,7 @@ function NewEstimate(Inte) {
      * 
      * @param {integer} numYears - Number of years to base growth rate.  
      */
-    NewEstimate.prototype.findYear = function(numYears) {
+    NewGeoEstimate.prototype.findYear = function(numYears) {
         let allDistances = Inte.treering.helper.findDistances();
         let twDistances = allDistances.tw.y;
 
@@ -429,7 +429,7 @@ function NewEstimate(Inte) {
         let innerYear = this.innerRadius / growthRate;
         let estYear = Math.round(allDistances.tw.x[0] - innerYear);
 
-        Inte.estimateData.saveEstimateData(this.innerHeight, this.innerLength, this.innerRadius, growthRate, innerYear, estYear);
+        Inte.estimateData.saveGeoEstimateData(this.innerHeight, this.innerLength, this.innerRadius, growthRate, innerYear, estYear);
         
         return [estYear, growthRate];
     }
@@ -438,7 +438,7 @@ function NewEstimate(Inte) {
      * Finds lengths between user defined width and height points. Detracts distances created by breaks. Opens next dialog. 
      * @function
      */
-    NewEstimate.prototype.findLengths = function() {
+    NewGeoEstimate.prototype.findLengths = function() {
         this.innerLength = Inte.treering.helper.trueDistance(this.lengthLatLng_1, this.lengthLatLng_2) - Inte.breakEstimate.lengthBreakSectionWidth;
         this.innerHeight = Inte.treering.helper.trueDistance(this.midLatLng, this.heightLatLng) - Inte.breakEstimate.heightBreakSectionWidth;
         // Equation found by Duncan in 1989 paper:
@@ -454,12 +454,12 @@ function NewEstimate(Inte) {
      * Opens next view of dialog and arc depiction.
      * @function
      */
-    NewEstimate.prototype.openUserOptions = function() {
+    NewGeoEstimate.prototype.openUserOptions = function() {
         Inte.estimateVisualAssets.clearMouseConnection();
         Inte.estimateVisualAssets.clearMarkers();
 
         Inte.estimateVisualAssets.drawPithEstimateArc(this.lengthLatLng_1, this.lengthLatLng_2, this.midLatLng, this.innerRadius);
-        Inte.newEstimateDialog.openInterface(this.innerLength, this.innerHeight, this.innerRadius);
+        Inte.newGeoEstimateDialog.openInterface(this.innerLength, this.innerHeight, this.innerRadius);
     }
 }
 
@@ -469,7 +469,7 @@ function NewEstimate(Inte) {
  * 
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.
  */
-function NewEstimateDialog(Inte) {
+function NewGeoEstimateDialog(Inte) {
     this.numYears = 0;
     this.numAvailableYears = 0;
 
@@ -494,7 +494,7 @@ function NewEstimateDialog(Inte) {
      * Opens instructional dialog window.
      * @function
      */
-    NewEstimateDialog.prototype.openInstructions = function() {
+    NewGeoEstimateDialog.prototype.openInstructions = function() {
         let content = document.getElementById("PithEstimate-instructionDialog-template").innerHTML;
         this.dialog.setContent(content);
         this.dialog.open();
@@ -509,7 +509,7 @@ function NewEstimateDialog(Inte) {
      * @param {float} height - Number representing height of arc in mm. 
      * @param {float} radius - Number representing radius of arc in mm. 
      */
-    NewEstimateDialog.prototype.openInterface = function(length, height, radius) {
+    NewGeoEstimateDialog.prototype.openInterface = function(length, height, radius) {
         let allDistances = Inte.treering.helper.findDistances();
         this.numAvailableYears = allDistances.tw.x.length;
 
@@ -527,10 +527,10 @@ function NewEstimateDialog(Inte) {
             h: height.toFixed(3),
             r: radius.toFixed(3),
             customLimit: customMax,
-            yearEst5: Inte.newEstimate.findYear(5)[0],
-            yearEst10: Inte.newEstimate.findYear(10)[0],
-            yearEst20: Inte.newEstimate.findYear(20)[0],
-            yearEst30: Inte.newEstimate.findYear(30)[0],
+            yearEst5: Inte.newGeoEstimate.findYear(5)[0],
+            yearEst10: Inte.newGeoEstimate.findYear(10)[0],
+            yearEst20: Inte.newGeoEstimate.findYear(20)[0],
+            yearEst30: Inte.newGeoEstimate.findYear(30)[0],
         });
 
         this.dialog.setContent(content);
@@ -550,7 +550,7 @@ function NewEstimateDialog(Inte) {
      * Closes dialog window.
      * @function
      */
-    NewEstimateDialog.prototype.close = function() {
+    NewGeoEstimateDialog.prototype.close = function() {
         this.dialog.close();
         this.dialogOpen = false;
     }
@@ -559,7 +559,7 @@ function NewEstimateDialog(Inte) {
      * Creates all event listeners for HTML elements in dialog window. 
      * @function
      */
-    NewEstimateDialog.prototype.createDialogEventListeners = function () {
+    NewGeoEstimateDialog.prototype.createDialogEventListeners = function () {
         $("#PithEstimate-5-row").on("click", () => {
             this.highlightRow("#PithEstimate-5-row");
             this.numYears = 5;
@@ -596,7 +596,7 @@ function NewEstimateDialog(Inte) {
                 return
             }
 
-            let yearEst = Inte.newEstimate.findYear(this.numYears)[0];
+            let yearEst = Inte.newGeoEstimate.findYear(this.numYears)[0];
             $("#PithEstimate-customBtn-estimate").html(yearEst);
         })
 
@@ -627,10 +627,10 @@ function NewEstimateDialog(Inte) {
                 return
             }
 
-            let [yearEst, growthRate] = Inte.newEstimate.findYear(this.numYears);
+            let [yearEst, growthRate] = Inte.newGeoEstimate.findYear(this.numYears);
             Inte.estimateData.updateShownValues(yearEst, growthRate);
-            Inte.estimateVisualAssets.addArcPopup(Inte.newEstimate.midLatLng, yearEst);
-            Inte.newEstimate.disable();
+            Inte.estimateVisualAssets.addArcPopup(Inte.newGeoEstimate.midLatLng, yearEst);
+            Inte.newGeoEstimate.disable();
         });
     }
 
@@ -640,7 +640,7 @@ function NewEstimateDialog(Inte) {
      * 
      * @param {string} rowID - HTML element id of table row. 
      */
-    NewEstimateDialog.prototype.highlightRow = function (rowID) {
+    NewGeoEstimateDialog.prototype.highlightRow = function (rowID) {
         let highlightColor = "#e6f0ce";
         
         $("#PithEstimate-5-row").css("background-color", "");
@@ -671,10 +671,10 @@ function BreakEstimate(Inte) {
      * @function
      */
     BreakEstimate.prototype.enable = function() {
-        if (Inte.newEstimate.clickCount < 1) {
+        if (Inte.newGeoEstimate.clickCount < 1) {
             alert("Error: Cannot create break before first width boundary is estbalished.");
             return
-        } else if (Inte.newEstimate.clickCount == 2) {
+        } else if (Inte.newGeoEstimate.clickCount == 2) {
             alert("Error: Must place midpoint before creating a break.")
         }
         
@@ -702,14 +702,14 @@ function BreakEstimate(Inte) {
      * Creates event listeners for defining 2 break points.
      * @function
      * 
-     * @param {click event} event - Click event from placement functions (in NewEstimate).
+     * @param {click event} event - Click event from placement functions (in NewGeoEstimate).
      * @param {object} prevLatLng - Leaflet location of previously placed point. 
      */
     BreakEstimate.prototype.action = function(event, prevLatLng) {
         $(Inte.treering.viewer.getContainer()).off('click');
 
         let breakLatLng_1, breakLatLng_2;
-        let clickCount = Inte.newEstimate.clickCount;
+        let clickCount = Inte.newGeoEstimate.clickCount;
 
         breakLatLng_1 = Inte.treering.viewer.mouseEventToLatLng(event);
         Inte.estimateVisualAssets.newMarker(breakLatLng_1, true);
@@ -729,10 +729,10 @@ function BreakEstimate(Inte) {
             let breakLength = Inte.treering.helper.trueDistance(breakLatLng_1, breakLatLng_2);
             if (clickCount < 2) {
                 this.lengthBreakSectionWidth += breakLength;
-                Inte.newEstimate.placeSecondWidthPoint(breakLatLng_2);
+                Inte.newGeoEstimate.placeSecondWidthPoint(breakLatLng_2);
             } else if (clickCount > 2) {
                 this.heightBreakSectionWidth += breakLength;
-                Inte.newEstimate.placeHeightPoint(breakLatLng_2);
+                Inte.newGeoEstimate.placeHeightPoint(breakLatLng_2);
             }
         });
     }

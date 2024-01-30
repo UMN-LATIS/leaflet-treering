@@ -3733,7 +3733,7 @@ function CreateBreak(Lt) {
     'Create a within-year break in measurement path\n(Avoid measuring physical specimen gaps & cracks!)',
     () => {
       // Code for breaking a pith measurement exists in Leaflet.PithEstimate.js
-      let pithEnabled = Lt.pithEstimateInterface.newEstimate.enabled; 
+      let pithEnabled = Lt.pithEstimateInterface.newGeoEstimate.enabled; 
       if (pithEnabled) { 
         Lt.pithEstimateInterface.breakEstimate.enable() 
       } else { 
@@ -3755,7 +3755,7 @@ function CreateBreak(Lt) {
         e.stopPropagation();
 
        // Code for breaking a pith measurement exists in Leaflet.PithEstimate.js
-        let pithEnabled = Lt.pithEstimateInterface.newEstimate.enabled; 
+        let pithEnabled = Lt.pithEstimateInterface.newGeoEstimate.enabled; 
         if (pithEnabled) { 
           Lt.pithEstimateInterface.breakEstimate.enable() 
         } else { 
@@ -4693,7 +4693,7 @@ function MetaDataText (Lt) {
         endAddition = (endPt.earlywood) ? " " + ew : " " + lw;
       }
 
-      let estInnerYear = Lt.pithEstimateInterface.estimateData.shownInner;
+      let estInnerYear = Lt.pithEstimateInterface.estimateData.shownGeoInnerYear;
       if (estInnerYear) {
         startAddition = `(~${estInnerYear}) ` + startAddition;
       }

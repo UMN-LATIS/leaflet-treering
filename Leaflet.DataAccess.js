@@ -301,8 +301,8 @@ function JSONFileUpload(Inte) {
             else Inte.treering.areaCaptureInterface.ellipseData.clearJSON();
 
             if (newDataJSON?.pithInnerYear) {
-                Inte.treering.pithEstimateInterface.estimateData.shownInner = newDataJSON?.pithInnerYear;
-                Inte.treering.pithEstimateInterface.estimateData.shownGrowthRate = newDataJSON?.pithGrowthRate;
+                Inte.treering.pithEstimateInterface.estimateData.shownGeoInnerYear = newDataJSON?.pithInnerYear;
+                Inte.treering.pithEstimateInterface.estimateData.shownGeoGrowthRate = newDataJSON?.pithGrowthRate;
             }
 
             // If the JSON has PPM data, use that instead of loaded data.
@@ -531,8 +531,8 @@ function Download(Inte) {
           'ppm': Inte.treering.meta.ppm,
           'ptWidths': Inte.treering.helper.findDistances(),
           'ellipses': Inte.treering.areaCaptureInterface.ellipseData.getJSON(),
-          'pithGrowthRate': Inte.treering.pithEstimateInterface.estimateData.shownGrowthRate,
-          'pithInnerYear': Inte.treering.pithEstimateInterface.estimateData.shownInner
+          'pithGrowthRate': Inte.treering.pithEstimateInterface.estimateData.shownGeoGrowthRate,
+          'pithInnerYear': Inte.treering.pithEstimateInterface.estimateData.shownGeoInnerYear
       };
 
       return data;
