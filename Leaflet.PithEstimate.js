@@ -145,49 +145,30 @@ function EstimateVisualAssets(Inte) {
         })
     }
 
-    EstimateVisualAssets.prototype.drawPithEstimateArc = function(startLatLng, endLatLng, midLatLng, radiusLatLng) {
-        let latLngArr = [startLatLng, endLatLng, midLatLng];
-        for (latLng of latLngArr) {
-            let marker = L.marker(latLng, { icon: L.divIcon({className: "fa fa-plus guide"}) });
-            this.arcLayer.addLayer(marker);
-        }
+    EstimateVisualAssets.prototype.drawPithEstimateArc = function(lengthLatLng_1, lengthLatLng_2, midLatLng, heightLatLng) {
+        let marker = L.marker(midLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) });
+        this.arcLayer.addLayer(marker);
 
-        // Based on polar coordinates:
-        let getLatLngs_arcFunc = function(radians, center, radius) {
-            let x = radius * Math.cos(radians) + center.x;
-            let y = radius * Math.sin(radians) + center.y;
-            let point = L.point(x, y)
+        // Use distance equation directly to get unproject Leaflet length: 
+        let length_unCorrected = Math.sqrt(Math.pow(Math.abs(lengthLatLng_1.lng - lengthLatLng_2.lng), 2) + 
+                                  Math.pow(Math.abs(lengthLatLng_1.lat - lengthLatLng_2.lat), 2));
+        length_unCorrected -= Inte.breakGeoEstimate.lengthBreakSectionWidth_unCorrected;
 
-            return Inte.treering.viewer.unproject(point,Inte.treering.getMaxNativeZoom());
-        }
+        let height_unCorrected = Math.sqrt(Math.pow(Math.abs(midLatLng.lng - heightLatLng.lng), 2) + 
+                                  Math.pow(Math.abs(midLatLng.lat - heightLatLng.lat), 2));
+        height_unCorrected -= Inte.breakGeoEstimate.heightBreakSectionWidth_unCorrected;
 
-        let startPoint = Inte.treering.viewer.project(startLatLng, Inte.treering.getMaxNativeZoom()); 
-        let endPoint = Inte.treering.viewer.project(endLatLng, Inte.treering.getMaxNativeZoom()); 
-        let midPoint = Inte.treering.viewer.project(midLatLng, Inte.treering.getMaxNativeZoom()); 
-        let radiusPixel = radiusLatLng * Inte.treering.meta.ppm;
+        // Equation by Duncan 1989:
+        let radius_unCorrected = ((length_unCorrected**2) / (8*height_unCorrected)) + (height_unCorrected/2);
 
-        let startRadian = Math.atan2(startPoint.y - midPoint.y, startPoint.x - midPoint.x);
-        let endRadian = Math.atan2(endPoint.y - midPoint.y, endPoint.x - midPoint.x);
-        let totalRadians = endRadian - startRadian;
-        
-        let numSubSections = 100;
-        let subRadian = totalRadians / numSubSections;
-
-        let arcLatLngArr = [];
-        let tempRadian = startRadian;
-        for (let i = 0; i < numSubSections; i++) {
-            let latLngs = getLatLngs_arcFunc(tempRadian, midPoint, radiusPixel);
-            arcLatLngArr.push(latLngs);
-            tempRadian += subRadian;
-        }
-
-        this.arc = L.polyline(arcLatLngArr, {
+        this.arc = L.circle(midLatLng, {
+            radius: radius_unCorrected, 
             color: "#8153f5", 
-            weight: 6
+            weight: 6,
         }).addTo(Inte.treering.viewer);
     }
 
-    EstimateVisualAssets.prototype.addArcPopup = function(latLng, estYear) {
+    EstimateVisualAssets.prototype.addArcPopup = function(estYear) {
         this.arc.bindTooltip(`est. ${estYear}`, {permanent: true}).openTooltip();
     }
 
@@ -461,7 +442,7 @@ function NewGeoEstimate(Inte) {
         Inte.estimateVisualAssets.clearMouseConnection();
         Inte.estimateVisualAssets.clearMarkers();
 
-        Inte.estimateVisualAssets.drawPithEstimateArc(this.lengthLatLng_1, this.lengthLatLng_2, this.midLatLng, this.innerRadius);
+        Inte.estimateVisualAssets.drawPithEstimateArc(this.lengthLatLng_1, this.lengthLatLng_2, this.midLatLng, this.heightLatLng);
         Inte.newGeoEstimateDialog.openInterface(this.innerLength, this.innerHeight, this.innerRadius);
     }
 }
@@ -632,7 +613,7 @@ function NewGeoEstimateDialog(Inte) {
 
             let [yearEst, growthRate] = Inte.newGeoEstimate.findYear(this.numYears);
             Inte.estimateData.updateShownValues(yearEst, growthRate);
-            Inte.estimateVisualAssets.addArcPopup(Inte.newGeoEstimate.midLatLng, yearEst);
+            Inte.estimateVisualAssets.addArcPopup(yearEst);
             Inte.newGeoEstimate.disable();
         });
     }
@@ -668,6 +649,9 @@ function BreakGeoEstimate(Inte) {
 
     this.lengthBreakSectionWidth = 0;
     this.heightBreakSectionWidth = 0;
+
+    this.lengthBreakSectionWidth_unCorrected = 0;
+    this.heightBreakSectionWidth_unCorrected = 0;
 
     /**
      * Enable tool by activating button & starting event chain.
@@ -730,11 +714,16 @@ function BreakGeoEstimate(Inte) {
 
             // Adjust length sbased on where break occured. 
             let breakLength = Inte.treering.helper.trueDistance(breakLatLng_1, breakLatLng_2);
+            // Use distance equation directly to get unproject Leaflet length: 
+            let breakLength_unCorrected = Math.sqrt(Math.pow(Math.abs(breakLatLng_1.lng - breakLatLng_2.lng), 2) + 
+                                      Math.pow(Math.abs(breakLatLng_1.lat - breakLatLng_2.lat), 2));
             if (clickCount < 2) {
                 this.lengthBreakSectionWidth += breakLength;
+                this.lengthBreakSectionWidth_unCorrected += breakLength_unCorrected;
                 Inte.newGeoEstimate.placeSecondWidthPoint(breakLatLng_2);
             } else if (clickCount > 2) {
                 this.heightBreakSectionWidth += breakLength;
+                this.heightBreakSectionWidth_unCorrected += breakLength_unCorrected;
                 Inte.newGeoEstimate.placeHeightPoint(breakLatLng_2);
             }
         });

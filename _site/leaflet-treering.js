@@ -5086,14 +5086,18 @@ function Helper(Lt) {
   Helper.prototype.trueDistance = function(p1, p2) {
     var lastPoint = Lt.viewer.project(p1, Lt.getMaxNativeZoom());
     var newPoint = Lt.viewer.project(p2, Lt.getMaxNativeZoom());
+
     var length = Math.sqrt(Math.pow(Math.abs(lastPoint.x - newPoint.x), 2) +
         Math.pow(Math.abs(newPoint.y - lastPoint.y), 2));
+
     var pixelsPerMillimeter = 1;
+
     Lt.viewer.eachLayer((layer) => {
       if (layer.options.pixelsPerMillimeter > 0 || Lt.meta.ppm > 0) {
         pixelsPerMillimeter = Lt.meta.ppm;
       }
     });
+    
     length = length / pixelsPerMillimeter;
     var retinaFactor = 1;
     return length * retinaFactor;
