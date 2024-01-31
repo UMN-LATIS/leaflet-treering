@@ -98,9 +98,13 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
   // Code hosted in Leaflet.PithEstimate.js
   this.pithEstimateInterface = new PithEstimateInterface(this);
+  let createToolArr = [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn];
+  for (btn of this.pithEstimateInterface.btns) {
+    createToolArr.push(btn);
+  }
 
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
-  this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn, this.pithEstimateInterface.btns[0]], 'straighten', 'Create new measurements');
+  this.createTools = new ButtonBar(this, createToolArr, 'straighten', 'Create new measurements');
   this.editTools = new ButtonBar(this, [this.dating.btn, this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.insertZeroGrowth.btn, this.cut.btn], 'edit', 'Edit existing measurements');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
@@ -3735,7 +3739,7 @@ function CreateBreak(Lt) {
       // Code for breaking a pith measurement exists in Leaflet.PithEstimate.js
       let pithEnabled = Lt.pithEstimateInterface.newGeoEstimate.enabled; 
       if (pithEnabled) { 
-        Lt.pithEstimateInterface.breakEstimate.enable() 
+        Lt.pithEstimateInterface.breakGeoEstimate.enable() 
       } else { 
         Lt.disableTools();
         this.enable(); 
@@ -3743,7 +3747,7 @@ function CreateBreak(Lt) {
       }
     },
     () => { 
-      Lt.pithEstimateInterface.breakEstimate.disable();
+      Lt.pithEstimateInterface.breakGeoEstimate.disable();
       this.disable();
     }
   );
@@ -3757,7 +3761,7 @@ function CreateBreak(Lt) {
        // Code for breaking a pith measurement exists in Leaflet.PithEstimate.js
         let pithEnabled = Lt.pithEstimateInterface.newGeoEstimate.enabled; 
         if (pithEnabled) { 
-          Lt.pithEstimateInterface.breakEstimate.enable() 
+          Lt.pithEstimateInterface.breakGeoEstimate.enable() 
         } else { 
           Lt.disableTools();
           this.enable(); 
@@ -4925,7 +4929,11 @@ function KeyboardShortCutDialog (Lt) {
       },
       {
         'key': 'Shift-p',
-        'use': 'Create inner year estimate',
+        'use': 'Create inner year estimate with Geometric or Duncan method',
+      },
+      {
+        'key': 'Shift-c',
+        'use': 'Create inner year estimate with Concentric Circles method',
       },
       {
        'key': 'Shift-s',

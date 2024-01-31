@@ -27,6 +27,7 @@
                         <td>
                             <!-- <span id="PithEstimate-customBtn-text">Click for Custom</span> -->
                             <input id="PithEstimate-customYearInput" type="number" min="0" max="{{customLimit}}" style="width: 52px;">
+                            years 
                         </td>
                         <td>
                             <span id="PithEstimate-customBtn-estimate">NA</span>
@@ -52,20 +53,30 @@
 <script id="PithEstimate-instructionDialog-template" type="text/x-handlebars-template">
     <div class="PithEstimate-container">
         <p class="PithEstimate-title">
-            Geometric / Duncan &nbsp;
-            Inner Year Estimate:
+            Geometric / Duncan Inner Year Estimate:
         </p>
         <p class="PithEstimate-instruction-text">
-            <b>1)</b> Click to place first width point
+            Pith offset estimation using the Duncan Geometric Approach
+            Appropriate when innermost rings include a complete 180º arc within the imaged specimen area.
+            The user must identify the ring of greatest biological age that includes an arc with 180º or more.
         </p>
         <p class="PithEstimate-instruction-text">
-            <b>2)</b> Click to place right width point
+            <b>1)</b> Click to place the first width point, on the annual ring boundary on one side of the ring with the largest complete arc.
         </p>
         <p class="PithEstimate-instruction-text">
-            <b>3)</b> Click along generated line to place midpoint
+            <b>2)</b> Click to place the second width point, on the annual ring boundary on the other side of the ring with the largest complete arc.
         </p>
         <p class="PithEstimate-instruction-text">
-            <b>4)</b> Click to place height point
+            <b>3)</b> Click to place the base point for the arc, in the middle of the arcing ring, optionally using the precise midpoint as illustrated.
+        </p>
+        <p class="PithEstimate-instruction-text">
+            <b>4)</b> Click to place the height point for the arc, with a segment that is perpendicular to the width of the arc.
+        </p>
+        <p class="PithEstimate-instruction-text">
+            <b>5)</b> Click in the table row to select the number of years from which the mean growth rate will be estimated, or enter your own value.
+        </p>
+        <p class="PithEstimate-instruction-text">
+            <b>6)</b> Click to confirm the preferred option from the table.
         </p>
     </div>
 </script>

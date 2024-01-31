@@ -19,10 +19,13 @@ function PithEstimateInterface(Lt) {
     this.newGeoEstimate = new NewGeoEstimate(this);
     this.newGeoEstimateDialog = new NewGeoEstimateDialog(this);
 
-    this.breakEstimate = new BreakEstimate(this);
+    this.breakGeoEstimate = new BreakGeoEstimate(this);
 
-    this.btns = [this.newGeoEstimate.btn];
-    this.tools = [this.newGeoEstimate, this.breakEstimate];
+    this.newCcmEstimate = new NewCcmEstimate(this);
+    this.newCcmEstimateDialog = new NewCcmEstimateDialog(this);
+
+    this.btns = [this.newGeoEstimate.btn, this.newCcmEstimate.btn];
+    this.tools = [this.newGeoEstimate, this.breakGeoEstimate, this.newCcmEstimate];
 }
 
 /**
@@ -207,7 +210,7 @@ function EstimateVisualAssets(Inte) {
 }
 
 /**
- * Create new inner year estimate. 
+ * Create new inner year estimate with Geometric or Duncan method. 
  * @constructor
  * 
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.  
@@ -226,7 +229,7 @@ function NewGeoEstimate(Inte) {
 
     this.btn = new Button (
         'looks',
-        'Create inner year estimate (Shift-p)',
+        'Create inner year estimate with Geometric or Duncan method (Shift-p)',
         () => { Inte.treering.disableTools(); this.enable() },
         () => { this.disable() },
     );
@@ -329,7 +332,7 @@ function NewGeoEstimate(Inte) {
             if (!clickEvent.originalEvent) return
 
             // Check if break needs to be inserted in section. 
-            if (Inte.breakEstimate.enabled) { Inte.breakEstimate.action(clickEvent, prevLatLng); return }
+            if (Inte.breakGeoEstimate.enabled) { Inte.breakGeoEstimate.action(clickEvent, prevLatLng); return }
 
             this.clickCount++;
 
@@ -398,7 +401,7 @@ function NewGeoEstimate(Inte) {
             if (!clickEvent.originalEvent) return;
 
             // Check if break needs to be inserted in section. 
-            if (Inte.breakEstimate.enabled) { Inte.breakEstimate.action(clickEvent, prevLatLng); return }
+            if (Inte.breakGeoEstimate.enabled) { Inte.breakGeoEstimate.action(clickEvent, prevLatLng); return }
             
             this.clickCount++;
 
@@ -439,15 +442,15 @@ function NewGeoEstimate(Inte) {
      * @function
      */
     NewGeoEstimate.prototype.findLengths = function() {
-        this.innerLength = Inte.treering.helper.trueDistance(this.lengthLatLng_1, this.lengthLatLng_2) - Inte.breakEstimate.lengthBreakSectionWidth;
-        this.innerHeight = Inte.treering.helper.trueDistance(this.midLatLng, this.heightLatLng) - Inte.breakEstimate.heightBreakSectionWidth;
+        this.innerLength = Inte.treering.helper.trueDistance(this.lengthLatLng_1, this.lengthLatLng_2) - Inte.breakGeoEstimate.lengthBreakSectionWidth;
+        this.innerHeight = Inte.treering.helper.trueDistance(this.midLatLng, this.heightLatLng) - Inte.breakGeoEstimate.heightBreakSectionWidth;
         // Equation found by Duncan in 1989 paper:
         this.innerRadius = ((this.innerLength**2) / (8*this.innerHeight)) + (this.innerHeight/2);
         
         this.openUserOptions();
 
         // Reset breakwidths after finding lengths. 
-        Inte.breakEstimate.resetWidths();
+        Inte.breakGeoEstimate.resetWidths();
     }
 
     /**
@@ -464,7 +467,7 @@ function NewGeoEstimate(Inte) {
 }
 
 /**
- * Generates dialog boxes related to creating new estimates. 
+ * Generates dialog boxes related to creating new Geometric (Duncan) estimates. 
  * @constructor
  * 
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.
@@ -473,8 +476,8 @@ function NewGeoEstimateDialog(Inte) {
     this.numYears = 0;
     this.numAvailableYears = 0;
 
-    let minWidth = 200;
-    let minHeight = 316;
+    let minWidth = 350;
+    let minHeight = 300;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
@@ -659,7 +662,7 @@ function NewGeoEstimateDialog(Inte) {
  * 
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.  
  */
-function BreakEstimate(Inte) {
+function BreakGeoEstimate(Inte) {
     this.enabled = false;
     this.btn = Inte.treering.createBreak.btn
 
@@ -670,7 +673,7 @@ function BreakEstimate(Inte) {
      * Enable tool by activating button & starting event chain.
      * @function
      */
-    BreakEstimate.prototype.enable = function() {
+    BreakGeoEstimate.prototype.enable = function() {
         if (Inte.newGeoEstimate.clickCount < 1) {
             alert("Error: Cannot create break before first width boundary is estbalished.");
             return
@@ -690,7 +693,7 @@ function BreakEstimate(Inte) {
      * Disable tool by removing all events & setting button to inactive.
      * @function 
      */
-    BreakEstimate.prototype.disable = function() {
+    BreakGeoEstimate.prototype.disable = function() {
         $(Inte.treering.viewer.getContainer()).off('click');
         this.btn.state('inactive');
         Inte.treering.viewer.dragging.enable();
@@ -705,7 +708,7 @@ function BreakEstimate(Inte) {
      * @param {click event} event - Click event from placement functions (in NewGeoEstimate).
      * @param {object} prevLatLng - Leaflet location of previously placed point. 
      */
-    BreakEstimate.prototype.action = function(event, prevLatLng) {
+    BreakGeoEstimate.prototype.action = function(event, prevLatLng) {
         $(Inte.treering.viewer.getContainer()).off('click');
 
         let breakLatLng_1, breakLatLng_2;
@@ -741,8 +744,81 @@ function BreakEstimate(Inte) {
      * Resets break widths (length & height).
      * @function
      */
-    BreakEstimate.prototype.resetWidths = function() {
+    BreakGeoEstimate.prototype.resetWidths = function() {
         this.lengthBreakSectionWidth = 0;
         this.heightBreakSectionWidth = 0;
     }
+}
+
+/**
+ * Create new inner year estimate with Concentric Circles method. 
+ * @constructor
+ * 
+ * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.  
+ */
+function NewCcmEstimate(Inte) {
+    this.btn = new Button (
+        'track_changes',
+        'Create inner year estimate with Concentric Circles method (Shift-c)',
+        () => { Inte.treering.disableTools(); this.enable() },
+        () => { this.disable() },
+    );
+
+    // Keyboard shortcut: 
+    L.DomEvent.on(window, 'keydown', (e) => {
+        if (e.keyCode == 67 && e.getModifierState("Shift") && !e.getModifierState("Control") && // 67 refers to 'c'
+        window.name.includes('popout') && !Inte.treering.annotationAsset.dialogAnnotationWindow) { // Dialog windows w/ text cannot be active
+           e.preventDefault();
+           e.stopPropagation();
+           Inte.treering.disableTools(); 
+           this.enable();
+        }
+    });
+
+    NewCcmEstimate.prototype.enable = function() {
+        if (!Inte.treering.data.points.length) {
+            alert("Error: Measurements must exist to estimate inner year.");
+            return
+        }
+
+        this.btn.state('active');
+        this.enabled = true;
+        Inte.treering.viewer.getContainer().style.cursor = 'pointer';
+    }
+
+    NewCcmEstimate.prototype.disable = function() {
+        this.btn.state('inactive');
+        this.enabled = false;
+        Inte.treering.viewer.getContainer().style.cursor = 'default';
+
+        $(Inte.treering.viewer.getContainer()).off('click');
+        $(Inte.treering.viewer.getContainer()).off('mousemove');
+    }
+}
+
+/**
+ * Generates dialog boxes related to creating new Conctric Circles estimates. 
+ * @constructor
+ * 
+ * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.
+ */
+function NewCcmEstimateDialog(Inte) {
+    let minWidth = 200;
+    let minHeight = 316;
+    this.size = [minWidth, minHeight];
+    this.anchor = [50, 0];
+    
+    this.dialog = L.control.dialog({
+        "size": this.size,
+        "anchor": this.anchor,
+        "initOpen": false,
+        "position": 'topleft',
+        "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+        "minSize": [minWidth, minHeight],
+    }).addTo(Inte.treering.viewer);
+    this.dialog.hideClose();
+
+    this.dialogOpen = false;
+
+    // TODO: make content
 }
