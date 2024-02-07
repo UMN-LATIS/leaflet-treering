@@ -145,6 +145,15 @@ function EstimateVisualAssets(Inte) {
         })
     }
 
+    /**
+     * Create arc representing the inner most ring measured. 
+     * @function
+     * 
+     * @param {object} lengthLatLng_1 - First location of length measurement (Leaflet latLng). 
+     * @param {object} lengthLatLng_2 - Second location of length measurement (Leaflet latLng).
+     * @param {object} midLatLng - Location of mid point (Leaflet latLng). 
+     * @param {object} heightLatLng - Location of height point (Leaflet latLng). 
+     */
     EstimateVisualAssets.prototype.drawPithEstimateArc = function(lengthLatLng_1, lengthLatLng_2, midLatLng, heightLatLng) {
         let marker = L.marker(midLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) });
         this.arcLayer.addLayer(marker);
@@ -165,11 +174,25 @@ function EstimateVisualAssets(Inte) {
             radius: radius_unCorrected, 
             color: "#8153f5", 
             weight: 6,
-        }).addTo(Inte.treering.viewer);
+        }).addTo(this.arcLayer);
     }
 
+    /**
+     * Create Leaflet tooltip at center of arc. 
+     * @function
+     * 
+     * @param {integer} estYear - Estimated inner year value. 
+     */
     EstimateVisualAssets.prototype.addArcPopup = function(estYear) {
         this.arc.bindTooltip(`est. ${estYear}`, {permanent: true}).openTooltip();
+    }
+
+    /**
+     * Removes all arc related visual assets. 
+     * @function
+     */
+    EstimateVisualAssets.prototype.clearArcs = function() {
+        this.arcLayer.clearLayers();
     }
 
     /**
@@ -249,6 +272,7 @@ function NewGeoEstimate(Inte) {
         // Push change to undo stack: 
         // Inte.treering.undo.push();
         Inte.newGeoEstimateDialog.openInstructions();
+        Inte.estimateVisualAssets.clearArcs();
         this.action();
     }
 

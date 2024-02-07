@@ -136,6 +136,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     'Lines': this.visualAsset.lineLayer,
     'Annotations': this.annotationAsset.markerLayer,
     'Ellipses': this.areaCaptureInterface.ellipseVisualAssets.ellipseLayer,
+    'Pith Estimate': this.pithEstimateInterface.estimateVisualAssets.arcLayer,
   };
 
   /**
