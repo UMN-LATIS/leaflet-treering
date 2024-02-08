@@ -503,7 +503,7 @@ function NewGeoEstimateDialog(Inte) {
      * @function
      */
     NewGeoEstimateDialog.prototype.openInstructions = function() {
-        let content = document.getElementById("PithEstimate-instructionDialog-template").innerHTML;
+        let content = document.getElementById("PithEstimate-duncanInstructionDialog-template").innerHTML;
         this.dialog.setContent(content);
         this.dialog.open();
         this.dialogOpen = true;
@@ -777,6 +777,13 @@ function NewCcmEstimate(Inte) {
         () => { this.disable() },
     );
 
+    this.pithLatLng = null;
+    this.innerMostRadiusLatLng = null;
+    this.radius_corrected = null;
+    this.radius_unCorrected = null;
+    this.innerMeasurementsArr = [];
+    this.numShownCircles = 5;
+
     // Keyboard shortcut: 
     L.DomEvent.on(window, 'keydown', (e) => {
         if (e.keyCode == 67 && e.getModifierState("Shift") && !e.getModifierState("Control") && // 67 refers to 'c'
@@ -797,6 +804,9 @@ function NewCcmEstimate(Inte) {
         this.btn.state('active');
         this.enabled = true;
         Inte.treering.viewer.getContainer().style.cursor = 'pointer';
+
+        Inte.newCcmEstimateDialog.openInstructions();
+        this.action();
     }
 
     NewCcmEstimate.prototype.disable = function() {
@@ -807,6 +817,69 @@ function NewCcmEstimate(Inte) {
         $(Inte.treering.viewer.getContainer()).off('click');
         $(Inte.treering.viewer.getContainer()).off('mousemove');
     }
+
+    NewCcmEstimate.prototype.action = function() {
+        this.pithLatLng = null;
+
+        // Create click event for estimating pith location: 
+        $(Inte.treering.viewer.getContainer()).on("click", clickEvent => {
+            // Prevent jQuery event error.
+            if (!clickEvent.originalEvent) return;
+
+            this.pithLatLng = Inte.treering.viewer.mouseEventToLatLng(clickEvent);
+            
+            $(Inte.treering.viewer.getContainer()).off('click');
+            $(Inte.treering.viewer.getContainer()).off('mousemove');
+            
+            // After point is placed:
+            this.findCircleAnchors();
+            this.findInnerMostRadius();
+            this.createCcmVisuals();
+            //this.enablePithMovement();
+            //this.createConfirmEventListeners(); // click & enter
+        });
+    }
+
+    NewCcmEstimate.prototype.findCircleAnchors = function() {
+        let measuredBackwards = !Inte.treering.measurementOptions.forwardDirection;
+        let measuredAnnually = !Inte.treering.measurementOptions.subAnnual;
+        let measuredSubAnnually = Inte.treering.measurementOptions.subAnnual;
+
+        let points = JSON.parse(JSON.stringify(Inte.treering.data.points));
+        if (measuredBackwards) points = points.reverse();
+
+        this.innerMeasurementsArr = [];
+        for (let i = 0; i < points.length && this.innerMeasurementsArr.length < this.numShownCircles; i++) {
+            let pt = points[i];
+
+            if (
+                pt && // Non-null check
+                (pt?.year || pt?.year === 0) && // Measurement point (as opposed to start or break point) check
+                (measuredAnnually || (measuredSubAnnually && !pt?.earlywood)) // Latewood check
+            ) {
+                this.innerMeasurementsArr.push(pt);
+            }
+        }
+    }
+
+    NewCcmEstimate.prototype.findInnerMostRadius = function() {
+        this.innerMostRadiusLatLng = this.innerMeasurementsArr[0].latLng;
+
+        this.radius_corrected = Inte.treering.helper.trueDistance(this.pithLatLng, this.innerMostRadiusLatLng);
+
+        this.radius_unCorrected = Math.sqrt(Math.pow(Math.abs(this.pithLatLng.lng - this.innerMostRadiusLatLng.lng), 2) + 
+                                  Math.pow(Math.abs(this.pithLatLng.lat - this.innerMostRadiusLatLng.lat), 2));
+    }
+
+    NewCcmEstimate.prototype.createCcmVisuals = function() {
+        // Draw pith marker:
+        Inte.estimateVisualAssets.newMarker(this.pithLatLng);
+
+        // Create radius line between pith estimate & innermost point: 
+        Inte.estimateVisualAssets.connectMarkers(this.pithLatLng, this.innerMostRadiusLatLng);
+
+        // Draw circles orginating from pith to measurement points: 
+    }
 }
 
 /**
@@ -816,8 +889,8 @@ function NewCcmEstimate(Inte) {
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.
  */
 function NewCcmEstimateDialog(Inte) {
-    let minWidth = 200;
-    let minHeight = 316;
+    let minWidth = 320;
+    let minHeight = 300;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
@@ -833,5 +906,14 @@ function NewCcmEstimateDialog(Inte) {
 
     this.dialogOpen = false;
 
-    // TODO: make content
+    /**
+     * Opens instructional dialog window.
+     * @function
+     */
+    NewCcmEstimateDialog.prototype.openInstructions = function() {
+        let content = document.getElementById("PithEstimate-ccmInstructionDialog-template").innerHTML;
+        this.dialog.setContent(content);
+        this.dialog.open();
+        this.dialogOpen = true;
+    }
 }
