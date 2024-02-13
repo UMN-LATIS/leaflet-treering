@@ -1,0 +1,25 @@
+input[type = "range"] {
+	width: 85%;
+}
+
+.image-adjustment-dialog-div {
+	display: flex;
+	height: 25px;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.imageInput {
+	width: 60px; 
+	height: 20px; 
+	margin-right: 5px;
+	font-size: medium;
+}
+
+.image-adjustment-slider-label {
+	text-align:left; 
+	display:block; 
+	margin-bottom: 0px; 
+	padding-top: 3px;
+	font-size: 14px;
+}

@@ -1,0 +1,19 @@
+<script id="ImageAdjustment-dialog-template" type="text/x-handlebars-template">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; padding-left: 0px;">
+        <h4 class="image-adjustment-header" style="font-weight: bold; margin: 0px">Image Adjustment Settings:</h4>
+        <button id="image-adjustment-invert-button" class="mdc-button mdc-button--unelevated mdc-button-compact" style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 30px; width: 45px; font-size: 13px; display:block;">Invert</button>
+        <button id="image-adjustment-reset-button" class="mdc-button mdc-button--unelevated mdc-button-compact" style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 30px; width: 45px; font-size: 13px; display:block;">Reset</button>
+    </div>
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; padding-left: 0px;">
+        {{#each presetList}}
+        <button id={{this.presetID}} class="mdc-button mdc-button--unelevated mdc-button-compact"  style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 30px; width: 60px; font-size: 13px; display:block;">{{this.presetName}}</button>
+        {{/each}}
+    </div>
+    {{#each filterList}}
+    <label class="image-adjustment-slider-label">{{this.label}}</label>
+    <div class="image-adjustment-dialog-div">
+        <input class="imageInput" id={{this.inputID}} value = {{this.value}}  min={{this.min}} max={{this.max}} step={{this.step}} type="number">
+        <input class="imageSlider" id={{this.sliderID}} value = {{this.value}} min={{this.min}} max={{this.max}} step={{this.step}} type=range>
+    </div>
+    {{/each}}
+</script>
