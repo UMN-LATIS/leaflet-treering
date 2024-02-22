@@ -2,15 +2,15 @@ input[type = "range"] {
 	width: 85%;
 }
 
-.image-adjustment-dialog-div {
+.image-adjustment-slider-div {
 	display: flex;
-	height: 25px;
+	height: 22px;
 	justify-content: space-between;
 	align-items: center;
 }
 
 .imageInput {
-	width: 60px; 
+	width: 55px; 
 	height: 20px; 
 	margin-right: 5px;
 	font-size: medium;

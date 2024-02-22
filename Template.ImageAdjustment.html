@@ -1,17 +1,18 @@
 <script id="ImageAdjustment-dialog-template" type="text/x-handlebars-template">
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; padding-left: 0px;">
-        <h4 class="image-adjustment-header" style="font-weight: bold; margin: 0px">Image Adjustment Settings:</h4>
-        <button id="image-adjustment-invert-button" class="mdc-button mdc-button--unelevated mdc-button-compact" style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 30px; width: 45px; font-size: 13px; display:block;">Invert</button>
-        <button id="image-adjustment-reset-button" class="mdc-button mdc-button--unelevated mdc-button-compact" style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 30px; width: 45px; font-size: 13px; display:block;">Reset</button>
-    </div>
-    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; padding-left: 0px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; padding-left: 0px; height: 40px;">
+        <h4 class="image-adjustment-header" style="font-weight: bold; margin: 0px; font-size: 18px;">Image Settings</h4>
+        <button id="image-adjustment-invert-button" class="mdc-button mdc-button--unelevated mdc-button-compact" style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 25px; width: 50px; font-size: 14px; display:block;">Invert</button>
+        <button id="image-adjustment-reset-button" class="mdc-button mdc-button--unelevated mdc-button-compact" style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 25px; width: 50px; font-size: 14px; display:block;">Reset</button>       
+    </div>    
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; padding-left: 0px; height: 40px;">
+        <p style="font-size: medium; font-weight: bold; margin: 0;">Presets:</p>
         {{#each presetList}}
-        <button id={{this.presetID}} class="mdc-button mdc-button--unelevated mdc-button-compact"  style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 30px; width: 60px; font-size: 13px; display:block;">{{this.presetName}}</button>
+        <button id={{this.presetID}} class="mdc-button mdc-button--unelevated mdc-button-compact"  style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 25px; width: 55px; font-size: 14px; display:block;">{{this.presetName}}</button>
         {{/each}}
-    </div>
+    </div>    
     {{#each filterList}}
     <label class="image-adjustment-slider-label">{{this.label}}</label>
-    <div class="image-adjustment-dialog-div">
+    <div class="image-adjustment-slider-div">
         <input class="imageInput" id={{this.inputID}} value = {{this.value}}  min={{this.min}} max={{this.max}} step={{this.step}} type="number">
         <input class="imageSlider" id={{this.sliderID}} value = {{this.value}} min={{this.min}} max={{this.max}} step={{this.step}} type=range>
     </div>

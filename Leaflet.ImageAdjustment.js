@@ -23,25 +23,17 @@ function ImageAdjustment(Inte) {
   
     let presetList = [
     {
-      presetName: "Preset 1",
-      presetID: "Preset-1"
+      presetName: "Griffin",
+      presetID: "Griffin"
     },
     {
-      presetName: "Preset 2",
-      presetID: "Preset-2"
+      presetName: "User 1",
+      presetID: "User-1"
     },
     {
-      presetName: "Preset 3",
-      presetID: "Preset-3"
-    },
-    {
-      presetName: "Preset 4",
-      presetID: "Preset-4"
-    },
-    {
-      presetName: "Preset 5",
-      presetID: "Preset-5"
-    },
+      presetName: "User 2",
+      presetID: "User-2"
+    }
     ];
 
     let filterList = [
@@ -135,11 +127,12 @@ function ImageAdjustment(Inte) {
     let html = template({filterList: filterList, presetList: presetList});
   
     this.dialog = L.control.dialog({
-      'size': [400, 280],
+      'size': [290, 400],
       'anchor': [50, 5],
       'initOpen': false,
       'position': 'topleft',
-      'minSize': [0, 0]
+      'minSize': [0, 0],
+      'className': 'image-adjust-custom'
     }).setContent(html).addTo(Inte.treering.viewer);
 
     ImageAdjustment.prototype.updateFilters = function() {
@@ -216,9 +209,7 @@ function ImageAdjustment(Inte) {
 
     ImageAdjustment.prototype.createPresetListeners = function(presetName) {
       let presetID = presetName.replace(" ", "-");
-      // console.log(presetID);
       let preset = document.getElementById(presetID);
-      // console.log(preset);
 
       preset.onclick = function () {
         console.log(presetName);
