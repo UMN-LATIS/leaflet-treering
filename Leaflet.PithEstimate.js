@@ -91,6 +91,8 @@ function EstimateVisualAssets(Inte) {
     this.arc = null;
     this.arcLayer = L.layerGroup().addTo(Inte.treering.viewer);
 
+    this.circleLayer = L.layerGroup().addTo(Inte.treering.viewer);
+
     /**
      * Creates new Leaflet marker (regular or break).
      * @function
@@ -122,6 +124,8 @@ function EstimateVisualAssets(Inte) {
         let line = L.polyline([fromLatLng, toLatLng], {color: 'red'});
         this.markerLayer.addLayer(line);
     }
+
+    EstimateVisualAssets.prototype.reloadMarkers
 
     /**
      * Connects mouse to a marker via a Leaflet polyline. 
@@ -193,6 +197,35 @@ function EstimateVisualAssets(Inte) {
      */
     EstimateVisualAssets.prototype.clearArcs = function() {
         this.arcLayer.clearLayers();
+    }
+
+    /**
+     * Creates circles to a center and multiple radii. 
+     * @function
+     * 
+     * @param {object} center - Center location of all circles (Leaflet latLng).
+     * @param {array} radiiArr - Array of all radii for circles. 
+     */
+    EstimateVisualAssets.prototype.createCircles = function(center, radiiArr) {
+        let circleOptions = {
+            radius: null, 
+            fill: false, 
+            color: "#fff",
+            opacity: 0.6,
+            // dashArray: "20, 40",
+            weight: 6
+        }
+
+        radiiArr.map((radius) => {
+            circleOptions.radius = radius;
+
+            let newCircle = L.circle(center, circleOptions);
+            newCircle.addTo(this.circleLayer);
+        })
+    }
+
+    EstimateVisualAssets.prototype.clearCircles = function() {
+        this.circleLayer.clearLayers();
     }
 
     /**
@@ -782,6 +815,7 @@ function NewCcmEstimate(Inte) {
     this.radius_corrected = null;
     this.radius_unCorrected = null;
     this.innerMeasurementsArr = [];
+    this.innerRadiiArr = [];
     this.numShownCircles = 5;
 
     // Keyboard shortcut: 
@@ -816,6 +850,11 @@ function NewCcmEstimate(Inte) {
 
         $(Inte.treering.viewer.getContainer()).off('click');
         $(Inte.treering.viewer.getContainer()).off('mousemove');
+
+        Inte.estimateVisualAssets.clearMarkers();
+        Inte.estimateVisualAssets.clearCircles();
+        this.disablePithLocationMovement();
+        Inte.newCcmEstimateDialog.close();
     }
 
     NewCcmEstimate.prototype.action = function() {
@@ -835,8 +874,8 @@ function NewCcmEstimate(Inte) {
             this.findCircleAnchors();
             this.findInnerMostRadius();
             this.createCcmVisuals();
-            //this.enablePithMovement();
-            //this.createConfirmEventListeners(); // click & enter
+            this.enablePithLocationMovement();
+            this.createConfirmEventListeners();
         });
     }
 
@@ -860,6 +899,8 @@ function NewCcmEstimate(Inte) {
                 this.innerMeasurementsArr.push(pt);
             }
         }
+        
+        this.innerRadiiArr = this.findUncorrectedRadii();
     }
 
     NewCcmEstimate.prototype.findInnerMostRadius = function() {
@@ -867,8 +908,18 @@ function NewCcmEstimate(Inte) {
 
         this.radius_corrected = Inte.treering.helper.trueDistance(this.pithLatLng, this.innerMostRadiusLatLng);
 
-        this.radius_unCorrected = Math.sqrt(Math.pow(Math.abs(this.pithLatLng.lng - this.innerMostRadiusLatLng.lng), 2) + 
-                                  Math.pow(Math.abs(this.pithLatLng.lat - this.innerMostRadiusLatLng.lat), 2));
+        this.radius_unCorrected = this.findUncorrectedDistance(this.pithLatLng, this.innerMostRadiusLatLng); 
+    }
+
+    NewCcmEstimate.prototype.findUncorrectedRadii = function() {
+        let arr = [];
+        for (point of this.innerMeasurementsArr) {
+            let latLng = point.latLng;
+            let radius_unCorrected = this.findUncorrectedDistance(this.pithLatLng, latLng);
+            arr.push(radius_unCorrected);
+        }
+
+        return arr
     }
 
     NewCcmEstimate.prototype.createCcmVisuals = function() {
@@ -876,9 +927,66 @@ function NewCcmEstimate(Inte) {
         Inte.estimateVisualAssets.newMarker(this.pithLatLng);
 
         // Create radius line between pith estimate & innermost point: 
-        Inte.estimateVisualAssets.connectMarkers(this.pithLatLng, this.innerMostRadiusLatLng);
+        //Inte.estimateVisualAssets.connectMarkers(this.pithLatLng, this.innerMostRadiusLatLng);
 
         // Draw circles orginating from pith to measurement points: 
+        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr);
+    }
+
+    NewCcmEstimate.prototype.reloadCcmVisuals = function() {
+        // Reload center: 
+        Inte.estimateVisualAssets.clearMarkers();
+        Inte.estimateVisualAssets.newMarker(this.pithLatLng);
+
+        // Reload circles: 
+        this.innerRadiiArr = this.findUncorrectedRadii();
+        Inte.estimateVisualAssets.clearCircles();
+        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr);
+    }
+
+    NewCcmEstimate.prototype.findUncorrectedDistance = function(latLng1, latLng2) {
+        let d = Math.sqrt(Math.pow(Math.abs(latLng1.lng - latLng2.lng), 2) + Math.pow(Math.abs(latLng1.lat - latLng2.lat), 2));
+        return d
+    }
+
+    NewCcmEstimate.prototype.enablePithLocationMovement = function() {
+        L.DomEvent.on(window, 'keydown', this.movePith, this);
+    }
+
+    NewCcmEstimate.prototype.disablePithLocationMovement = function() {
+        L.DomEvent.off(window, 'keydown', this.movePith, this)
+    }
+
+    NewCcmEstimate.prototype.movePith = function(event) {
+        let zoomPercentage = (Inte.treering.viewer.getZoom() - Inte.treering.viewer.getMinZoom()) / 
+                             (Inte.treering.viewer.getMaxZoom() - Inte.treering.viewer.getMinZoom());
+
+        let movementAmount = (1 - zoomPercentage) * 0.0005;
+
+        switch(event.keyCode) {
+            case(87): // "w"
+                this.pithLatLng.lat += movementAmount;
+                break;
+            case(83): // "s"
+                this.pithLatLng.lat -= movementAmount;
+                break;
+            case(65): // "a"
+                this.pithLatLng.lng -= movementAmount;
+                break; 
+            case(68): // "d"
+                this.pithLatLng.lng += movementAmount;
+                break;
+        }
+
+        // Reload visuals: 
+        this.reloadCcmVisuals();
+    }
+
+    NewCcmEstimate.prototype.createConfirmEventListeners = function() {
+        $(Inte.treering.viewer.getContainer()).on('click', (event) => {
+            console.log("confirmed")
+            this.disable();
+        });
     }
 }
 
@@ -915,5 +1023,14 @@ function NewCcmEstimateDialog(Inte) {
         this.dialog.setContent(content);
         this.dialog.open();
         this.dialogOpen = true;
+    }
+
+    /**
+     * Closes dialog window.
+     * @function
+     */
+    NewCcmEstimateDialog.prototype.close = function() {
+        this.dialog.close();
+        this.dialogOpen = false;
     }
 }
