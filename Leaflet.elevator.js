@@ -163,7 +163,7 @@ fitImage: function () {
 
 	this.options.bounds = bounds // used by `GridLayer.js#_isValidTile`
 	
-	map.setMaxBounds(bounds)
+	// map.setMaxBounds(bounds)
 	this.fitBoundsExactly()
 },
 
