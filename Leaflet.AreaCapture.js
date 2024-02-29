@@ -249,20 +249,15 @@ function EllipseCSVDownload(Inte) {
         let csvStats = this.stats(false);
         let csvStatsNA = this.stats(true);
 
-        console.log(csvRaw)
-        console.log(csvRawNA)
-        console.log(csvStats)
-        console.log(csvStatsNA)
-
-        // let zip = new JSZip();
-        // zip.file((Inte.treering.meta.assetName + '_ellipse_raw_data_noNA.csv'), csvRaw);
-        // zip.file((Inte.treering.meta.assetName + '_ellipse_raw_data_withNA.csv'), csvRawNA);
-        // zip.file((Inte.treering.meta.assetName + '_ellipse_summary_data_noNA.csv'), csvStats);
-        // zip.file((Inte.treering.meta.assetName + '_ellipse_summary_data_withNA.csv'), csvStatsNA);
-        // zip.generateAsync({type: 'blob'})
-        //     .then((blob) => {
-        //         saveAs(blob, (Inte.treering.meta.assetName + '_ellipses_csv.zip'));
-        //     });
+        let zip = new JSZip();
+        zip.file((Inte.treering.meta.assetName + '_ellipse_raw_data_noNA.csv'), csvRaw);
+        zip.file((Inte.treering.meta.assetName + '_ellipse_raw_data_withNA.csv'), csvRawNA);
+        zip.file((Inte.treering.meta.assetName + '_ellipse_summary_data_noNA.csv'), csvStats);
+        zip.file((Inte.treering.meta.assetName + '_ellipse_summary_data_withNA.csv'), csvStatsNA);
+        zip.generateAsync({type: 'blob'})
+            .then((blob) => {
+                saveAs(blob, (Inte.treering.meta.assetName + '_ellipses_csv.zip'));
+            });
     }
 
     /**
