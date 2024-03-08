@@ -925,6 +925,16 @@ function NewCcmEstimate(Inte) {
         return arr
     }
 
+    NewCcmEstimate.prototype.findUncorrectedEstimatedRadii = function() {
+        let allDistances = Inte.treering.helper.findDistances();
+        let twDistances = allDistances.tw.y;
+
+        let totalGrowth = twDistances.slice(0, numYears).reduce((partialSum, x) => partialSum + x, 0);
+        let growthRate = totalGrowth / numYears;
+
+        // TODO - Create inner estimated radius till negative 
+    }
+
     NewCcmEstimate.prototype.createCcmVisuals = function() {
         // Draw pith marker:
         Inte.estimateVisualAssets.newMarker(this.pithLatLng);
@@ -934,6 +944,20 @@ function NewCcmEstimate(Inte) {
 
         // Draw circles orginating from pith to measurement points: 
         Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr);
+
+        // TODO - Draw circles from pith to estimated rings: 
+
+        /**
+         * For example, I wonder about showing concentric rings inside the inner measurement point. 
+         * Could pull growth rate from the number of rings selected by the user.
+         * Could also show concentric rings for all the measurements made, with three colors: inner color (darkest?) for estimated rings missing; 
+         * middle color (middl), for the number of rings used to estimate the rings missing; outer color (lightest) for the rings/ growth 
+         * rate not used in the selection.
+         * Extending from that, I can also imagine allowing the user to pick the trajectory of growth: 
+         * Linear interpolation; declining ring width (exponential, as expected from conifers), or increasing/saturating function ring width 
+         * (as expected from ring porous oaks).
+         */
+
     }
 
     NewCcmEstimate.prototype.reloadCcmVisuals = function() {
@@ -1047,6 +1071,19 @@ function NewCcmEstimateDialog(Inte) {
     }
 
     NewCcmEstimateDialog.prototype.createEventListeners = function() {
+        $("#PithEstimate-numShownCircles-input").on("input", () => {
+            Inte.newCcmEstimate.numShownCircles = $("#PithEstimate-numShownCircles-input").val();
+            
+            // Reload circle measurements and visuals: 
+            if (Inte.newCcmEstimate.pithLatLng) {
+                Inte.estimateVisualAssets.clearCircles();
+
+                Inte.newCcmEstimate.findCircleAnchors();
+                Inte.newCcmEstimate.findInnerMostRadius();
+                Inte.newCcmEstimate.createCcmVisuals();
+            }
+        })
+
         $("#PithEstimate-movement-input").on("input", () => {
             Inte.newCcmEstimate.movementAmount = $("#PithEstimate-movement-input").val();
         });
