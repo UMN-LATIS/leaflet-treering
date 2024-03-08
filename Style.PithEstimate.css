@@ -108,3 +108,24 @@
     background-color: #a2a2a2;
 }
 
+.PithEstimate-zoomMultiplier-toggle label {
+	display: inline-block;
+	padding-right: 10px;
+	white-space: nowrap;
+	margin: 0;
+}
+
+.PithEstimate-zoomMultiplier-toggle input {
+	vertical-align: middle;
+	margin: 0;
+}
+
+.PithEstimate-zoomMultiplier-toggle label span {
+	vertical-align: middle;
+	margin: 0;
+	margin-left: 4px;
+	font-size: 12px;
+	font-weight: normal;
+	font-style: italic;
+}
+

@@ -817,6 +817,9 @@ function NewCcmEstimate(Inte) {
     this.innerMeasurementsArr = [];
     this.innerRadiiArr = [];
     this.numShownCircles = 5;
+    
+    this.disableZoomMultiplier = false;
+    this.movementAmount = 0.001;
 
     // Keyboard shortcut: 
     L.DomEvent.on(window, 'keydown', (e) => {
@@ -960,8 +963,10 @@ function NewCcmEstimate(Inte) {
     NewCcmEstimate.prototype.movePith = function(event) {
         let zoomPercentage = (Inte.treering.viewer.getZoom() - Inte.treering.viewer.getMinZoom()) / 
                              (Inte.treering.viewer.getMaxZoom() - Inte.treering.viewer.getMinZoom());
-
-        let movementAmount = (1 - zoomPercentage) * 0.0005;
+    
+        let multiplier = (1 - zoomPercentage > 0) ? 1 - zoomPercentage : 0.01;
+        let zoomMultiplier = (this.disableZoomMultiplier) ? 1 : multiplier;
+        let movementAmount =  zoomMultiplier * this.movementAmount;
 
         switch(event.keyCode) {
             case(87): // "w"
@@ -1019,10 +1024,17 @@ function NewCcmEstimateDialog(Inte) {
      * @function
      */
     NewCcmEstimateDialog.prototype.openInstructions = function() {
+        Inte.treering.collapseTools();
+
         let content = document.getElementById("PithEstimate-ccmInstructionDialog-template").innerHTML;
-        this.dialog.setContent(content);
+        let template = Handlebars.compile(content);
+        let html = template({ defaultMovement: Inte.newCcmEstimate.movementAmount });
+
+        this.dialog.setContent(html);
         this.dialog.open();
         this.dialogOpen = true;
+        
+        this.createEventListeners();
     }
 
     /**
@@ -1032,5 +1044,15 @@ function NewCcmEstimateDialog(Inte) {
     NewCcmEstimateDialog.prototype.close = function() {
         this.dialog.close();
         this.dialogOpen = false;
+    }
+
+    NewCcmEstimateDialog.prototype.createEventListeners = function() {
+        $("#PithEstimate-movement-input").on("input", () => {
+            Inte.newCcmEstimate.movementAmount = $("#PithEstimate-movement-input").val();
+        });
+
+        $("#PithEstimate-zoomMultiplier-btn").on("change", () => {
+            Inte.newCcmEstimate.disableZoomMultiplier = $("#PithEstimate-zoomMultiplier-btn").is(":checked");
+        });
     }
 }

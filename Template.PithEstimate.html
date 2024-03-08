@@ -93,7 +93,18 @@
             <b>1)</b> Click to place estimated location of pith. 
         </p>
         <p class="PithEstimate-instruction-text">
-            <b>2)</b> Use keyboard and WASD to move pith location estimate in order to align concentric circles with inner rings. Amount of movement can be adjusted in millimeters. 
+            <b>2)</b> Use keyboard and WASD to move pith location estimate in order to align concentric circles with inner rings. 
+            Zooming in will lessen the amount of movement.
+            <div>
+                <span style="font-style: italic;">Movement amount: </span>
+                <input type="number" style="width:70px; text-align: right;" value="{{defaultMovement}}" step="0.001" id="PithEstimate-movement-input">
+                <span> mm</span>
+            </div>
+            <div>
+                <div class="PithEstimate-zoomMultiplier-toggle">
+                    <label><input type="checkbox" id="PithEstimate-zoomMultiplier-btn"><span>Do not adjust movement based on zoom level.</span></label>
+                </div>
+            </div>
         </p>
         <p class="PithEstimate-instruction-text">
             <b>3)</b> Click to confirm preferred location of pith. 
