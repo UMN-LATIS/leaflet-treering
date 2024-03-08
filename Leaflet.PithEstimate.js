@@ -816,6 +816,7 @@ function NewCcmEstimate(Inte) {
     this.radius_unCorrected = null;
     this.innerMeasurementsArr = [];
     this.innerRadiiArr = [];
+    this.innerEstimatedRadiiArr = [];
     this.numShownCircles = 5;
     
     this.disableZoomMultiplier = false;
@@ -876,6 +877,7 @@ function NewCcmEstimate(Inte) {
             // After point is placed:
             this.findCircleAnchors();
             this.findInnerMostRadius();
+            this.findUncorrectedEstimatedRadii();
             this.createCcmVisuals();
             this.enablePithLocationMovement();
             this.createConfirmEventListeners();
@@ -926,13 +928,23 @@ function NewCcmEstimate(Inte) {
     }
 
     NewCcmEstimate.prototype.findUncorrectedEstimatedRadii = function() {
-        let allDistances = Inte.treering.helper.findDistances();
-        let twDistances = allDistances.tw.y;
+        let pt_A, pt_B, dist, ptDistances = [];
+        for (let i = 1; i < this.innerMeasurementsArr.length; i++) {
+            pt_A = this.innerMeasurementsArr[i-1];
+            pt_B = this.innerMeasurementsArr[i];
+            dist = this.findUncorrectedDistance(pt_A.latLng, pt_B.latLng);
+            ptDistances.push(dist);
+        }
 
-        let totalGrowth = twDistances.slice(0, numYears).reduce((partialSum, x) => partialSum + x, 0);
-        let growthRate = totalGrowth / numYears;
+        let totalGrowth = ptDistances.reduce((partialSum, x) => partialSum + x, 0);
+        let growthRate = totalGrowth / this.numShownCircles;
 
-        // TODO - Create inner estimated radius till negative 
+        this.innerEstimatedRadiiArr = [];
+        let newRadiusEstimate = this.radius_unCorrected;
+        while (newRadiusEstimate > 0) {
+            newRadiusEstimate -= growthRate;
+            this.innerEstimatedRadiiArr.push(newRadiusEstimate);
+        }
     }
 
     NewCcmEstimate.prototype.createCcmVisuals = function() {
@@ -945,9 +957,10 @@ function NewCcmEstimate(Inte) {
         // Draw circles orginating from pith to measurement points: 
         Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr);
 
-        // TODO - Draw circles from pith to estimated rings: 
+        // Draw circles from pith to estimated rings: 
+        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr);
 
-        /**
+        /** TODO
          * For example, I wonder about showing concentric rings inside the inner measurement point. 
          * Could pull growth rate from the number of rings selected by the user.
          * Could also show concentric rings for all the measurements made, with three colors: inner color (darkest?) for estimated rings missing; 
@@ -969,6 +982,7 @@ function NewCcmEstimate(Inte) {
         this.innerRadiiArr = this.findUncorrectedRadii();
         Inte.estimateVisualAssets.clearCircles();
         Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr);
+        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr);
     }
 
     NewCcmEstimate.prototype.findUncorrectedDistance = function(latLng1, latLng2) {
@@ -1080,6 +1094,7 @@ function NewCcmEstimateDialog(Inte) {
 
                 Inte.newCcmEstimate.findCircleAnchors();
                 Inte.newCcmEstimate.findInnerMostRadius();
+                Inte.newCcmEstimate.findUncorrectedEstimatedRadii();
                 Inte.newCcmEstimate.createCcmVisuals();
             }
         })
