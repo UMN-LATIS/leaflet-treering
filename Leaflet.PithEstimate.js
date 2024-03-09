@@ -959,10 +959,10 @@ function NewCcmEstimate(Inte) {
         //Inte.estimateVisualAssets.connectMarkers(this.pithLatLng, this.innerMostRadiusLatLng);
 
         // Draw circles orginating from pith to measurement points: 
-        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr);
+        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr, "#49c4d9");
 
         // Draw circles from pith to estimated rings: 
-        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr, "#49c4d9");
+        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr);
 
         /** TODO
          * For example, I wonder about showing concentric rings inside the inner measurement point. 
@@ -988,8 +988,8 @@ function NewCcmEstimate(Inte) {
         this.findUncorrectedEstimatedRadii();
 
         Inte.estimateVisualAssets.clearCircles();
-        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr);
-        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr, "#49c4d9");
+        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr, "#49c4d9");
+        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr);
     }
 
     NewCcmEstimate.prototype.findUncorrectedDistance = function(latLng1, latLng2) {
@@ -1048,7 +1048,7 @@ function NewCcmEstimate(Inte) {
  */
 function NewCcmEstimateDialog(Inte) {
     let minWidth = 320;
-    let minHeight = 300;
+    let minHeight = 424;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     

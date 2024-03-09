@@ -91,37 +91,39 @@
         </p>
         <p class="PithEstimate-instruction-text">
             <b>1)</b> Click to place estimated location of pith. 
-
-            <div>
-                <span style="font-style: italic;">Shown circle amount: </span>
-                <input type="number" style="width:50px; text-align: right;" min="2" value="5" id="PithEstimate-numShownCircles-input">
-            </div>
         </p>
         <p class="PithEstimate-instruction-text">
             <b>2)</b> Use keyboard and WASD to move pith location estimate in order to align concentric circles with inner rings. 
             Zooming in will lessen the amount of movement.
-            <div>
-                <span style="font-style: italic;">Movement amount: </span>
-                <input type="number" style="width:70px; text-align: right;" value="{{defaultMovement}}" step="0.001" id="PithEstimate-movement-input">
-                <span> mm</span>
-            </div>
-            <div>
-                <div class="PithEstimate-zoomMultiplier-toggle">
-                    <label><input type="checkbox" id="PithEstimate-zoomMultiplier-btn"><span>Do not adjust movement based on zoom level.</span></label>
-                </div>
-            </div>
         </p>
         <p class="PithEstimate-instruction-text">
             <b>3)</b> Click to confirm preferred location of pith. 
         </p>
-        <p class="PithEstimate-instruction-text">
-            <b>4)</b> 
-        </p>
-        <p class="PithEstimate-instruction-text">
-            <b>5)</b> 
-        </p>
-        <p class="PithEstimate-instruction-text">
-            <b>6)</b> 
-        </p>
+        
+        <div class="PithEstimate-ccmOptions-div" style="padding-top: 8px; border-top: 2px solid #d9d9d9;">
+            <span style="font-style: italic;">Shown circle amount: </span>
+            <input type="number" style="width:50px; text-align: right;" min="2" value="5" id="PithEstimate-numShownCircles-input">
+        </div>
+        <div class="PithEstimate-ccmOptions-div">
+            <span style="font-style: italic;">Movement amount: </span>
+            <input type="number" style="width:70px; text-align: right;" value="{{defaultMovement}}" step="0.001" id="PithEstimate-movement-input">
+            <span> mm</span>
+        </div>
+        <div class="PithEstimate-ccmOptions-div" style="margin-bottom: 6px;"> 
+            <span style="font-style: italic;">Growth rate function: </span><br>
+            <input type="radio" id="PithEstimate-linear-function" name="PithEstimate-function-type"> 
+            <label for="PithEstimate-linear-function">Linear</label><br>
+
+            <input type="radio" id="PithEstimate-exponential-function" name="PithEstimate-function-type"> 
+            <label for="PithEstimate-exponential-function">Exponential</label><br>
+
+            <input type="radio" id="PithEstimate-saturating-function" name="PithEstimate-function-type">
+            <label for="PithEstimate-saturating-function">Saturating</label><br> 
+        </div>
+        <div class="PithEstimate-ccmOptions-div"> 
+            <div class="PithEstimate-zoomMultiplier-toggle">
+                <label><input type="checkbox" id="PithEstimate-zoomMultiplier-btn"><span>Do not adjust movement based on zoom level.</span></label>
+            </div>
+        </div>
     </div>  
 </script>
