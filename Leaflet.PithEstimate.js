@@ -205,12 +205,13 @@ function EstimateVisualAssets(Inte) {
      * 
      * @param {object} center - Center location of all circles (Leaflet latLng).
      * @param {array} radiiArr - Array of all radii for circles. 
+     * @param {string} [color = "#fff"] - Color of circles.
      */
-    EstimateVisualAssets.prototype.createCircles = function(center, radiiArr) {
+    EstimateVisualAssets.prototype.createCircles = function(center, radiiArr, color = "#fff") {
         let circleOptions = {
             radius: null, 
             fill: false, 
-            color: "#fff",
+            color: color,
             opacity: 0.6,
             // dashArray: "20, 40",
             weight: 6
@@ -940,8 +941,11 @@ function NewCcmEstimate(Inte) {
         let growthRate = totalGrowth / this.numShownCircles;
 
         this.innerEstimatedRadiiArr = [];
+        let prevRadiusEstimate = Number.MAX_SAFE_INTEGER;
         let newRadiusEstimate = this.radius_unCorrected;
-        while (newRadiusEstimate > 0) {
+        let err = 1*(10**(-6));
+        while (newRadiusEstimate > 0 && (prevRadiusEstimate - newRadiusEstimate > err)) {
+            prevRadiusEstimate = newRadiusEstimate;
             newRadiusEstimate -= growthRate;
             this.innerEstimatedRadiiArr.push(newRadiusEstimate);
         }
@@ -958,7 +962,7 @@ function NewCcmEstimate(Inte) {
         Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr);
 
         // Draw circles from pith to estimated rings: 
-        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr);
+        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr, "#49c4d9");
 
         /** TODO
          * For example, I wonder about showing concentric rings inside the inner measurement point. 
@@ -979,10 +983,13 @@ function NewCcmEstimate(Inte) {
         Inte.estimateVisualAssets.newMarker(this.pithLatLng);
 
         // Reload circles: 
+        this.findInnerMostRadius();
         this.innerRadiiArr = this.findUncorrectedRadii();
+        this.findUncorrectedEstimatedRadii();
+
         Inte.estimateVisualAssets.clearCircles();
         Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerRadiiArr);
-        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr);
+        Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr, "#49c4d9");
     }
 
     NewCcmEstimate.prototype.findUncorrectedDistance = function(latLng1, latLng2) {
@@ -1090,12 +1097,8 @@ function NewCcmEstimateDialog(Inte) {
             
             // Reload circle measurements and visuals: 
             if (Inte.newCcmEstimate.pithLatLng) {
-                Inte.estimateVisualAssets.clearCircles();
-
                 Inte.newCcmEstimate.findCircleAnchors();
-                Inte.newCcmEstimate.findInnerMostRadius();
-                Inte.newCcmEstimate.findUncorrectedEstimatedRadii();
-                Inte.newCcmEstimate.createCcmVisuals();
+                Inte.newCcmEstimate.reloadCcmVisuals();
             }
         })
 
