@@ -101,24 +101,26 @@
         </p>
         
         <div class="PithEstimate-ccmOptions-div" style="padding-top: 8px; border-top: 2px solid #d9d9d9;">
-            <span style="font-style: italic;">Shown circle amount: </span>
+            <span style="font-style: italic;">Number of rings used for estimation: </span>
             <input type="number" style="width:50px; text-align: right;" min="2" value="5" id="PithEstimate-numShownCircles-input">
         </div>
         <div class="PithEstimate-ccmOptions-div">
-            <span style="font-style: italic;">Movement amount: </span>
+            <span style="font-style: italic;">Pith location movement amount: </span>
             <input type="number" style="width:70px; text-align: right;" value="{{defaultMovement}}" step="0.001" id="PithEstimate-movement-input">
             <span> mm</span>
         </div>
         <div class="PithEstimate-ccmOptions-div" style="margin-bottom: 6px;"> 
             <span style="font-style: italic;">Growth rate function: </span><br>
-            <input type="radio" id="PithEstimate-linear-function" name="PithEstimate-function-type"> 
+            <input type="radio" id="PithEstimate-linear-function" name="PithEstimate-function-type" checked> 
             <label for="PithEstimate-linear-function">Linear</label><br>
 
             <input type="radio" id="PithEstimate-exponential-function" name="PithEstimate-function-type"> 
-            <label for="PithEstimate-exponential-function">Exponential</label><br>
+            <label for="PithEstimate-exponential-function">Negative Exponential (Cook, 2001)</label><br>
 
-            <input type="radio" id="PithEstimate-saturating-function" name="PithEstimate-function-type">
-            <label for="PithEstimate-saturating-function">Saturating</label><br> 
+            <!-- TODO: ADD TABLE WITH DISTANCE AND RING COUNT ESTIMATES -->
+
+            <!-- <input type="radio" id="PithEstimate-saturating-function" name="PithEstimate-function-type">
+            <label for="PithEstimate-saturating-function">Saturating</label><br>  -->
         </div>
         <div class="PithEstimate-ccmOptions-div"> 
             <div class="PithEstimate-zoomMultiplier-toggle">

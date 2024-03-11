@@ -822,6 +822,10 @@ function NewCcmEstimate(Inte) {
     
     this.disableZoomMultiplier = false;
     this.movementAmount = 0.001;
+    // There are 2 growth rate functions: 
+    // 1) Linear (default)
+    // 2) Exponential
+    this.growthRateFunction = 1
 
     // Keyboard shortcut: 
     L.DomEvent.on(window, 'keydown', (e) => {
@@ -891,7 +895,7 @@ function NewCcmEstimate(Inte) {
         let measuredSubAnnually = Inte.treering.measurementOptions.subAnnual;
 
         let points = JSON.parse(JSON.stringify(Inte.treering.data.points));
-        if (measuredBackwards) points = points.reverse();
+        if (measuredBackwards) points = points.reverse().slice(1); // Skip first pseudo-start point. 
 
         this.innerMeasurementsArr = [];
         for (let i = 0; i < points.length && this.innerMeasurementsArr.length < this.numShownCircles; i++) {
@@ -938,15 +942,38 @@ function NewCcmEstimate(Inte) {
         }
 
         let totalGrowth = ptDistances.reduce((partialSum, x) => partialSum + x, 0);
-        let growthRate = totalGrowth / this.numShownCircles;
+        let n = this.numShownCircles;
+
+        let growthRate = function(t) {return 0}
+        switch(this.growthRateFunction) {
+            case 1: // Linear function
+                growthRate = function(t) {
+                    let m = totalGrowth / n;
+                    return m*t;
+                }
+                break;
+            case 2: // Exponential (constants from Fritts 2001)
+                growthRate = function(t) {
+                    let a = 0;
+                    let b = 0;
+                    let k = 0;
+
+                    return a * Math.exp(b*t) + k;
+                }
+        }
 
         this.innerEstimatedRadiiArr = [];
         let prevRadiusEstimate = Number.MAX_SAFE_INTEGER;
         let newRadiusEstimate = this.radius_unCorrected;
+
         let err = 1*(10**(-6));
+        let t = 0;
         while (newRadiusEstimate > 0 && (prevRadiusEstimate - newRadiusEstimate > err)) {
+            t++;
+
             prevRadiusEstimate = newRadiusEstimate;
-            newRadiusEstimate -= growthRate;
+            newRadiusEstimate = this.radius_unCorrected - growthRate(t);
+
             this.innerEstimatedRadiiArr.push(newRadiusEstimate);
         }
     }
@@ -963,18 +990,6 @@ function NewCcmEstimate(Inte) {
 
         // Draw circles from pith to estimated rings: 
         Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr);
-
-        /** TODO
-         * For example, I wonder about showing concentric rings inside the inner measurement point. 
-         * Could pull growth rate from the number of rings selected by the user.
-         * Could also show concentric rings for all the measurements made, with three colors: inner color (darkest?) for estimated rings missing; 
-         * middle color (middl), for the number of rings used to estimate the rings missing; outer color (lightest) for the rings/ growth 
-         * rate not used in the selection.
-         * Extending from that, I can also imagine allowing the user to pick the trajectory of growth: 
-         * Linear interpolation; declining ring width (exponential, as expected from conifers), or increasing/saturating function ring width 
-         * (as expected from ring porous oaks).
-         */
-
     }
 
     NewCcmEstimate.prototype.reloadCcmVisuals = function() {
@@ -1048,7 +1063,7 @@ function NewCcmEstimate(Inte) {
  */
 function NewCcmEstimateDialog(Inte) {
     let minWidth = 320;
-    let minHeight = 424;
+    let minHeight = 410;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
@@ -1100,7 +1115,21 @@ function NewCcmEstimateDialog(Inte) {
                 Inte.newCcmEstimate.findCircleAnchors();
                 Inte.newCcmEstimate.reloadCcmVisuals();
             }
-        })
+        });
+
+        $("#PithEstimate-linear-function").on("change", () => {
+            if ($("#PithEstimate-linear-function").is(":checked")) {
+                Inte.newCcmEstimate.growthRateFunction = 1; 
+                Inte.newCcmEstimate.reloadCcmVisuals();
+            }
+        });
+
+        $("#PithEstimate-exponential-function").on("change", () => {
+            if ($("#PithEstimate-exponential-function").is(":checked")) {
+                Inte.newCcmEstimate.growthRateFunction = 2; 
+                Inte.newCcmEstimate.reloadCcmVisuals();
+            }
+        });
 
         $("#PithEstimate-movement-input").on("input", () => {
             Inte.newCcmEstimate.movementAmount = $("#PithEstimate-movement-input").val();
