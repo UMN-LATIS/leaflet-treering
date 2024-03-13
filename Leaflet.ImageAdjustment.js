@@ -21,11 +21,8 @@ function ImageAdjustment(Inte) {
       () => { this.disable() }
     );
   
+    // List of presets, can be expanded
     let presetList = [
-    {
-      presetName: "Griffin",
-      presetID: "Griffin"
-    },
     {
       presetName: "User 1",
       presetID: "User-1"
@@ -36,6 +33,7 @@ function ImageAdjustment(Inte) {
     }
     ];
 
+    // List of filters & their properties
     let filterList = [
       {
         filterType: "brightness",
@@ -114,12 +112,24 @@ function ImageAdjustment(Inte) {
       }
      ];
 
+     // Stores info of whether or not image is inverted (filter determined by bool)
      let invert = {
       value: false,
-      flipValue: function() {
+      flipValue: () => {
         invert.value = !invert.value;
       }
      }
+
+     //Stores info of whether or not preset save checkbox is on or off
+     let presetSaveCheck = {
+      value: false,
+      flipValue: () => {
+        presetSaveCheck.value = !presetSaveCheck.value
+      },
+     }
+
+     //List containing image settings of presets if saved
+     this.presets = [];
   
     // handlebars from templates.ImageAdjustment.html
     let content = document.getElementById("ImageAdjustment-dialog-template").innerHTML;
@@ -135,12 +145,16 @@ function ImageAdjustment(Inte) {
       'className': 'image-adjust-custom'
     }).setContent(html).addTo(Inte.treering.viewer);
 
+    /**
+     * Applies filter settings to image
+     * @function
+     */
     ImageAdjustment.prototype.updateFilters = function() {
-      updateCSSFilterString = ""
+      updateCSSFilterString = "";
       let invertValue = (invert.value) ? "1" : "0";
       updateCSSFilterString += "invert(" + invertValue + ")";
 
-      let updateGLFilterObjs = []
+      let updateGLFilterObjs = [];
       
       for(filter of filterList) {
         var slider = document.getElementById(filter.sliderID);
@@ -158,19 +172,23 @@ function ImageAdjustment(Inte) {
       Inte.treering.baseLayer['GL Layer'].setKernelsAndStrength(updateGLFilterObjs);
     };
 
-    ImageAdjustment.prototype.watchFilter = function(filterName) {
+    /**
+     * Creates listeners to check for input of sliders and number inputs
+     * @param {String} filterName - Name of filter
+     */
+    ImageAdjustment.prototype.createFilterListener = function(filterName) {
       let sliderID = filterName.toLowerCase() + "-slider";
       let inputID = filterName.toLowerCase() + "-input";
 
       let slider = document.getElementById(sliderID);
       let input = document.getElementById(inputID);
 
-      slider.oninput = function () {
+      $("#" + sliderID).on("input", () => {
         input.value = slider.value;
         Inte.imageAdjustment.updateFilters();
-      }
+      });
 
-      input.oninput = function() {
+      $("#" + inputID).on("input", () => {
         // checks if input is between min and max, slider & input reset to default value when input is invalid
         if ((parseFloat(input.value) >= parseFloat(input.min) && parseFloat(input.value) <= parseFloat(input.max)) && !(input.value == "")) {
           slider.value = input.value;
@@ -178,15 +196,57 @@ function ImageAdjustment(Inte) {
           slider.value = input.defaultValue;
         }
         Inte.imageAdjustment.updateFilters();
-      }
+      });
     }
+
+    /**
+     * Creates listeners for user presets
+     * @param {Object} preset - from presetList
+     * @param {Integer} presetIndex - Index of preset in presetList and this.presets
+     * @param {Object} saveBox - HTML element of preset save checkbox
+     */
+    ImageAdjustment.prototype.createPresetListeners = function(preset, presetIndex, saveBox) {
+      $("#" + preset.presetID).on("click", () => {
+        //Saves preset to button clicked if checkbox is checked
+        if (presetSaveCheck.value) {
+          let presetSettings = {}
+          for (filter of filterList) {
+            presetSettings[filter.filterType] = document.getElementById(filter.sliderID).value;
+          }
+          presetSettings["invert"] = invert.value;
+          this.presets[presetIndex] = presetSettings;
+
+          presetSaveCheck.flipValue();
+          saveBox.style.color = "black";
+        } 
+        
+        //Applies saved settings if they have previously been saved (does nothing otherwise)
+        else if (this.presets.length != 0 && this.presets[presetIndex].length != 0) {
+          for(filter of filterList) {
+            let sliderID = filter.filterType.toLowerCase() + "-slider";
+            let inputID = filter.filterType.toLowerCase() + "-input";
+            let slider = document.getElementById(sliderID);
+            let input = document.getElementById(inputID);
   
+            slider.value = this.presets[presetIndex][filter.filterType];
+            input.value = slider.value;
+          }
+          invert.value = this.presets[presetIndex]["invert"];
+          this.updateFilters();
+        }
+      });
+    }
+    
+    /**
+     * Creates event listeners for all buttons/sliders in image settings dialog
+     */
     ImageAdjustment.prototype.createEventListeners = function() {
       //Close view if user clicks anywhere outside of slider window
       $(Inte.treering.viewer.getContainer()).on("click",() => {
         this.disable();
       });
 
+      //Resets image settings to defauts
       $("#image-adjustment-reset-button").on("click", () => {
         for(filter of filterList) {
           let sliderID = filter.filterType.toLowerCase() + "-slider";
@@ -201,20 +261,74 @@ function ImageAdjustment(Inte) {
         this.updateFilters();
       });
 
+      //Inverts image
       $("#image-adjustment-invert-button").on("click", () => {
         invert.flipValue();
         this.updateFilters();
       });
-    }
 
-    ImageAdjustment.prototype.createPresetListeners = function(presetName) {
-      let presetID = presetName.replace(" ", "-");
-      let preset = document.getElementById(presetID);
+      //Creates filter listener for all filters
+      for(filter of filterList) {
+        this.createFilterListener(filter.filterType);
+      };
 
-      preset.onclick = function () {
-        console.log(presetName);
+      //Changes color/highlighting of save checkbox
+      let saveBox = document.getElementById("preset-save-checkbox")
+      $("#preset-save-checkbox").on("click", () => {
+        presetSaveCheck.flipValue();
+        if (presetSaveCheck.value) {
+          saveBox.style.color = "#0c8a1c";
+          saveBox.style.backgroundColor = "#90EE90";
+        } else {
+          saveBox.style.color = "black";
+          saveBox.style.backgroundColor = "#C0C0C0";
+        }
+      });
+
+      $("#preset-save-checkbox").on("mouseover", () => {
+        if (presetSaveCheck.value) {
+          saveBox.style.backgroundColor = "#90EE90";
+        } else {
+          saveBox.style.backgroundColor = "#C0C0C0";
+        }
+      });
+
+      $("#preset-save-checkbox").on("mouseout", () => {
+        saveBox.style.backgroundColor = "transparent";
+      });
+
+      //Creates listeners for all presets
+      let presetIndex = 0;
+      for (preset of presetList) {
+        this.createPresetListeners(preset, presetIndex, saveBox);
+        presetIndex++;
       }
+      
+      // add comment
+      $("#Griffin").on("click", () => {
+        for(filter of filterList) {
+          let sliderID = filter.filterType.toLowerCase() + "-slider";
+          let inputID = filter.filterType.toLowerCase() + "-input";
+          let slider = document.getElementById(sliderID);
+          let input = document.getElementById(inputID);
+
+          if (sliderID == "emboss-slider") {
+            slider.value = 0.15;
+            input.value = 0.15;
+          } else if (sliderID == "sharpness-slider") {
+            slider.value = 0.2;
+            input.value = 0.2;
+          } else {
+            slider.value = slider.defaultValue;
+            input.value = input.defaultValue;            
+          }
+        }
+        invert.value = false;
+        this.updateFilters(); 
+      });
     }
+
+
 
     /**
      * Open the filter sliders dialog
@@ -231,14 +345,6 @@ function ImageAdjustment(Inte) {
         this.createEventListeners();
         this.eventListenersEnabled = true;
       }
-
-      for(filter of filterList) {
-        this.watchFilter(filter.filterType);
-      };
-
-      for(preset of presetList) {
-        this.createPresetListeners(preset.presetName);
-      }
     };
   
     /**
@@ -254,5 +360,12 @@ function ImageAdjustment(Inte) {
       this.btn.state('inactive');
       this.open = false;
     };
-  
+
+    ImageAdjustment.prototype.getJSON = function() {
+      return this.presets;
+    };
+
+    ImageAdjustment.prototype.loadJSON = function(JSONdata) {
+      this.presets = JSON.parse(JSON.stringify(JSONdata));
+    }
   }

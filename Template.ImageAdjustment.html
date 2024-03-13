@@ -1,14 +1,16 @@
 <script id="ImageAdjustment-dialog-template" type="text/x-handlebars-template">
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; padding-left: 0px; height: 40px;">
         <h4 class="image-adjustment-header" style="font-weight: bold; margin: 0px; font-size: 18px;">Image Settings</h4>
-        <button id="image-adjustment-invert-button" class="mdc-button mdc-button--unelevated mdc-button-compact" style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 25px; width: 50px; font-size: 14px; display:block;">Invert</button>
-        <button id="image-adjustment-reset-button" class="mdc-button mdc-button--unelevated mdc-button-compact" style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 25px; width: 50px; font-size: 14px; display:block;">Reset</button>       
+        <button id="image-adjustment-invert-button" class="mdc-button mdc-button--unelevated mdc-button-compact">Invert</button>
+        <button id="image-adjustment-reset-button" class="mdc-button mdc-button--unelevated mdc-button-compact">Reset</button>       
     </div>    
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 5px; padding-left: 0px; height: 40px;">
-        <p style="font-size: medium; font-weight: bold; margin: 0;">Presets:</p>
+        <p style="font-size: 14px; font-weight: bold; margin: 0;">Presets:</p>
+        <button id= "Griffin" class="mdc-button mdc-button--unelevated mdc-button-compact"  style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 25px; width: 48px; font-size: 14px; display:block;">Griffin</button>
         {{#each presetList}}
-        <button id={{this.presetID}} class="mdc-button mdc-button--unelevated mdc-button-compact"  style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 25px; width: 55px; font-size: 14px; display:block;">{{this.presetName}}</button>
+        <button id={{this.presetID}} class="mdc-button mdc-button--unelevated mdc-button-compact"  style="margin-right: 0px; margin-top: 5px; margin-bottom: 5px; padding: 0px; height: 25px; width: 48px; font-size: 14px; display:block;">{{this.presetName}}</button>
         {{/each}}
+        <i type="checkbox" id="preset-save-checkbox" class="fa fa-floppy-o fa-2x" aria-hidden="true"></i>
     </div>    
     {{#each filterList}}
     <label class="image-adjustment-slider-label">{{this.label}}</label>
