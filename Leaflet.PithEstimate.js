@@ -26,6 +26,11 @@ function PithEstimateInterface(Lt) {
 
     this.btns = [this.newGeoEstimate.btn, this.newCcmEstimate.btn];
     this.tools = [this.newGeoEstimate, this.breakGeoEstimate, this.newCcmEstimate];
+
+    let objectId = "5b228a4b3f3cb12ab14d32e5";
+    $.getJSON('https://dendro.elevator.umn.edu/asset/viewAsset/' + objectId + '/true', function(data) {
+        console.log('Data received:', data);
+    })
 }
 
 /**
@@ -1085,6 +1090,13 @@ function NewCcmEstimateDialog(Inte) {
      * @function
      */
     NewCcmEstimateDialog.prototype.openInstructions = function() {
+        let distances = Inte.treering.helper.findDistances();
+        let totalDistance = distances.tw.y.reduce((sum, x) => {return sum + x}, 0);
+
+        let dbh = parseFloat(Inte.treering.meta.dbh)*10;
+        this.length = ((dbh/2) - totalDistance).toFixed(3);
+        this.percentage = (this.length / (dbh/2) * 100).toFixed(1);
+
         Inte.treering.collapseTools();
 
         let content = document.getElementById("PithEstimate-ccmInstructionDialog-template").innerHTML;
@@ -1096,6 +1108,8 @@ function NewCcmEstimateDialog(Inte) {
                 numYearEst: "NA",
                 numShownCircles: 5,
                 innerYearEst: "NA",
+                missingRadiusLen: this.length,
+                missingRadiusPercent: this.percentage,
             });
 
         this.dialog.setContent(html);
@@ -1162,6 +1176,8 @@ function NewCcmEstimateDialog(Inte) {
                 numYearEst: Inte.newCcmEstimate.numInnerYearEst,
                 numShownCircles: Inte.newCcmEstimate.numShownCircles,
                 innerYearEst: Inte.newCcmEstimate.innerYearEst,
+                missingRadiusLen: this.length,
+                missingRadiusPercent: this.percentage,
             });
 
         this.dialog.setContent(html);

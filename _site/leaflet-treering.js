@@ -14,7 +14,7 @@
  * @param {string} basePath - this is a path to the treering image folder
  * @param {object} options -
  */
-function LTreering (viewer, basePath, options, base_layer, gl_layer) {
+function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
   this.viewer = viewer;
   this.basePath = basePath;
 
@@ -24,7 +24,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   var latData = urlParams.get("lat");
   var lngData = urlParams.get("lng");
   if (latData && lngData) {
-    setTimeout(function() {find
+    setTimeout(function() {
       viewer.setView([latData, lngData], 16); //  max zoom level is 18
     }, 500);
   }
@@ -39,6 +39,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     'popoutUrl': options.popoutUrl || null,
     'assetName': options.assetName || 'N/A',
     'attributesObjectArray': options.attributesObjectArray || [],
+    'dbh': fullJSON.dbh_33[0].fieldContents || 0,
   }
 
   this.preferences = { // catch for if forwardDirection or subAnnual are undefined/null on line ~2830

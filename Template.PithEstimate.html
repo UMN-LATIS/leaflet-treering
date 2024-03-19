@@ -132,14 +132,12 @@
             </div>
         </div>
 
-        <table class="PithEstimate-table">
-            <tr><th>Pith Distance</th><th>Num. Years</th><th>Inner Year Est.</th></tr>
-            <tr><td>{{pithDistance}} mm</td><td>{{numYearEst}}</td><td>{{innerYearEst}}</td></tr>
-        </table>
-
-        <table class="PithEstimate-table">
-            <tr><th>Percentage of Age Estimated</th><th>Radius Length Estimation</th></tr>
-            <tr><td>0</td><td>0</td></tr>
+        <table class="PithEstimate-table PithEstimate-vertical-headers">
+            <tr><th>Pith Distance</th><td>{{pithDistance}} mm</td></tr>
+            <tr><th style="background-color: #c2e07d;">Number Years Estimated</th><td>{{numYearEst}}</td></tr>
+            <tr><th>Inner Year Estimate</th><td>{{innerYearEst}}</td></tr>
+            <tr><th style="background-color: #c2e07d;">Missing Radius Length</th><td>{{missingRadiusLen}} mm</td></tr>
+            <tr><th>Missing Radius Percentage</th><td>{{missingRadiusPercent}} %</td></tr>
         </table>
 
         <div class="PithEstimate-sub-container">
