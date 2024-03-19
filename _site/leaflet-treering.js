@@ -126,8 +126,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.dataAccessInterface = new DataAccessInterface(this);
 
   this.baseLayer = {
+    'GL Layer': gl_layer,
     'Tree Ring': base_layer,
-    'GL Layer': gl_layer
   };
 
   this.overlay = {
@@ -154,6 +154,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     $(map.getContainer()).css('cursor', 'default');
 
     L.control.layers(this.baseLayer, this.overlay).addTo(this.viewer);
+    $(".leaflet-control-layers-selector")[0].click();
 
     // if popout is opened display measuring tools
     if (window.name.includes('popout')) {
@@ -4876,8 +4877,6 @@ function Panhandler(La) {
           panArray = [adjustedPanAmount, 0];
           break;
       }
-
-      console.log(panArray)
       map.panBy(panArray, {
         animate: true,
         delay: 0
