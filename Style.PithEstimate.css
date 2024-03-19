@@ -30,7 +30,7 @@
 }
 
 .PithEstimate-table tr:nth-child(even) {
-    background-color: #e6e5e5;
+    background-color: #f1f1f1;
 }
 
 .PithEstimate-table tr:hover {
@@ -92,11 +92,11 @@
     cursor: pointer;
 }
 
-#PithEstimate-confirm-btn {
+.PithEstimate-confirm-btn {
     background-color: #71b54c;
 }
 
-#PithEstimate-confirm-btn:hover {
+.PithEstimate-confirm-btn:hover {
     background-color: #5f9740;
 }
 

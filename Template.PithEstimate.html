@@ -43,7 +43,7 @@
         </div>
 
         <div class="PithEstimate-sub-container">
-            <div id="PithEstimate-confirm-btn" class="PithEstimate-big-btn">
+            <div id="PithEstimate-geoConfirm-btn" class="PithEstimate-big-btn PithEstimate-confirm-btn">
                 C o n f i r m
             </div>
         </div>
@@ -84,51 +84,67 @@
 <script id="PithEstimate-ccmInstructionDialog-template" type="text/x-handlebars-template">
     <div class="PithEstimate-container">
         <p class="PithEstimate-title">
-            Concentric Circles Inner Year Estimate:
+            Pith Offset Estimation:
         </p>
         <p class="PithEstimate-instruction-text">
-            Pith offset estimation using the Concentric Circles approach. text text text
+            Estimate pith offset dynamically using concentric circles, after Applequist 1958, <em>Journal of Forestry.</em>
         </p>
         <p class="PithEstimate-instruction-text">
-            <b>1)</b> Click to place estimated location of pith. 
+            <b>1)</b> Click to place the estimated pith location marker. 
         </p>
         <p class="PithEstimate-instruction-text">
-            <b>2)</b> Use keyboard and WASD to move pith location estimate in order to align concentric circles with inner rings. 
-            Zooming in will lessen the amount of movement.
+            <b>2)</b> Move pith marker using WASD keys, carefully aligning circle curvature to match curvature of annual ring boundaries.
         </p>
         <p class="PithEstimate-instruction-text">
-            <b>3)</b> Click to confirm preferred location of pith. 
+            <b>3)</b> Adjust the number of rings from which the growth rate is calculated, as needed. 
+            *Results appear in the table below; the default of ten rings is only a suggested starting place.
         </p>
+        <p class="PithEstimate-instruction-text">
+            <b>4)</b> Click confirm to update metadata.
+        </p>
+        
+        <div style="background-color: #f3f3f3; border-radius: 10px; margin-bottom: 8px; padding: 6px;">
+            <div class="PithEstimate-ccmOptions-div">
+                <span style="font-style: italic;">Number of rings used for estimation: </span>
+                <input type="number" style="width:50px; text-align: right;" min="2" value="{{numShownCircles}}" id="PithEstimate-numShownCircles-input">
+            </div>
+            <div class="PithEstimate-ccmOptions-div">
+                <span style="font-style: italic;">Pith location movement amount: </span>
+                <input type="number" style="width:70px; text-align: right;" value="{{defaultMovement}}" step="0.001" id="PithEstimate-movement-input">
+                <span> mm</span>
+            </div>
+            <div class="PithEstimate-ccmOptions-div" style="margin-bottom: 6px;"> 
+                <span style="font-style: italic;">Growth rate function: <b>Linear</b> </span><br>
+                <!--
+                <input type="radio" id="PithEstimate-linear-function" name="PithEstimate-function-type" checked> 
+                <label for="PithEstimate-linear-function">Linear</label>
+                <br>
+                <input type="radio" id="PithEstimate-exponential-function" name="PithEstimate-function-type"> 
+                <label for="PithEstimate-exponential-function">Negative Exponential (Cook, 2001)</label>
+                <br>
+                <input type="radio" id="PithEstimate-saturating-function" name="PithEstimate-function-type">
+                <label for="PithEstimate-saturating-function">Saturating</label><br>  -->
+            </div>
+            <div class="PithEstimate-ccmOptions-div"> 
+                <div class="PithEstimate-zoomMultiplier-toggle">
+                    <label><input type="checkbox" id="PithEstimate-zoomMultiplier-btn"><span>Do not adjust movement based on zoom level.</span></label>
+                </div>
+            </div>
+        </div>
 
         <table class="PithEstimate-table">
             <tr><th>Pith Distance</th><th>Num. Years</th><th>Inner Year Est.</th></tr>
             <tr><td>{{pithDistance}} mm</td><td>{{numYearEst}}</td><td>{{innerYearEst}}</td></tr>
         </table>
-        
-        <div class="PithEstimate-ccmOptions-div" style="padding-top: 8px; border-top: 2px solid #d9d9d9;">
-            <span style="font-style: italic;">Number of rings used for estimation: </span>
-            <input type="number" style="width:50px; text-align: right;" min="2" value="{{numShownCircles}}" id="PithEstimate-numShownCircles-input">
-        </div>
-        <div class="PithEstimate-ccmOptions-div">
-            <span style="font-style: italic;">Pith location movement amount: </span>
-            <input type="number" style="width:70px; text-align: right;" value="{{defaultMovement}}" step="0.001" id="PithEstimate-movement-input">
-            <span> mm</span>
-        </div>
-        <div class="PithEstimate-ccmOptions-div" style="margin-bottom: 6px;"> 
-            <span style="font-style: italic;">Growth rate function: <b>Linear</b> </span><br>
-            <!--
-            <input type="radio" id="PithEstimate-linear-function" name="PithEstimate-function-type" checked> 
-            <label for="PithEstimate-linear-function">Linear</label>
-            <br>
-            <input type="radio" id="PithEstimate-exponential-function" name="PithEstimate-function-type"> 
-            <label for="PithEstimate-exponential-function">Negative Exponential (Cook, 2001)</label>
-            <br>
-            <input type="radio" id="PithEstimate-saturating-function" name="PithEstimate-function-type">
-            <label for="PithEstimate-saturating-function">Saturating</label><br>  -->
-        </div>
-        <div class="PithEstimate-ccmOptions-div"> 
-            <div class="PithEstimate-zoomMultiplier-toggle">
-                <label><input type="checkbox" id="PithEstimate-zoomMultiplier-btn"><span>Do not adjust movement based on zoom level.</span></label>
+
+        <table class="PithEstimate-table">
+            <tr><th>Percentage of Age Estimated</th><th>Radius Length Estimation</th></tr>
+            <tr><td>0</td><td>0</td></tr>
+        </table>
+
+        <div class="PithEstimate-sub-container">
+            <div id="PithEstimate-ccmConfirm-btn" class="PithEstimate-big-btn PithEstimate-confirm-btn">
+                C o n f i r m
             </div>
         </div>
     </div>  

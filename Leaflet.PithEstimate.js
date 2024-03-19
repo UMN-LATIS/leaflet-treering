@@ -659,7 +659,7 @@ function NewGeoEstimateDialog(Inte) {
             console.log(text);
         })
 
-        $("#PithEstimate-confirm-btn").on("click", () => {
+        $("#PithEstimate-geoConfirm-btn").on("click", () => {
             if (this.numYears > this.numAvailableYears) {
                 let yearDiff = this.numYears - this.numAvailableYears;
                 alert(`Error: Need ${yearDiff} more measurements to use selected growth rate.`);
@@ -818,7 +818,7 @@ function NewCcmEstimate(Inte) {
     this.innerMeasurementsArr = [];
     this.innerRadiiArr = [];
     this.innerEstimatedRadiiArr = [];
-    this.numShownCircles = 5;
+    this.numShownCircles = 10;
     
     this.disableZoomMultiplier = false;
     this.movementAmount = 0.001;
@@ -889,7 +889,6 @@ function NewCcmEstimate(Inte) {
             this.createCcmVisuals();
             Inte.newCcmEstimateDialog.reload();
             this.enablePithLocationMovement();
-            this.createConfirmEventListeners();
         });
     }
 
@@ -1054,13 +1053,6 @@ function NewCcmEstimate(Inte) {
         this.reloadCcmVisuals();
         Inte.newCcmEstimateDialog.reload();
     }
-
-    NewCcmEstimate.prototype.createConfirmEventListeners = function() {
-        $(Inte.treering.viewer.getContainer()).on('click', (event) => {
-            console.log("confirmed")
-            this.disable();
-        });
-    }
 }
 
 /**
@@ -1071,7 +1063,7 @@ function NewCcmEstimate(Inte) {
  */
 function NewCcmEstimateDialog(Inte) {
     let minWidth = 320;
-    let minHeight = 430;
+    let minHeight = 330;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
@@ -1155,6 +1147,11 @@ function NewCcmEstimateDialog(Inte) {
         $("#PithEstimate-zoomMultiplier-btn").on("change", () => {
             Inte.newCcmEstimate.disableZoomMultiplier = $("#PithEstimate-zoomMultiplier-btn").is(":checked");
         });
+
+        $("#PithEstimate-ccmConfirm-btn").on("click", () => {           
+            Inte.estimateData.updateShownValues(Inte.newCcmEstimate.innerYearEst, "CCM");
+            Inte.newCcmEstimate.disable();
+        })
     }
 
     NewCcmEstimateDialog.prototype.reload = function() {
