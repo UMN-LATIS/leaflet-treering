@@ -99,10 +99,15 @@
         <p class="PithEstimate-instruction-text">
             <b>3)</b> Click to confirm preferred location of pith. 
         </p>
+
+        <table class="PithEstimate-table">
+            <tr><th>Pith Distance</th><th>Num. Years</th><th>Inner Year Est.</th></tr>
+            <tr><td>{{pithDistance}} mm</td><td>{{numYearEst}}</td><td>{{innerYearEst}}</td></tr>
+        </table>
         
         <div class="PithEstimate-ccmOptions-div" style="padding-top: 8px; border-top: 2px solid #d9d9d9;">
             <span style="font-style: italic;">Number of rings used for estimation: </span>
-            <input type="number" style="width:50px; text-align: right;" min="2" value="5" id="PithEstimate-numShownCircles-input">
+            <input type="number" style="width:50px; text-align: right;" min="2" value="{{numShownCircles}}" id="PithEstimate-numShownCircles-input">
         </div>
         <div class="PithEstimate-ccmOptions-div">
             <span style="font-style: italic;">Pith location movement amount: </span>
@@ -110,16 +115,15 @@
             <span> mm</span>
         </div>
         <div class="PithEstimate-ccmOptions-div" style="margin-bottom: 6px;"> 
-            <span style="font-style: italic;">Growth rate function: </span><br>
+            <span style="font-style: italic;">Growth rate function: <b>Linear</b> </span><br>
+            <!--
             <input type="radio" id="PithEstimate-linear-function" name="PithEstimate-function-type" checked> 
-            <label for="PithEstimate-linear-function">Linear</label><br>
-
+            <label for="PithEstimate-linear-function">Linear</label>
+            <br>
             <input type="radio" id="PithEstimate-exponential-function" name="PithEstimate-function-type"> 
-            <label for="PithEstimate-exponential-function">Negative Exponential (Cook, 2001)</label><br>
-
-            <!-- TODO: ADD TABLE WITH DISTANCE AND RING COUNT ESTIMATES -->
-
-            <!-- <input type="radio" id="PithEstimate-saturating-function" name="PithEstimate-function-type">
+            <label for="PithEstimate-exponential-function">Negative Exponential (Cook, 2001)</label>
+            <br>
+            <input type="radio" id="PithEstimate-saturating-function" name="PithEstimate-function-type">
             <label for="PithEstimate-saturating-function">Saturating</label><br>  -->
         </div>
         <div class="PithEstimate-ccmOptions-div"> 

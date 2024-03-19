@@ -822,10 +822,13 @@ function NewCcmEstimate(Inte) {
     
     this.disableZoomMultiplier = false;
     this.movementAmount = 0.001;
-    // There are 2 growth rate functions: 
+    // There are 3 growth rate functions: 
     // 1) Linear (default)
     // 2) Exponential
+    // 3) Saturating
+    // Only Linear in use currently. 
     this.growthRateFunction = 1
+    this.numInnerYearEst = 0;
 
     // Keyboard shortcut: 
     L.DomEvent.on(window, 'keydown', (e) => {
@@ -884,6 +887,7 @@ function NewCcmEstimate(Inte) {
             this.findInnerMostRadius();
             this.findUncorrectedEstimatedRadii();
             this.createCcmVisuals();
+            Inte.newCcmEstimateDialog.reload();
             this.enablePithLocationMovement();
             this.createConfirmEventListeners();
         });
@@ -976,6 +980,9 @@ function NewCcmEstimate(Inte) {
 
             this.innerEstimatedRadiiArr.push(newRadiusEstimate);
         }
+
+        this.numInnerYearEst = t;
+        this.innerYearEst = this.innerMeasurementsArr[0].year - t;
     }
 
     NewCcmEstimate.prototype.createCcmVisuals = function() {
@@ -1045,6 +1052,7 @@ function NewCcmEstimate(Inte) {
 
         // Reload visuals: 
         this.reloadCcmVisuals();
+        Inte.newCcmEstimateDialog.reload();
     }
 
     NewCcmEstimate.prototype.createConfirmEventListeners = function() {
@@ -1063,10 +1071,11 @@ function NewCcmEstimate(Inte) {
  */
 function NewCcmEstimateDialog(Inte) {
     let minWidth = 320;
-    let minHeight = 410;
+    let minHeight = 430;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
+    this.template = null;
     this.dialog = L.control.dialog({
         "size": this.size,
         "anchor": this.anchor,
@@ -1087,8 +1096,15 @@ function NewCcmEstimateDialog(Inte) {
         Inte.treering.collapseTools();
 
         let content = document.getElementById("PithEstimate-ccmInstructionDialog-template").innerHTML;
-        let template = Handlebars.compile(content);
-        let html = template({ defaultMovement: Inte.newCcmEstimate.movementAmount });
+        this.template = Handlebars.compile(content);
+        let html = this.template(
+            {
+                defaultMovement: Inte.newCcmEstimate.movementAmount,
+                pithDistance: "NA",
+                numYearEst: "NA",
+                numShownCircles: 5,
+                innerYearEst: "NA",
+            });
 
         this.dialog.setContent(html);
         this.dialog.open();
@@ -1114,22 +1130,23 @@ function NewCcmEstimateDialog(Inte) {
             if (Inte.newCcmEstimate.pithLatLng) {
                 Inte.newCcmEstimate.findCircleAnchors();
                 Inte.newCcmEstimate.reloadCcmVisuals();
+                this.reload();
             }
         });
 
-        $("#PithEstimate-linear-function").on("change", () => {
-            if ($("#PithEstimate-linear-function").is(":checked")) {
-                Inte.newCcmEstimate.growthRateFunction = 1; 
-                Inte.newCcmEstimate.reloadCcmVisuals();
-            }
-        });
+        // $("#PithEstimate-linear-function").on("change", () => {
+        //     if ($("#PithEstimate-linear-function").is(":checked")) {
+        //         Inte.newCcmEstimate.growthRateFunction = 1; 
+        //         Inte.newCcmEstimate.reloadCcmVisuals();
+        //     }
+        // });
 
-        $("#PithEstimate-exponential-function").on("change", () => {
-            if ($("#PithEstimate-exponential-function").is(":checked")) {
-                Inte.newCcmEstimate.growthRateFunction = 2; 
-                Inte.newCcmEstimate.reloadCcmVisuals();
-            }
-        });
+        // $("#PithEstimate-exponential-function").on("change", () => {
+        //     if ($("#PithEstimate-exponential-function").is(":checked")) {
+        //         Inte.newCcmEstimate.growthRateFunction = 2; 
+        //         Inte.newCcmEstimate.reloadCcmVisuals();
+        //     }
+        // });
 
         $("#PithEstimate-movement-input").on("input", () => {
             Inte.newCcmEstimate.movementAmount = $("#PithEstimate-movement-input").val();
@@ -1138,5 +1155,19 @@ function NewCcmEstimateDialog(Inte) {
         $("#PithEstimate-zoomMultiplier-btn").on("change", () => {
             Inte.newCcmEstimate.disableZoomMultiplier = $("#PithEstimate-zoomMultiplier-btn").is(":checked");
         });
+    }
+
+    NewCcmEstimateDialog.prototype.reload = function() {
+        let html = this.template(
+            {
+                defaultMovement: Inte.newCcmEstimate.movementAmount,
+                pithDistance: Inte.newCcmEstimate.radius_corrected.toFixed(3),
+                numYearEst: Inte.newCcmEstimate.numInnerYearEst,
+                numShownCircles: Inte.newCcmEstimate.numShownCircles,
+                innerYearEst: Inte.newCcmEstimate.innerYearEst,
+            });
+
+        this.dialog.setContent(html);
+        this.createEventListeners();
     }
 }
