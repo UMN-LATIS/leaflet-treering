@@ -1068,7 +1068,7 @@ function NewCcmEstimate(Inte) {
  */
 function NewCcmEstimateDialog(Inte) {
     let minWidth = 320;
-    let minHeight = 330;
+    let minHeight = 460;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
