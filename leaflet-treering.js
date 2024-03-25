@@ -79,8 +79,6 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   //this.PixelAdjustment = new PixelAdjustment(this);
   this.calibration = new Calibration(this);
 
-  this.dating = new Dating(this);
-
   this.createPoint = new CreatePoint(this);
   this.zeroGrowth = new CreateZeroGrowth(this);
   this.createBreak = new CreateBreak(this);
@@ -96,30 +94,23 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
 
   this.universalDelete = new UniversalDelete(this);
 
+  // Code hosted in Leaflet.Dating.js
+  this.datingInterface = new DatingInterface(this);
+  let editToolArr = [this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.insertZeroGrowth.btn, this.cut.btn];
+  editToolArr.unshift(...this.datingInterface.btns);
+
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
   this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
-  this.editTools = new ButtonBar(this, [this.dating.btn, this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.insertZeroGrowth.btn, this.cut.btn], 'edit', 'Edit existing measurements');
+  this.editTools = new ButtonBar(this, editToolArr, 'edit', 'Edit existing measurements');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
-  this.tools = [this.calibration, this.dating, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
-  // --- //
+  this.tools = [this.calibration, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
+  this.tools.push(...this.datingInterface.tools);
+
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
   this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'hdr_strong', 'Manage ellipses');
-
-  // Alert for Beta purposes: 
-  this.betaToggle = true;
-  $(this.areaTools.btn.button).on("click", () => {
-    if (this.betaToggle) {
-      //alert("Area measurement tools for beta testing & provisional data development. Please direct any issues or feedback to: thorn573@umn.edu.");
-      this.betaToggle = false;
-    }
-  })
-
-  this.areaCaptureInterface.tools.map(tool => {
-    this.tools.push(tool);
-  });
-  // --- //
+  this.tools.push(...this.areaCaptureInterface.tools);
 
   // Code hosted in Leaflet.DataAccess.js
   this.dataAccessInterface = new DataAccessInterface(this);
@@ -186,8 +177,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
        if (e.keyCode == 13) {
          // Refactor so simple loop may be used.
          console.log("Enter pressed!")
-         if (this.dating.active) {
-           this.dating.keypressAction(e);
+         if (this.datingInterface.dating.active) {
+           this.datingInterface.dating.keypressAction(e);
            return;
          }
 
@@ -1609,8 +1600,8 @@ function VisualAsset (Lt) {
         }
       }
 
-      if (Lt.dating.active) {
-        Lt.dating.action(i);
+      if (Lt.datingInterface.dating.active) {
+        Lt.datingInterface.dating.action(i);
       }
     });
 
@@ -3428,166 +3419,6 @@ function Calibration(Lt) {
     Lt.mouseLine.disable();
     Lt.viewer.getContainer().style.cursor = 'default';
     this.popup.remove(Lt.viewer);
-  };
-}
-
-/**
- * Set date of chronology
- * @constructor
- * @param {Ltreering} Lt - Leaflet treering object
- */
-function Dating(Lt) {
-  this.active = false;
-  this.btn = new Button(
-    'access_time',
-    'Edit measurement point dating (Shift-d)',
-    () => { Lt.disableTools(); Lt.collapseTools(); this.enable() },
-    () => { this.disable() }
-  );
-
-  // enable with shift-d
-  L.DomEvent.on(window, 'keydown', (e) => {
-     if (e.keyCode == 68 && e.getModifierState("Shift") && !e.getModifierState("Control") && // 68 refers to 'd'
-     window.name.includes('popout') && !Lt.annotationAsset.dialogAnnotationWindow) { // Dialog windows w/ text cannot be active 
-       e.preventDefault();
-       e.stopPropagation();
-       Lt.disableTools();
-       this.enable();
-     }
-  }, this);
-
-  /**
-   * Open a text container for user to input date
-   * @function action
-   */
-  Dating.prototype.action = function(i) {
-    if (Lt.data.points[i] != undefined) {
-      // Start points are "measurement" points when measuring backwards.
-      // Need to provide way for users to "re-date" them.
-      let pt_forLocation = Lt.data.points[i];
-      if (i == 0 || !Lt.data.points[i - 1]) {
-        alert("Cannot date first point. Select a different point to adjust dating");
-        return;
-      } else if (Lt.data.points[i].break || (Lt.data.points[i].start && Lt.data.points[i - 1].break)) {
-        alert("Cannot date break points. Select a different point to adjust dating");
-        return;
-      } else if (Lt.data.points[i].start) {
-        i--;
-        if (!Lt.measurementOptions.forwardDirection) pt_forLocation = Lt.data.points[i + 1];
-      }
-
-      // Handlebars from templates.html
-      this.index = i;
-      let year = Lt.data.points[i].year;
-      let content = document.getElementById("dating-template").innerHTML;
-      let template = Handlebars.compile(content);
-      let html = template({ date_year: year });
-
-      this.popup = L.popup({closeButton: false})
-          .setContent(html)
-          .setLatLng(pt_forLocation.latLng)
-          .openOn(Lt.viewer);
-
-      document.getElementById('year_input').select();
-
-      $(Lt.viewer.getContainer()).click(e => {
-        this.popup.remove(Lt.viewer);
-        this.disable();
-      });
-    }
-  };
-
-  /**
-   * Dating action after new year entered
-   * @function keypressAction
-   */
-  Dating.prototype.keypressAction = function(e) {
-    let key = e.which || e.keyCode;
-    if (key === 13) {
-      this.active = false;
-      let input = document.getElementById('year_input');
-      let i = this.index;
-      let year = Lt.data.points[i].year;
-
-      var new_year = parseInt(input.value);
-      this.popup.remove(Lt.viewer);
-
-      if (!new_year && new_year != 0) {
-        alert("Entered year must be a number");
-        return
-      }
-
-      Lt.undo.push();
-
-      function incrementYear(pt) {
-        // Increment year if annual,                 latewood when measuring forward in time,                 or earlywood when measuring backward in time
-        return (!Lt.measurementOptions.subAnnual || (Lt.measurementOptions.forwardDirection && !pt.earlywood) || (!Lt.measurementOptions.forwardDirection && pt.earlywood));
-      }
-
-      let shift = new_year - year;
-      let pts_before = Lt.data.points.slice(0, i + 1);
-      let year_diff = pts_before.filter(pb => pb.year && incrementYear(pb)).length;
-      let pts_after = Lt.data.points.slice(i + 1);
-      let dir_constant = (Lt.measurementOptions.forwardDirection) ? 1 : -1;
-
-      // Delta is the starting count value. Need "jump start" value if...
-      // ... expected to increment on next value. Special case if any ...
-      // values before point are 0, then do not "jump start".
-      let numOfZeroYears = pts_before.filter(e => e.year === 0).length;
-      let delta = 0;
-      if (numOfZeroYears && year != 0 && !incrementYear(Lt.data.points[i])) delta = -1;
-      else if (!numOfZeroYears && incrementYear(Lt.data.points[i])) delta = 1;
-      pts_before.map((pb, j) => {
-        if (pb.year || pb.year == 0) {
-          pb.year = new_year - dir_constant * (year_diff - delta);
-          if (incrementYear(pb)) {
-            delta++;
-          }
-        }
-      })
-
-      // Special case does no apply to after points.
-      delta = 0;
-      if (incrementYear(Lt.data.points[i])) delta = 1;
-      pts_after.map((pa, k) => {
-        if (pa.year || pa.year == 0) {
-          pa.year = new_year + dir_constant * (delta);
-          if (incrementYear(pa)) {
-            delta++;
-          }
-        }
-      })
-
-      Lt.data.year += shift;
-      Lt.visualAsset.reload();
-
-      // Updates once user hits enter
-      Lt.helper.updateFunctionContainer(true);
-
-      this.disable();
-    }
-  }
-
-  /**
-   * Enable dating
-   * @function enable
-   */
-  Dating.prototype.enable = function() {
-    this.btn.state('active');
-    this.active = true;
-    Lt.viewer.getContainer().style.cursor = 'pointer';
-  };
-
-  /**
-   * Disable dating
-   * @function disable
-   */
-  Dating.prototype.disable = function() {
-    this.btn.state('inactive');
-    $(Lt.viewer.getContainer()).off('click');
-    $(document).off('keypress');
-    this.active = false;
-    Lt.viewer.getContainer().style.cursor = 'default';
   };
 }
 

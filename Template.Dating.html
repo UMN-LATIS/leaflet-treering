@@ -1,0 +1,17 @@
+<script id="Dating-template" type="text/x-handlebars-template">
+    <div class="Dating-title">
+        Set date of chronology:
+    </div>
+    <span class="Dating-text">Year:</span>
+    <input type="number" value= {{date_year}} id="Dating-year-input">
+    <div class="Dating-radio-container">
+        <label for="Dating-shiftAll-radio"> <input type="radio" name="Dating-shift-choice" id="Dating-shiftAll-radio" checked>Adjust all points</label><br>
+        <label for="Dating-shiftEarlier-radioB"> <input type="radio" name="Dating-shift-choice" id="Dating-shiftEarlier-radio">Adjust earlier points</label><br>
+        <label for="Dating-shiftLater-radio"> <input type="radio" name="Dating-shift-choice" id="Dating-shiftLater-radio">Adjust later points</label>
+    </div>
+    <div class="Dating-checkbox-container">
+        <label for="Dating-shift-checkbox" class="Dating-subtext"> <input type="checkbox" id="Dating-shift-checkbox"> 
+            Remember choice until page is reloaded.
+        </label>
+    </div>
+</script>
