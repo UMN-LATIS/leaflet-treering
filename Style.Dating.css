@@ -1,6 +1,5 @@
 .Dating-title {
     margin: 0;
-    margin-bottom: 6px;
     padding: 4px;
 
     font-weight: bolder;
@@ -38,7 +37,6 @@
 }
 
 #Dating-year-input {
-    border: none;
     width: 90px;
 }
 
