@@ -105,6 +105,7 @@ function Dating(Inte) {
 
         let year = Inte.treering.data.points[this.index].year;
         let newYear = Inte.datingPopup.yearInput;
+        let shift = newYear - year;
         Inte.datingPopup.closePopup();
   
         if (!newYear && newYear != 0) {
@@ -114,20 +115,52 @@ function Dating(Inte) {
   
         Inte.treering.undo.push();
 
+        // Helpful constants: 
+        let directionConstant = (Inte.treering.measurementOptions.forwardDirection) ? 1 : -1;
+        let sliceStart, sliceEnd;
+
         // There are 3 shift options: 
         // 1 = Shift all points
         // 2 = Shift chronologically earlier points
         // 3 = Shift chronologically later points
+        // 4 = Shift only selected point
+        let points = [];
         switch(Inte.datingPopup.shiftOption) {
             case 1: 
-                this.shiftAll(year, newYear);
+                points = Inte.treering.data.points;
                 break;
             case 2:
-                this.shiftEarlier(year, newYear);
+                // Slicing index depends on if core was measured forward or backward chronologically. 
+                // If measured forward, earlier points are at smaller indices. 
+                // If measured backward, earlier points are at larger indices.
+                sliceStart = (directionConstant > 0) ? 0 : this.index;
+                sliceEnd = (directionConstant > 0) ? this.index + 1 : Inte.treering.data.points.length;
+                points = Inte.treering.data.points.slice(sliceStart, sliceEnd);
                 break;
             case 3:
-                this.shiftLater(year, newYear);
+                // Same slicing caveat as above, but logic reversed. 
+                sliceStart = (directionConstant > 0) ? this.index : 0;
+                sliceEnd = (directionConstant > 0) ? Inte.treering.data.points.length : this.index + 1; 
+                points = Inte.treering.data.points.slice(sliceStart, sliceEnd);
                 break;
+            case 4:
+                points = [Inte.treering.data.points[this.index]];
+        }
+        this.shiftYears(shift, points);
+        // Must shift additonal point in 2 special cases: 
+        // 1) Subannual measurements, shift earlier, but select earlywood value. Must also adjust associated latewood. 
+        // 2) Subannual measurements, shift later, but select latewood value. Must also adjust associated earlywood.
+        // Direction of measuring changes which index these cases reference. 
+        if (Inte.treering.measurementOptions.subAnnual) {
+            let point = Inte.treering.data.points[this.index];
+            let pointBefore = Inte.treering.data.points.slice(0, this.index).findLast((point) => (point?.year || point?.year == 0));
+            let pointAfter = Inte.treering.data.points.slice(this.index + 1).find((point) => (point?.year || point?.year == 0));
+
+            if (Inte.datingPopup.shiftOption == 2 && point.earlywood) {
+                (directionConstant > 0) ? pointAfter.year += shift : pointBefore.year += shift;
+            } else if (Inte.datingPopup.shiftOption == 3 && !point.earlywood) {
+                (directionConstant > 0) ? pointBefore.year += shift : pointAfter.year += shift;
+            }
         }
         
         Inte.treering.visualAsset.reload();
@@ -147,50 +180,11 @@ function Dating(Inte) {
         return (annual || (forward && !pt.earlywood) || (backward && pt.earlywood));
     }
 
-    Dating.prototype.shiftAll = function(year, newYear) {
-        let shift = newYear - year;
-        let pointsBefore = Inte.treering.data.points.slice(0, this.index + 1);
-        let yearDifference = pointsBefore.filter(point => point.year && this.checkIncrementYear(point)).length;
-        let pointsAfter = Inte.treering.data.points.slice(this.index + 1);
-        let directionConstant = (Inte.treering.measurementOptions.forwardDirection) ? 1 : -1;
-
-        // Delta is the starting count value. Need "jump start" value if...
-        // ... expected to increment on next value. Special case if any ...
-        // values before point are 0, then do not "jump start".
-        let numOfZeroYears = pointsBefore.filter(e => e.year === 0).length;
-        let delta = 0;
-        if (numOfZeroYears && year != 0 && !this.checkIncrementYear(Inte.treering.data.points[this.index])) delta = -1;
-        else if (!numOfZeroYears && this.checkIncrementYear(Inte.treering.data.points[this.index])) delta = 1;
-        pointsBefore.map((point, j) => {
-          if (point.year || point.year == 0) {
-            point.year = newYear - directionConstant * (yearDifference - delta);
-            if (this.checkIncrementYear(point)) {
-              delta++;
-            }
-          }
-        })
-  
-        // Special case does not apply to after points.
-        delta = 0;
-        if (this.checkIncrementYear(Inte.treering.data.points[this.index])) delta = 1;
-        pointsAfter.map((point, k) => {
-          if (point.year || point.year == 0) {
-            point.year = newYear + directionConstant * (delta);
-            if (this.checkIncrementYear(point)) {
-              delta++;
-            }
-          }
-        })
-  
+    Dating.prototype.shiftYears = function(shift, points) {
+        points.map((point) => {
+            if (point && (point?.year || point?.year == 0)) point.year += shift;
+        });
         Inte.treering.data.year += shift;
-    }
-
-    Dating.prototype.shiftEarlier = function(year, newYear) {
-        console.log("early")
-    }
-
-    Dating.prototype.shiftLater = function(year, newYear) {
-        console.log("later")
     }
 }
 
@@ -209,6 +203,7 @@ function DatingPopup(Inte) {
     // 1 = Shift all points
     // 2 = Shift chronologically earlier points
     // 3 = Shift chronologically later points
+    // 4 = Shift only selected point
     this.shiftOption = 1;
 
     DatingPopup.prototype.openPopup = function(year, location) {
@@ -247,6 +242,10 @@ function DatingPopup(Inte) {
         $("#Dating-shiftLater-radio").on("change", () => {
             this.shiftOption = 3;
         });
+
+        $("#Dating-shiftSingle-radio").on("change", () => {
+            this.shiftOption = 4;
+        })
     }
 
     DatingPopup.prototype.setDefaults = function() {
@@ -260,6 +259,9 @@ function DatingPopup(Inte) {
                 break;
             case 3: 
                 $("#Dating-shiftLater-radio").trigger("click");
+                break;
+            case 4: 
+                $("#Dating-shiftSingle-radio").trigger("click");
                 break;
         }
 

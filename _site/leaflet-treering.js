@@ -5052,25 +5052,29 @@ function Helper(Lt) {
          return
        }
        if (e.start) {
-         prevPt = e;
+          prevPt = e;
        } else if (e.break) {
-         disToBreak = Lt.helper.trueDistance(prevPt.latLng, e.latLng);
+          disToBreak = Lt.helper.trueDistance(prevPt.latLng, e.latLng);
        } else if (e.year || e.year == 0) {
-         if (!yearArray.includes(e.year)) {
-            yearArray.push(parseInt(e.year));
-         }
-         var width = Lt.helper.trueDistance(prevPt.latLng, e.latLng) + disToBreak;
-         width = parseFloat(width.toFixed(5));
-         if (e.earlywood && Lt.measurementOptions.subAnnual) {
-           ewWidthArray.push(width);
-         } else if (!e.earlywood && Lt.measurementOptions.subAnnual) {
-           lwWidthArray.push(width)
-         } else {
-           twWidthArray.push(width)
-         }
-         disToBreak = 0;
-         prevPt = e;
-       }
+          // Only add year once. If subannual, both early- and late-wood points have the same year, must only add one of them. 
+          let annual = !Lt.measurementOptions.subAnnual;
+          let subAnnual = Lt.measurementOptions.subAnnual;
+          if (annual || (subAnnual && e.earlywood)) {
+              yearArray.push(parseInt(e.year));
+          }
+
+          var width = Lt.helper.trueDistance(prevPt.latLng, e.latLng) + disToBreak;
+          width = parseFloat(width.toFixed(5));
+          if (e.earlywood && subAnnual) {
+              ewWidthArray.push(width);
+          } else if (!e.earlywood && subAnnual) {
+              lwWidthArray.push(width)
+          } else {
+              twWidthArray.push(width)
+          }
+          disToBreak = 0;
+          prevPt = e;
+        }
      });
 
      if (Lt.measurementOptions.subAnnual) {
