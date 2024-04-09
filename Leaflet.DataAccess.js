@@ -298,7 +298,8 @@ function JSONFileUpload(Inte) {
             Inte.treering.aData = new AnnotationData(newDataJSON.annotations);
             if (newDataJSON?.ellipses) Inte.treering.areaCaptureInterface.ellipseData.loadJSON(newDataJSON.ellipses); 
             else Inte.treering.areaCaptureInterface.ellipseData.clearJSON();
-            if (newDataJSON?.presets) Inte.treering.imageAdjustmentInterface.imageAdjustment.loadJSON(newDataJSON.presets);
+            if (newDataJSON?.presets) Inte.treering.imageAdjustmentInterface.imageAdjustment.loadPresetJSON(newDataJSON.presets);
+            if (newDataJSON?.currentView) Inte.treering.imageAdjustmentInterface.imageAdjustment.loadCurrentViewJSON(newDataJSON.currentView);
 
             // If the JSON has PPM data, use that instead of loaded data.
             if (newDataJSON.ppm) {
@@ -526,7 +527,8 @@ function Download(Inte) {
           'ppm': Inte.treering.meta.ppm,
           'ptWidths': Inte.treering.helper.findDistances(),
           'ellipses': Inte.treering.areaCaptureInterface.ellipseData.getJSON(),
-          'presets': Inte.treering.imageAdjustmentInterface.imageAdjustment.getJSON(),
+          'presets': Inte.treering.imageAdjustmentInterface.imageAdjustment.getPresetJSON(),
+          'currentView': Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON()
       };
 
       return data;

@@ -25,23 +25,36 @@ input[type = "range"] {
 }
 
 #image-adjustment-invert-button {
-	margin-right: 0px; 
-	margin-top: 5px; 
-	margin-bottom: 5px; 
+	margin: 8px;
 	padding: 0px; 
 	height: 25px; 
 	width: 50px; 
-	font-size: 14px; 
+	font-size: 16px; 
 	display:block;
 }
 
-#image-adjustment-reset-button {
+#image-adjustment-preset-dropdown {
+	font-size: 18px;
+	margin: 8px;
+	margin-left: 0px;
+}
+
+.image-adjustment-default-div {
+	display: flex; 
+	align-items: center; 
+	height: 34px;
+}
+
+/* .image-adjustment-button {
+	border: 1px solid black;
+	border-radius: 5px;
 	margin-right: 0px; 
 	margin-top: 5px; 
 	margin-bottom: 5px; 
 	padding: 0px; 
 	height: 25px; 
-	width: 50px; 
+	width: 48px; 
 	font-size: 14px; 
 	display:block;
-}
+	background-color: #bec9cc;
+} */
