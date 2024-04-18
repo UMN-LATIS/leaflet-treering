@@ -26,95 +26,6 @@ function ImageAdjustment(Inte) {
     () => { this.disable() }
   );
 
-  //List of user saveable presets
-  let userPresetList = [
-    {
-      value: 
-      {userPreset: true,
-      brightness: 100,
-      contrast: 100,
-      saturate: 100,
-      emboss: 0,
-      edgeDetect: 0,
-      sharpness: 0,
-      invert: false
-      },
-      presetID: "User-1",
-      displayText: "User 1"
-    },
-    {
-      value: 
-      {userPreset: true,
-      brightness: 100,
-      contrast: 100,
-      saturate: 100,
-      emboss: 0,
-      edgeDetect: 0,
-      sharpness: 0,
-      invert: false
-      },
-      presetID: "User-2",
-      displayText: "User 2"
-    },    {
-      value: 
-      {userPreset: true,
-      brightness: 100,
-      contrast: 100,
-      saturate: 100,
-      emboss: 0,
-      edgeDetect: 0,
-      sharpness: 0,
-      invert: false
-      },
-      presetID: "User-3",
-      displayText: "User 3"
-    },
-  ];
-
-  //List of premade presets, plus user presets
-  let presetList = [
-    {
-      value: 
-      {userPreset: false,
-      brightness: 100,
-      contrast: 100,
-      saturate: 100,
-      emboss: 0,
-      edgeDetect: 0,
-      sharpness: 0,
-      invert: false
-      },
-      presetID: "default",
-      displayText: "Default Settings"
-    },
-    {
-      value: {userPreset: false,
-      brightness: 100,
-      contrast: 100,
-      saturate: 100,
-      emboss: 0.15,
-      edgeDetect: 0,
-      sharpness: 0.20,
-      invert: false
-      },
-      presetID: "True-Color-1",
-      displayText: "True Color 1"
-    },
-    {
-      value: {userPreset: false,
-      brightness: 100,
-      contrast: 100,
-      saturate: 100,
-      emboss: 0.15,
-      edgeDetect: 0,
-      sharpness: 0.20,
-      invert: true
-      },
-      presetID: "False-Color-1",
-      displayText: "False Color 1"
-    },
-    ].concat(userPresetList);
-
   // List of filters & their properties
   let filterList = [
     {
@@ -194,13 +105,11 @@ function ImageAdjustment(Inte) {
     }
     ];
 
-  // Stores info of whether or not image is inverted (filter determined by bool)
-  let invert = {
-  value: false,
-  flipValue: () => {
-    invert.value = !invert.value;
-  }
-  }
+  // Stores info of whether or not image is inverted
+  this.invert = false;
+
+  //Store if the auto preset is loaded
+  this.auto_preset_loaded = false;
 
   //List containing image settings of presets if saved
   this.presets = [];
@@ -208,10 +117,10 @@ function ImageAdjustment(Inte) {
   // handlebars from templates.ImageAdjustment.html
   let content = document.getElementById("ImageAdjustment-dialog-template").innerHTML;
   let template = Handlebars.compile(content);
-  let html = template({filterList: filterList, userPresetList: userPresetList, presetList: presetList});
+  let html = template({filterList: filterList});
 
   this.dialog = L.control.dialog({
-    'size': [290, 415],
+    'size': [290, 400],
     'anchor': [50, 5],
     'initOpen': false,
     'position': 'topleft',
@@ -256,7 +165,7 @@ function ImageAdjustment(Inte) {
    */
   ImageAdjustment.prototype.updateFilters = function() {
     updateCSSFilterString = "";
-    let invertValue = (invert.value) ? "1" : "0";
+    let invertValue = (this.invert) ? "1" : "0";
     updateCSSFilterString += "invert(" + invertValue + ")";
 
     let updateGLFilterObjs = [];
@@ -292,9 +201,9 @@ function ImageAdjustment(Inte) {
       input.value = slider.value;
       Inte.imageAdjustment.updateFilters();
 
-      //Switches dropdown to none selected, hides saved popup
-      document.getElementById("image-adjustment-preset-dropdown").value = "unsaved";
-      $("#save-success-text").attr("hidden", true)
+      //turn off auto-preset highlight upon settings changes
+      this.auto_preset_loaded = false;
+      this.toggleButtonColor('image-adjustment-auto-button', this.auto_preset_loaded);
     });
 
     $("#" + inputID).on("input", () => {
@@ -306,70 +215,22 @@ function ImageAdjustment(Inte) {
       }
       Inte.imageAdjustment.updateFilters();
 
-      //Switches dropdown to none selected, hides saved popup
-      document.getElementById("image-adjustment-preset-dropdown").value = "unsaved";
-      $("#save-success-text").attr("hidden", true)
+      //turn off auto-preset highlight upon settings changes
+      this.auto_preset_loaded = false;
+      this.toggleButtonColor('image-adjustment-auto-button', this.auto_preset_loaded);
     });
   }
 
-  /**
-   * Creates listeners for changes to main preset dropdown and button to save settings
-   */
-  ImageAdjustment.prototype.createPresetListeners = function() {
-    //Listeners for changing presets
-    $("#image-adjustment-preset-dropdown").on("change", () => {
-      let currentPreset = presetList.find(this.checkPresetID);
-
-      for (filter of filterList) {
-        let sliderID = filter.filterType + "-slider";
-        let inputID = filter.filterType + "-input";
-        let slider = document.getElementById(sliderID);
-        let input = document.getElementById(inputID);
-
-        slider.value = currentPreset.value[filter.filterType];
-        input.value = slider.value;
-      }
-      invert.value = currentPreset.value["invert"]
-      Inte.imageAdjustment.updateFilters()
-
-      $("#save-success-text").attr("hidden", true)
-    });
-
-    //Listeners for saving presets
-    $("#preset-save-button").on("click", () => {
-      let savedPreset = userPresetList.find(this.checkUserPresetID);
-      for (filter of filterList) {
-        let slider = document.getElementById(filter.filterType + "-slider")
-        savedPreset.value[filter.filterType] = slider.value;
-      }
-      savedPreset.value["invert"] = invert.value;
-
-      //Changes selected preset to saved preset and hides save popup
-      document.getElementById("image-adjustment-preset-dropdown").value = savedPreset.presetID;
-      $("#save-success-text").attr("hidden", false)
-
-      //saves setting to this.presets (later saved to JSON)
-      let savedPresetNumber = savedPreset.presetID[savedPreset.presetID.length - 1];
-      this.presets[savedPresetNumber - 1] = savedPreset;
-    });
-  }
-
-  /**
-   * Helper for finding the selected preset of preset dropdown
-   * @param {object} preset - contains image preset settings
-   * @returns 
-   */
-  ImageAdjustment.prototype.checkPresetID = function(preset) {
-    return preset.presetID == $("#image-adjustment-preset-dropdown").val()
-  }
-
-  /**
-   * Helper for finding the selected preset of saveable presets
-   * @param {object} preset - Contains image preset settings
-   * @returns 
-   */
-  ImageAdjustment.prototype.checkUserPresetID = function(preset) {
-    return preset.presetID == $("#image-adjust-saveto-dropdown").val()
+  ImageAdjustment.prototype.toggleButtonColor = function(buttonID, buttonState) {
+    let button = document.getElementById(buttonID)
+    if (buttonState) {
+      button.style.backgroundColor = '#6f7785'
+      button.style.color = '#fff'
+    }
+    else {
+      button.style.backgroundColor = '#c6ccd7'
+      button.style.color = '#363636'
+    }
   }
   
   /**
@@ -383,79 +244,74 @@ function ImageAdjustment(Inte) {
 
     //Inverts image
     $("#image-adjustment-invert-button").on("click", () => {
-      invert.flipValue();
+      this.invert = !this.invert;
       this.updateFilters();
 
-      //Switches between true and false color presents when inverted
-      let currentPresetValue = $("#image-adjustment-preset-dropdown").val()
-      if (currentPresetValue.includes("Color")) {
-        let ColorPresetNumber = currentPresetValue[currentPresetValue.length - 1]
-        if (invert.value) {document.getElementById("image-adjustment-preset-dropdown").value = "False-Color-" + ColorPresetNumber}
-        else {document.getElementById("image-adjustment-preset-dropdown").value = "True-Color-" + ColorPresetNumber}
-      }
-      else {document.getElementById("image-adjustment-preset-dropdown").value = "unsaved"};
-
-      //Hide successful save popup
-      $("#save-success-text").attr("hidden", true)
+      this.toggleButtonColor("image-adjustment-invert-button", this.invert);
     });
+
+    $("#image-adjustment-auto-button").on("click", () => {
+      for(filter of filterList) {
+        let sliderID = filter.filterType + "-slider";
+        let inputID = filter.filterType + "-input";
+        let slider = document.getElementById(sliderID);
+        let input = document.getElementById(inputID);
+
+        if (filter.filterType == "emboss") {
+          slider.value = 0.15
+          input.value = slider.value
+        } else if (filter.filterType == "sharpness") {
+          slider.value = 0.2
+          input.value = slider.value
+        } else {
+          slider.value = slider.defaultValue;
+          input.value = input.defaultValue;
+        }
+      }
+      this.updateFilters();
+
+      this.auto_preset_loaded = true;
+      this.toggleButtonColor('image-adjustment-auto-button', this.auto_preset_loaded);
+    });
+
+    $("#image-adjustment-reset-button").on("click", () => {
+      for(filter of filterList) {
+        let sliderID = filter.filterType + "-slider";
+        let inputID = filter.filterType + "-input";
+        let slider = document.getElementById(sliderID);
+        let input = document.getElementById(inputID);
+
+        slider.value = slider.defaultValue;
+        input.value = input.defaultValue;
+      }
+      this.invert = false;
+      this.updateFilters();
+
+      this.invert = false;
+      this.auto_preset_loaded = false;
+      this.toggleButtonColor('image-adjustment-invert-button', this.invert);
+      this.toggleButtonColor('image-adjustment-auto-button', this.auto_preset_loaded);
+    })
 
     //Creates filter listener for all filters
     for(filter of filterList) {
       this.createFilterListener(filter.filterType);
     };
-
-    //Changes highlight when hovering over save button
-    $("#preset-save-button").on("mouseover", () => {
-      document.getElementById("preset-save-button").style.backgroundColor = "#d1d1d1";
-    });
-
-    $("#preset-save-button").on("mouseout", () => {
-      document.getElementById("preset-save-button").style.backgroundColor = "transparent"      
-    })
-
-    //Creates listeners for all presets
-    this.createPresetListeners();
   }
-
-  /**
-   * Saves preset settings to JSON
-   * @returns list of preset image settings
-   */
-  ImageAdjustment.prototype.getPresetJSON = function() {
-    return this.presets;
-  };
 
   /**
    * Saves current image settings when JSON is saved
    * @returns object containing current image settings
    */
   ImageAdjustment.prototype.getCurrentViewJSON = function() {
-    currentSettings = {currentPreset: $("#image-adjustment-preset-dropdown").val()};
-
+    currentSettings = {}
     for (filter of filterList) {
       let sliderID = filter.filterType + "-slider";
       let slider = document.getElementById(sliderID);
-
-      currentSettings[filter.filterType] = slider.value;
-    };
-    currentSettings["invert"] = invert.value;
-
-    return currentSettings
-  }
-
-  /**
-   * Loads saved preset settings to buttons
-   * @param {list} JSONdata - list of objects contaiting image settings
-   */
-  ImageAdjustment.prototype.loadPresetJSON = function(JSONdata) {
-    this.presets = JSON.parse(JSON.stringify(JSONdata));
-    userPresetStartingIndex = presetList.length - userPresetList.length
-
-    for (i = 0; i <= 2; i++) {
-      if (this.presets[i] != null) {
-        presetList[userPresetStartingIndex + i] = this.presets[i];
-      }
+      currentSettings[filter.filterType] = slider.value
     }
+    currentSettings["invert"] = this.invert
+    return currentSettings
   }
 
   /**
@@ -463,8 +319,6 @@ function ImageAdjustment(Inte) {
    * @param {object} JSONdata - object containing current image settings
    */
   ImageAdjustment.prototype.loadCurrentViewJSON = function(JSONdata) {
-    document.getElementById("image-adjustment-preset-dropdown").value = JSONdata["currentPreset"];
-
     for (filter of filterList) {
       let sliderID = filter.filterType + "-slider";
       let inputID = filter.filterType + "-input";
@@ -474,7 +328,7 @@ function ImageAdjustment(Inte) {
       slider.value = JSONdata[filter.filterType];
       input.value = JSONdata[filter.filterType];
     }
-    invert.value = JSONdata["invert"];
+    this.invert = JSONdata["invert"];
     this.updateFilters();
     }
   }

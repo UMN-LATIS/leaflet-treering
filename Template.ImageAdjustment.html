@@ -1,27 +1,16 @@
 <script id="ImageAdjustment-dialog-template" type="text/x-handlebars-template">
     <div class="image-adjustment-default-div" style="padding-top: 0px; height: 30px;">
         <h4 class="image-adjustment-header" style="font-weight: bold; margin: 0px; font-size: 20px;">Image Settings</h4>
-    </div>    
-    <div class="image-adjustment-default-div">
-        <select name="presets" id="image-adjustment-preset-dropdown">
-            {{#each presetList}}
-            <option value="{{this.presetID}}">{{this.displayText}}</option>
-            {{/each}}
-            <option value="unsaved" id="unsaved-image-settings-option" hidden="true">No Preset In Use</option>
-        </select>
-        <p style="font-size: 26px; margin: 0 0 5;">|</p>
-        <button id="image-adjustment-invert-button" class="image-adjustment-button">Invert</button>
-    </div> 
-    <div class="image-adjustment-default-div" id="image-adjustment-save-div">
-        <p style="font-size: 16px; font-weight: bold; margin: 8px; margin-left: 0px;">Save to:</p>
-        <select name="saveToPresets" id="image-adjust-saveto-dropdown" style="font-size: 16px;">
-            {{#each userPresetList}}
-            <option value="{{this.presetID}}">{{this.displayText}}</option>
-            {{/each}}
-        </select>
-        <i type="button" id="preset-save-button" class="fa fa-floppy-o fa-2x" style= "padding: 5px; margin: 8px; border-radius: 4px;"></i>
-        <p style="font-size: 14px; margin-bottom: 0;" id="save-success-text" hidden="true">Saved!</p>
     </div>
+    <p class="image-adjustment-subtext">Settings are saved to the JSON and cloud</p>
+    <div class="image-adjustment-default-div">
+        <button id="image-adjustment-invert-button" class="image-adjustment-button" 
+        title="Inverts image colors">Invert</button>
+        <button id="image-adjustment-auto-button" class="image-adjustment-button"
+        title="Apply automatic preset settings">Auto</button>
+        <button id="image-adjustment-reset-button" class="image-adjustment-button"
+        title="Restore default image settings">Reset</button>
+    </div> 
     {{#each filterList}}
     <label class="image-adjustment-slider-label">{{this.label}}</label>
     <div class="image-adjustment-slider-div">
