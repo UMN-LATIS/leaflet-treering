@@ -224,12 +224,10 @@ function ImageAdjustment(Inte) {
   ImageAdjustment.prototype.toggleButtonColor = function(buttonID, buttonState) {
     let button = document.getElementById(buttonID)
     if (buttonState) {
-      button.style.backgroundColor = '#6f7785'
-      button.style.color = '#fff'
+      button.style.backgroundColor = '#aec8f4'
     }
     else {
-      button.style.backgroundColor = '#c6ccd7'
-      button.style.color = '#363636'
+      button.style.backgroundColor = '#dcdcdc'
     }
   }
   
