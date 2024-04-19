@@ -45,12 +45,6 @@ input[type = "range"] {
 	justify-content: space-between;
 }
 
-.image-adjustment-subtext {
-	font-style: italic;
-	color: #7d7d7d;
-	font-size: 13px;
-	margin: 0;
-}
 /* 
 .image-adjustment-button {
 	border: 1px solid black;

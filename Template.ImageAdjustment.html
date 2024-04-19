@@ -1,8 +1,7 @@
 <script id="ImageAdjustment-dialog-template" type="text/x-handlebars-template">
     <div class="image-adjustment-default-div" style="padding-top: 0px; height: 30px;">
-        <h4 class="image-adjustment-header" style="font-weight: bold; margin: 0px; font-size: 20px;">Image Settings</h4>
+        <h4 class="image-adjustment-header" style="font-weight: bold; margin: 0px; font-size: 20px;">Image Adjustments</h4>
     </div>
-    <p class="image-adjustment-subtext">Settings are saved to the JSON and cloud</p>
     <div class="image-adjustment-default-div">
         <button id="image-adjustment-invert-button" class="image-adjustment-button" 
         title="Inverts image colors">Invert</button>
@@ -14,8 +13,8 @@
     {{#each filterList}}
     <label class="image-adjustment-slider-label">{{this.label}}</label>
     <div class="image-adjustment-slider-div">
-        <input class="imageInput" id={{this.inputID}} value = {{this.value}}  min={{this.min}} max={{this.max}} step={{this.step}} type="number">
-        <input class="imageSlider" id={{this.sliderID}} value = {{this.value}} min={{this.min}} max={{this.max}} step={{this.step}} type=range>
+        <input class="imageInput" id={{this.inputID}} value = {{this.defaultValue}}  min={{this.min}} max={{this.max}} step={{this.step}} type="number">
+        <input class="imageSlider" id={{this.sliderID}} value = {{this.defaultValue}} min={{this.min}} max={{this.max}} step={{this.step}} type=range>
     </div>
     {{/each}}
 </script>

@@ -30,7 +30,6 @@ function ImageAdjustment(Inte) {
   let filterList = [
     {
       filterType: "brightness",
-      value: "100",
       defaultValue: "100",
       inputID: "brightness-input",
       sliderID: "brightness-slider",
@@ -42,7 +41,6 @@ function ImageAdjustment(Inte) {
     },
     { 
       filterType: "contrast",
-      value: "100",
       defaultValue: "100",
       inputID: "contrast-input",
       sliderID: "contrast-slider",
@@ -53,8 +51,31 @@ function ImageAdjustment(Inte) {
       CSSFilter: true
     },
     { 
+      filterType: "sharpness",
+      defaultValue: "0",
+      inputID: "sharpness-input",
+      sliderID: "sharpness-slider",
+      min: "0",
+      max: "1",
+      step: "0.01",
+      label: "Sharpness (0-1)",
+      CSSFilter: false,
+      GLName: "unsharpen"
+    },
+    { 
+      filterType: "emboss",
+      defaultValue: "0",
+      inputID: "emboss-input",
+      sliderID: "emboss-slider",
+      min: "0",
+      max: "1",
+      step: "0.01",
+      label: "Emboss (0-1)",
+      CSSFilter: false,
+      GLName: "emboss"
+    },    
+    { 
       filterType: "saturate",
-      value: "100",
       defaultValue: "100",
       inputID: "saturate-input",
       sliderID: "saturate-slider",
@@ -65,21 +86,7 @@ function ImageAdjustment(Inte) {
       CSSFilter: true
     },
     { 
-      filterType: "emboss",
-      value: "0",
-      defaultValue: "0",
-      inputID: "emboss-input",
-      sliderID: "emboss-slider",
-      min: "0",
-      max: "1",
-      step: "0.01",
-      label: "Emboss (0-1)",
-      CSSFilter: false,
-      GLName: "emboss"
-    },
-    { 
       filterType: "edgeDetect",
-      value: "0",
       defaultValue: "0",
       inputID: "edgeDetect-input",
       sliderID: "edgeDetect-slider",
@@ -90,18 +97,17 @@ function ImageAdjustment(Inte) {
       CSSFilter: false,
       GLName: "edgeDetect3"
     },
-    { 
-      filterType: "sharpness",
-      value: "0",
+    {
+      filterType: "gaussianBlur",
       defaultValue: "0",
-      inputID: "sharpness-input",
-      sliderID: "sharpness-slider",
+      inputID: "gaussianBlur-input",
+      sliderID: "gaussianBlur-slider",
       min: "0",
-      max: "1",
-      step: "0.01",
-      label: "Sharpness (0-1)",
+      max: "3",
+      step: "0.1",
+      label: "Gausian Blur (XX-XX)",
       CSSFilter: false,
-      GLName: "unsharpen"
+      GLName: "gaussianBlur"
     }
     ];
 
@@ -255,7 +261,13 @@ function ImageAdjustment(Inte) {
         let slider = document.getElementById(sliderID);
         let input = document.getElementById(inputID);
 
-        if (filter.filterType == "emboss") {
+        if (filter.filterType == "brightness") {
+          slider.value = 110
+          input.value = slider.value
+        } else if (filter.filterType == "contrast") {
+          slider.value = 105
+          input.value = slider.value
+        } else if (filter.filterType == "emboss") {
           slider.value = 0.15
           input.value = slider.value
         } else if (filter.filterType == "sharpness") {
