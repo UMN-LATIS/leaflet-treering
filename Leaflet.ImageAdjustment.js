@@ -103,12 +103,60 @@ function ImageAdjustment(Inte) {
       inputID: "gaussianBlur-input",
       sliderID: "gaussianBlur-slider",
       min: "0",
-      max: "3",
-      step: "0.1",
-      label: "Gausian Blur (XX-XX)",
+      max: "10",
+      step: "0.5",
+      label: "Gausian Blur (0-10)",
       CSSFilter: false,
       GLName: "gaussianBlur"
-    }
+    },
+    {
+      filterType: "triangleBlur",
+      defaultValue: "0",
+      inputID: "triangleBlur-input",
+      sliderID: "triangleBlur-slider",
+      min: "0",
+      max: "10",
+      step: "0.5",
+      label: "Triangle Blur (0-10)",
+      CSSFilter: false,
+      GLName: "triangleBlur"
+    },
+    {
+      filterType: "boxBlur",
+      defaultValue: "0",
+      inputID: "boxBlur-input",
+      sliderID: "boxBlur-slider",
+      min: "0",
+      max: "10",
+      step: "0.5",
+      label: "Box Blur (0-10)",
+      CSSFilter: false,
+      GLName: "boxBlur"
+    },
+    // {
+    //   filterType: "sobelHorizontal",
+    //   defaultValue: "0",
+    //   inputID: "sobelHorizontal-input",
+    //   sliderID: "sobelHorizontal-slider",
+    //   min: "0",
+    //   max: "1",
+    //   step: "0.05",
+    //   label: "Sobel Horizontal",
+    //   CSSFilter: false,
+    //   GLName: "sobelHorizontal"
+    // },
+    // {
+    //   filterType: "sobelVertical",
+    //   defaultValue: "0",
+    //   inputID: "sobelVertical-input",
+    //   sliderID: "sobelVertical-slider",
+    //   min: "0",
+    //   max: "1",
+    //   step: "0.05",
+    //   label: "Sobel Vertical",
+    //   CSSFilter: false,
+    //   GLName: "sobelVertical"
+    // },
     ];
 
   // Stores info of whether or not image is inverted
