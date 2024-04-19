@@ -163,24 +163,30 @@ function EstimateVisualAssets(Inte) {
      * @param {object} midLatLng - Location of mid point (Leaflet latLng). 
      * @param {object} heightLatLng - Location of height point (Leaflet latLng). 
      */
-    EstimateVisualAssets.prototype.drawPithEstimateArc = function(lengthLatLng_1, lengthLatLng_2, midLatLng, heightLatLng) {
-        let marker = L.marker(midLatLng, { icon: L.divIcon({className: "fa fa-plus guide"}) });
+    EstimateVisualAssets.prototype.drawPithEstimateArc = function(center, radius, latLngObj = null) {
+        if (latLngObj) {
+            let lengthLatLng_1 = latLngObj.lengthLatLng_1;
+            let lengthLatLng_2 = latLngObj.lengthLatLng_2;
+            let heightLatLng = latLngObj.heightLatLng;
+
+            // Use distance equation directly to get unproject Leaflet length: 
+            let length_unCorrected = Math.sqrt(Math.pow(Math.abs(lengthLatLng_1.lng - lengthLatLng_2.lng), 2) + 
+            Math.pow(Math.abs(lengthLatLng_1.lat - lengthLatLng_2.lat), 2));
+            length_unCorrected -= Inte.breakGeoEstimate.lengthBreakSectionWidth_unCorrected;
+
+            let height_unCorrected = Math.sqrt(Math.pow(Math.abs(center.lng - heightLatLng.lng), 2) + 
+                    Math.pow(Math.abs(center.lat - heightLatLng.lat), 2));
+            height_unCorrected -= Inte.breakGeoEstimate.heightBreakSectionWidth_unCorrected;
+
+            // Equation by Duncan 1989:
+            radius = ((length_unCorrected**2) / (8*height_unCorrected)) + (height_unCorrected/2);
+        }
+
+        let marker = L.marker(center, { icon: L.divIcon({className: "fa fa-plus guide"}) });
         this.arcLayer.addLayer(marker);
 
-        // Use distance equation directly to get unproject Leaflet length: 
-        let length_unCorrected = Math.sqrt(Math.pow(Math.abs(lengthLatLng_1.lng - lengthLatLng_2.lng), 2) + 
-                                  Math.pow(Math.abs(lengthLatLng_1.lat - lengthLatLng_2.lat), 2));
-        length_unCorrected -= Inte.breakGeoEstimate.lengthBreakSectionWidth_unCorrected;
-
-        let height_unCorrected = Math.sqrt(Math.pow(Math.abs(midLatLng.lng - heightLatLng.lng), 2) + 
-                                  Math.pow(Math.abs(midLatLng.lat - heightLatLng.lat), 2));
-        height_unCorrected -= Inte.breakGeoEstimate.heightBreakSectionWidth_unCorrected;
-
-        // Equation by Duncan 1989:
-        let radius_unCorrected = ((length_unCorrected**2) / (8*height_unCorrected)) + (height_unCorrected/2);
-
-        this.arc = L.circle(midLatLng, {
-            radius: radius_unCorrected, 
+        this.arc = L.circle(center, {
+            radius: radius, 
             color: "#8153f5", 
             weight: 6,
         }).addTo(this.arcLayer);
@@ -505,7 +511,12 @@ function NewGeoEstimate(Inte) {
         Inte.estimateVisualAssets.clearMouseConnection();
         Inte.estimateVisualAssets.clearMarkers();
 
-        Inte.estimateVisualAssets.drawPithEstimateArc(this.lengthLatLng_1, this.lengthLatLng_2, this.midLatLng, this.heightLatLng);
+        let latLngObj = {
+            lengthLatLng_1: this.lengthLatLng_1, 
+            lengthLatLng_2: this.lengthLatLng_2, 
+            heightLatLng: this.heightLatLng,
+        }
+        Inte.estimateVisualAssets.drawPithEstimateArc(this.midLatLng, null, latLngObj);
         Inte.newGeoEstimateDialog.openInterface(this.innerLength, this.innerHeight, this.innerRadius);
     }
 }
@@ -857,6 +868,7 @@ function NewCcmEstimate(Inte) {
         Inte.treering.viewer.getContainer().style.cursor = 'pointer';
 
         Inte.newCcmEstimateDialog.openInstructions();
+        Inte.estimateVisualAssets.clearArcs();
         this.action();
     }
 
@@ -1068,7 +1080,7 @@ function NewCcmEstimate(Inte) {
  */
 function NewCcmEstimateDialog(Inte) {
     let minWidth = 320;
-    let minHeight = 460;
+    let minHeight = 500;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
@@ -1091,11 +1103,12 @@ function NewCcmEstimateDialog(Inte) {
      */
     NewCcmEstimateDialog.prototype.openInstructions = function() {
         let distances = Inte.treering.helper.findDistances();
-        let totalDistance = distances.tw.y.reduce((sum, x) => {return sum + x}, 0);
+        this.totalDistance = distances.tw.y.reduce((sum, x) => {return sum + x}, 0);
+        this.numRingsMeasured = distances.tw.y.length;
 
         let dbh = parseFloat(Inte.treering.meta.dbh)*10;
-        this.length = ((dbh/2) - totalDistance).toFixed(3);
-        this.percentage = (this.length / (dbh/2) * 100).toFixed(1);
+        this.length = ((dbh/2) - this.totalDistance).toFixed(3);
+        this.radiusPercent = (this.length / (dbh/2) * 100).toFixed(1);
 
         Inte.treering.collapseTools();
 
@@ -1109,7 +1122,11 @@ function NewCcmEstimateDialog(Inte) {
                 numShownCircles: 5,
                 innerYearEst: "NA",
                 missingRadiusLen: this.length,
-                missingRadiusPercent: this.percentage,
+                missingRadiusPercent: this.radiusPercent,
+                agePresentPercent: "NA",
+                ageEstimatedPercent: "NA",
+                distancePresentPercent: "NA",
+                distanceEstimatedPercent: "NA",
             });
 
         this.dialog.setContent(html);
@@ -1164,11 +1181,21 @@ function NewCcmEstimateDialog(Inte) {
 
         $("#PithEstimate-ccmConfirm-btn").on("click", () => {           
             Inte.estimateData.updateShownValues(Inte.newCcmEstimate.innerYearEst, "CCM");
+            Inte.estimateVisualAssets.drawPithEstimateArc(Inte.newCcmEstimate.pithLatLng, Inte.newCcmEstimate.radius_unCorrected);
+            Inte.estimateVisualAssets.addArcPopup(Inte.newCcmEstimate.innerYearEst);
             Inte.newCcmEstimate.disable();
         })
     }
 
     NewCcmEstimateDialog.prototype.reload = function() {
+        let ageDenominator = Inte.newCcmEstimate.radius_corrected + this.totalDistance;
+        let agePresentPercent = 100*(this.totalDistance / ageDenominator);
+        let ageEstimatedPercent = 100*(Inte.newCcmEstimate.radius_corrected / ageDenominator);
+
+        let distanceDenominator = this.numRingsMeasured + Inte.newCcmEstimate.numInnerYearEst;
+        let distancePresentPercent = 100*(this.numRingsMeasured / distanceDenominator);
+        let distanceEstimatedPercent = 100*(Inte.newCcmEstimate.numInnerYearEst / distanceDenominator);
+
         let html = this.template(
             {
                 defaultMovement: Inte.newCcmEstimate.movementAmount,
@@ -1177,7 +1204,11 @@ function NewCcmEstimateDialog(Inte) {
                 numShownCircles: Inte.newCcmEstimate.numShownCircles,
                 innerYearEst: Inte.newCcmEstimate.innerYearEst,
                 missingRadiusLen: this.length,
-                missingRadiusPercent: this.percentage,
+                missingRadiusPercent: this.radiusPercent,
+                agePresentPercent: agePresentPercent.toFixed(1),
+                ageEstimatedPercent: ageEstimatedPercent.toFixed(1),
+                distancePresentPercent: distancePresentPercent.toFixed(1),
+                distanceEstimatedPercent: distanceEstimatedPercent.toFixed(1),
             });
 
         this.dialog.setContent(html);
