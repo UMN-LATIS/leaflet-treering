@@ -228,12 +228,13 @@ function ImageAdjustment(Inte) {
   }
 
   ImageAdjustment.prototype.toggleButtonColor = function(buttonID, buttonState) {
-    let button = document.getElementById(buttonID)
+    let button = document.getElementById(buttonID);
+    // Color blue when active:
     if (buttonState) {
-      button.style.backgroundColor = '#aec8f4'
+      button.classList.add("image-adjustment-active-button");
     }
     else {
-      button.style.backgroundColor = '#dcdcdc'
+      button.classList.remove("image-adjustment-active-button");
     }
   }
   

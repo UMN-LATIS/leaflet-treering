@@ -33,9 +33,21 @@ input[type = "range"] {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	border: 1px solid black;
+	border: 0;
 	border-radius: 6px;
-	background-color: #dcdcdc;
+	background-color: #e0e0e0;
+}
+
+.image-adjustment-button:hover {
+	background-color: #d4d4d4;
+}
+
+.image-adjustment-active-button {
+	background-color: #aec8f4;
+}
+
+.image-adjustment-active-button:hover {
+	background-color: #aec8f4;
 }
 
 .image-adjustment-default-div {
