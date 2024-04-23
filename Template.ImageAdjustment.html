@@ -1,5 +1,5 @@
 <script id="ImageAdjustment-dialog-template" type="text/x-handlebars-template">
-    <div class="image-adjustment-default-div" style="padding-top: 0px; height: 30px;">
+    <div class="image-adjustment-default-div" style="padding-top: 0px; height: 25px;">
         <h4 class="image-adjustment-header" style="font-weight: bold; margin: 0px; font-size: 20px;">Image Adjustments</h4>
     </div>
     <div class="image-adjustment-default-div">
@@ -17,4 +17,5 @@
         <input class="imageSlider" id={{this.sliderID}} value = {{this.defaultValue}} min={{this.min}} max={{this.max}} step={{this.step}} type=range>
     </div>
     {{/each}}
+    <p class="image-adjustment-subtext" style="margin-bottom: 0px; margin-top: 5px">Settings saved to the JSON (shift+s) can be restored to default (Reset)</p>
 </script>
