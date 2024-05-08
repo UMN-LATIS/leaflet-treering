@@ -1079,8 +1079,8 @@ function NewCcmEstimate(Inte) {
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.
  */
 function NewCcmEstimateDialog(Inte) {
-    let minWidth = 320;
-    let minHeight = 500;
+    let minWidth = 324;
+    let minHeight = 400;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
@@ -1146,6 +1146,12 @@ function NewCcmEstimateDialog(Inte) {
     }
 
     NewCcmEstimateDialog.prototype.createEventListeners = function() {
+        $("#PithEstimate-instruction-button").on("click", () => {
+            $("#PithEstimate-instruction-container").toggle();
+            $("#PithEstimate-instruction-icon-plus").toggle();
+            $("#PithEstimate-instruction-icon-minus").toggle();
+        });
+
         $("#PithEstimate-numShownCircles-input").on("input", () => {
             Inte.newCcmEstimate.numShownCircles = $("#PithEstimate-numShownCircles-input").val();
             

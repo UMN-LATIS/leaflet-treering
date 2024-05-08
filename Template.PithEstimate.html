@@ -88,9 +88,32 @@
         </p>
         <p class="PithEstimate-instruction-text">
             Estimate pith offset dynamically using concentric circles, after Applequist 1958, <em>Journal of Forestry.</em> <br>
-            <em>See instructions below.</em>
         </p>
-        <div style="background-color: #f3f3f3; border-radius: 10px; margin-bottom: 8px; padding: 6px;">
+
+        <div class="PithEstimate-container" style="align-items: center;">
+            <button id="PithEstimate-instruction-button">
+                Instructions
+                <i id="PithEstimate-instruction-icon-plus" class="fa fa-plus" aria-hidden="true"></i>
+                <i id="PithEstimate-instruction-icon-minus" class="fa fa-minus" aria-hidden="true" hidden></i>
+            </button>
+            <div id="PithEstimate-instruction-container" class="PithEstimate-text-background" hidden>
+                <p class="PithEstimate-instruction-text">
+                    <b>1)</b> Click to place the estimated pith location marker. 
+                </p>
+                <p class="PithEstimate-instruction-text">
+                    <b>2)</b> Move pith marker using WASD keys, carefully aligning circle curvature to match curvature of annual ring boundaries.
+                </p>
+                <p class="PithEstimate-instruction-text">
+                    <b>3)</b> Adjust the number of rings from which the growth rate is calculated, as needed. 
+                    *Results appear in the table below; the default of ten rings is only a suggested starting place.
+                </p>
+                <p class="PithEstimate-instruction-text">
+                    <b>4)</b> Click confirm to update metadata.
+                </p>
+            </div>
+        </div>
+
+        <div class="PithEstimate-text-background">
             <div class="PithEstimate-ccmOptions-div">
                 <span style="font-style: italic;">Number of rings used for estimation: </span>
                 <input type="number" style="width:50px; text-align: right;" min="2" value="{{numShownCircles}}" id="PithEstimate-numShownCircles-input">
@@ -125,30 +148,30 @@
             </div>
         </div>
 
-        <table class="PithEstimate-table PithEstimate-vertical-headers" style="margin: 8px 0;">
+        <table class="PithEstimate-table" style="margin: 8px 0;">
+            <tr><th>Attribute</th><th>Present</th><th>Est. Missing</th><th>Est. Total</th></tr>
+            <tr>
+                <td>Radius</td><td></td><td></td><td></td>
+            </tr>
+            <tr>
+                <td>Years</td><td></td><td></td><td></td>
+            </tr>
+            <tr>
+                <td>Radius %</td><td></td><td></td><td></td>
+            </tr>
+            <tr>
+                <td>Years %</td><td></td><td></td><td></td>
+            </tr>
+        </table>
+
+        <!-- <table class="PithEstimate-table PithEstimate-vertical-headers" style="margin: 8px 0;">
             <tr><th>Pith Distance</th><td>{{pithDistance}} mm</td></tr>
             <tr><th style="background-color: #c2e07d;">Number Years Estimated</th><td>{{numYearEst}}</td></tr>
             <tr><th>Inner Year Estimate</th><td>{{innerYearEst}}</td></tr>
-            <tr><th style="background-color: #c2e07d;">Missing Radius Length</th><td>{{missingRadiusLen}} mm</td></tr>
+            <tr><th style="background-color: #c2e07d;">Missing Sum of Widths</th><td>{{missingRadiusLen}} mm</td></tr>
             <tr><th>Missing Radius %</th><td>{{missingRadiusPercent}} %</td></tr>
             <tr><th style="background-color: #c2e07d;">Rings / Age %</th><td>{{agePresentPercent}} % present <br> {{ageEstimatedPercent}} % estimated</td></tr>
             <tr><th>Distance %</th><td>{{distancePresentPercent}} % present <br> {{distanceEstimatedPercent}} % estimated</td></tr>
-        </table>
-        <p class="PithEstimate-title" style="background-color: white;">
-            Instructions:
-        </p>
-        <p class="PithEstimate-instruction-text">
-            <b>1)</b> Click to place the estimated pith location marker. 
-        </p>
-        <p class="PithEstimate-instruction-text">
-            <b>2)</b> Move pith marker using WASD keys, carefully aligning circle curvature to match curvature of annual ring boundaries.
-        </p>
-        <p class="PithEstimate-instruction-text">
-            <b>3)</b> Adjust the number of rings from which the growth rate is calculated, as needed. 
-            *Results appear in the table below; the default of ten rings is only a suggested starting place.
-        </p>
-        <p class="PithEstimate-instruction-text">
-            <b>4)</b> Click confirm to update metadata.
-        </p>
+        </table> -->
     </div>  
 </script>
