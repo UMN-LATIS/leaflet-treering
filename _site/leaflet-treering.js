@@ -121,6 +121,16 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   });
   // --- //
 
+  // --- //
+  // Code hosted in Leaflet.Labels.js
+  this.labelsInterface = new LabelsInterface(this);
+  this.labelTools = new ButtonBar(this, this.labelsInterface.btns, "category", "Manage labels");
+
+  this.labelsInterface.tools.map(tool => {
+    this.tools.push(tool);
+  });
+  // --- //
+
   // Code hosted in Leaflet.DataAccess.js
   this.dataAccessInterface = new DataAccessInterface(this);
 
@@ -165,6 +175,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       this.universalDelete.btn.addTo(this.viewer);
       this.settings.bar.addTo(this.viewer);
       this.areaTools.bar.addTo(this.viewer);
+      this.labelTools.bar.addTo(this.viewer);
       this.undoRedoBar.addTo(this.viewer);
     } else {
       this.imageAdjustment.btn.addTo(this.viewer);
@@ -263,6 +274,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     this.editTools.collapse();
     this.settings.collapse();
     this.areaTools.collapse();
+    this.labelTools.collapse();
   };
 
   // we need the max native zoom, which is set on the tile layer and not the map. getMaxZoom will return a synthetic value which is no good for measurement
