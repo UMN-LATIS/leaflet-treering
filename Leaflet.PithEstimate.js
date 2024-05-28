@@ -1080,7 +1080,7 @@ function NewCcmEstimate(Inte) {
  */
 function NewCcmEstimateDialog(Inte) {
     let minWidth = 324;
-    let minHeight = 400;
+    let minHeight = 390;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
@@ -1147,7 +1147,7 @@ function NewCcmEstimateDialog(Inte) {
 
     NewCcmEstimateDialog.prototype.createEventListeners = function() {
         $("#PithEstimate-instruction-button").on("click", () => {
-            $("#PithEstimate-instruction-container").toggle();
+            $("#PithEstimate-instruction-container").fadeToggle();
             $("#PithEstimate-instruction-icon-plus").toggle();
             $("#PithEstimate-instruction-icon-minus").toggle();
         });
