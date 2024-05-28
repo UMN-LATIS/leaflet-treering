@@ -690,10 +690,10 @@ function NewEllipse(Inte) {
     L.DomEvent.on(window, 'keydown', (e) => {
         if (e.keyCode == 69 && e.getModifierState("Shift") && !e.getModifierState("Control") && 
         window.name.includes('popout') && !Inte.treering.annotationAsset.dialogAnnotationWindow) { // Dialog windows w/ text cannot be active
-        e.preventDefault();
-        e.stopPropagation();
-        Inte.treering.disableTools();
-        this.enable();
+            e.preventDefault();
+            e.stopPropagation();
+            Inte.treering.disableTools();
+            this.enable();
         }
     }, this);
     

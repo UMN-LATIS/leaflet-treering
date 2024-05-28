@@ -1,0 +1,40 @@
+.circle {
+    height: 20px;
+	width: 20px;
+
+	background-color: black;
+	border-radius: 50%;
+}
+
+.square {
+    background-color: black;
+}
+
+.triangle {
+    width: 0; 
+    height: 0; 
+
+    /* Pure CSS triangle uses border-bottom-color as coloring, not background color.*/
+    background-color: transparent !important;
+
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 12px solid;
+    border-bottom-color: black;
+}
+
+.red {
+    background-color: #ff1c22;
+    border-bottom-color: #ff1c22;
+}
+
+.green {
+    background-color: #32c964;
+    border-bottom-color: #32c964;
+}
+
+.blue {
+    background-color: #2aa5de;
+    border-bottom-color: #2aa5de;
+}
+
