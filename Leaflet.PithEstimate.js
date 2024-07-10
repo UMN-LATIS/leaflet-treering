@@ -1044,25 +1044,18 @@ function NewCcmEstimate(Inte) {
     }
 
     NewCcmEstimate.prototype.movePith = function(event) {
-        let zoomPercentage = (Inte.treering.viewer.getZoom() - Inte.treering.viewer.getMinZoom()) / 
-                             (Inte.treering.viewer.getMaxZoom() - Inte.treering.viewer.getMinZoom());
-    
-        let multiplier = (1 - zoomPercentage > 0) ? 1 - zoomPercentage : 0.01;
-        let zoomMultiplier = (this.disableZoomMultiplier) ? 1 : multiplier;
-        let movementAmount =  zoomMultiplier * this.movementAmount;
-
         switch(event.keyCode) {
             case(87): // "w"
-                this.pithLatLng.lat += movementAmount;
+                this.pithLatLng.lat += this.movementAmount;
                 break;
             case(83): // "s"
-                this.pithLatLng.lat -= movementAmount;
+                this.pithLatLng.lat -= this.movementAmount;
                 break;
             case(65): // "a"
-                this.pithLatLng.lng -= movementAmount;
+                this.pithLatLng.lng -= this.movementAmount;
                 break; 
             case(68): // "d"
-                this.pithLatLng.lng += movementAmount;
+                this.pithLatLng.lng += this.movementAmount;
                 break;
         }
 
@@ -1079,8 +1072,8 @@ function NewCcmEstimate(Inte) {
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.
  */
 function NewCcmEstimateDialog(Inte) {
-    let minWidth = 324;
-    let minHeight = 390;
+    let minWidth = 420;
+    let minHeight = 290;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
@@ -1115,18 +1108,15 @@ function NewCcmEstimateDialog(Inte) {
         let content = document.getElementById("PithEstimate-ccmInstructionDialog-template").innerHTML;
         this.template = Handlebars.compile(content);
         let html = this.template(
-            {
-                defaultMovement: Inte.newCcmEstimate.movementAmount,
+            {   
                 pithDistance: "NA",
                 numYearEst: "NA",
-                numShownCircles: 5,
+                numShownCircles: Inte.newCcmEstimate.numShownCircles,
                 innerYearEst: "NA",
-                missingRadiusLen: this.length,
-                missingRadiusPercent: this.radiusPercent,
-                agePresentPercent: "NA",
-                ageEstimatedPercent: "NA",
-                distancePresentPercent: "NA",
-                distanceEstimatedPercent: "NA",
+                pithPercent: "NA",
+                yearPercent: "NA", 
+                estVSsumEst: "NA",
+                measureLengthPercent: "NA",
             });
 
         this.dialog.setContent(html);
@@ -1163,20 +1153,6 @@ function NewCcmEstimateDialog(Inte) {
             }
         });
 
-        // $("#PithEstimate-linear-function").on("change", () => {
-        //     if ($("#PithEstimate-linear-function").is(":checked")) {
-        //         Inte.newCcmEstimate.growthRateFunction = 1; 
-        //         Inte.newCcmEstimate.reloadCcmVisuals();
-        //     }
-        // });
-
-        // $("#PithEstimate-exponential-function").on("change", () => {
-        //     if ($("#PithEstimate-exponential-function").is(":checked")) {
-        //         Inte.newCcmEstimate.growthRateFunction = 2; 
-        //         Inte.newCcmEstimate.reloadCcmVisuals();
-        //     }
-        // });
-
         $("#PithEstimate-movement-input").on("input", () => {
             Inte.newCcmEstimate.movementAmount = $("#PithEstimate-movement-input").val();
         });
@@ -1194,27 +1170,22 @@ function NewCcmEstimateDialog(Inte) {
     }
 
     NewCcmEstimateDialog.prototype.reload = function() {
-        let ageDenominator = Inte.newCcmEstimate.radius_corrected + this.totalDistance;
-        let agePresentPercent = 100*(this.totalDistance / ageDenominator);
-        let ageEstimatedPercent = 100*(Inte.newCcmEstimate.radius_corrected / ageDenominator);
+        let distanceDenominator = Inte.newCcmEstimate.radius_corrected + this.totalDistance;
+        let pithPercent = Math.round(100*(Inte.newCcmEstimate.radius_corrected / distanceDenominator));
 
-        let distanceDenominator = this.numRingsMeasured + Inte.newCcmEstimate.numInnerYearEst;
-        let distancePresentPercent = 100*(this.numRingsMeasured / distanceDenominator);
-        let distanceEstimatedPercent = 100*(Inte.newCcmEstimate.numInnerYearEst / distanceDenominator);
+        let yearDenominator = Inte.newCcmEstimate.numInnerYearEst + this.numRingsMeasured;
+        let yearPercent = Math.round(100*(Inte.newCcmEstimate.numInnerYearEst / yearDenominator));
 
         let html = this.template(
             {
-                defaultMovement: Inte.newCcmEstimate.movementAmount,
-                pithDistance: Inte.newCcmEstimate.radius_corrected.toFixed(3),
+                pithDistance: Math.round(Inte.newCcmEstimate.radius_corrected),
                 numYearEst: Inte.newCcmEstimate.numInnerYearEst,
                 numShownCircles: Inte.newCcmEstimate.numShownCircles,
                 innerYearEst: Inte.newCcmEstimate.innerYearEst,
-                missingRadiusLen: this.length,
-                missingRadiusPercent: this.radiusPercent,
-                agePresentPercent: agePresentPercent.toFixed(1),
-                ageEstimatedPercent: ageEstimatedPercent.toFixed(1),
-                distancePresentPercent: distancePresentPercent.toFixed(1),
-                distanceEstimatedPercent: distanceEstimatedPercent.toFixed(1),
+                pithPercent: pithPercent,
+                yearPercent: yearPercent, 
+                estVSsumEst: "NA",
+                measureLengthPercent: "NA",
             });
 
         this.dialog.setContent(html);
