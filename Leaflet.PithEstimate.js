@@ -62,7 +62,7 @@ function EstimateData(Inte) {
             radius: innerRadius,
             growthRate: growthRate,
             yearsToPith: innerYear,
-            estimatedYear: estYear            
+            estimatedYear: estYear         
         }
 
         this.geoData.push(newDataElement);
@@ -1096,6 +1096,7 @@ function NewCcmEstimateDialog(Inte) {
      */
     NewCcmEstimateDialog.prototype.openInstructions = function() {
         let distances = Inte.treering.helper.findDistances();
+        this.innerYearMeasured = Math.min(...distances.tw.x);
         this.totalDistance = distances.tw.y.reduce((sum, x) => {return sum + x}, 0);
         this.numRingsMeasured = distances.tw.y.length;
 
@@ -1113,6 +1114,7 @@ function NewCcmEstimateDialog(Inte) {
                 numYearEst: "NA",
                 numShownCircles: Inte.newCcmEstimate.numShownCircles,
                 innerYearEst: "NA",
+                innerYearMeasured: this.innerYearMeasured,
                 pithPercent: "NA",
                 yearPercent: "NA", 
                 estVSsumEst: "NA",
@@ -1182,6 +1184,7 @@ function NewCcmEstimateDialog(Inte) {
                 numYearEst: Inte.newCcmEstimate.numInnerYearEst,
                 numShownCircles: Inte.newCcmEstimate.numShownCircles,
                 innerYearEst: Inte.newCcmEstimate.innerYearEst,
+                innerYearMeasured: this.innerYearMeasured,
                 pithPercent: pithPercent,
                 yearPercent: yearPercent, 
                 estVSsumEst: "NA",
