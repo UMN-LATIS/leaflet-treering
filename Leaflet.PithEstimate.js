@@ -41,8 +41,8 @@ function PithEstimateInterface(Lt) {
  */
 function EstimateData(Inte) {
     this.geoData = [];
-    this.shownGeoInnerYear = null;
-    this.shownGeoGrowthRate = null;
+    this.shownInnerYear = null;
+    this.shownGrowthRate = null;
 
     /**
      * Save estimate data to array.
@@ -76,8 +76,8 @@ function EstimateData(Inte) {
      * @param {integer} growthRate - Calculated growth rate from which estYear was found. 
      */
     EstimateData.prototype.updateShownValues = function(estYear, growthRate) {
-        this.shownGeoInnerYear = estYear;
-        this.shownGeoGrowthRate = growthRate;
+        this.shownInnerYear = estYear;
+        this.shownGrowthRate = growthRate;
         Inte.treering.metaDataText.updateText();
     }
 }
