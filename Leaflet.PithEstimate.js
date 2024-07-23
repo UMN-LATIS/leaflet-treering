@@ -40,7 +40,7 @@ function PithEstimateInterface(Lt) {
  * @param {object} Inte - PithEstimateInterface object. Allows access to all other tools.  
  */
 function EstimateData(Inte) {
-    this.geoData = [];
+    this.data = [];
     this.shownInnerYear = null;
     this.shownGrowthRate = null;
 
@@ -65,7 +65,7 @@ function EstimateData(Inte) {
             estimatedYear: estYear         
         }
 
-        this.geoData.push(newDataElement);
+        this.data.push(newDataElement);
     }
 
     /**
@@ -79,6 +79,20 @@ function EstimateData(Inte) {
         this.shownInnerYear = estYear;
         this.shownGrowthRate = growthRate;
         Inte.treering.metaDataText.updateText();
+    }
+
+    /**
+     * Gets JSON package for saving.
+     * @function
+     */
+    EstimateData.prototype.getJSON = function() {
+        return {
+            'growthRate': this.shownGrowthRate,
+            'innerYear': this.shownInnerYear,
+            'pithLatLng': (typeof this.shownGrowthRate == "string") ? Inte.newCcmEstimate.pithLatLng : Inte.newGeoEstimate.midLatLng, 
+            'radius_unCorrected': Inte.newCcmEstimate.radius_unCorrected,
+            'latLngObject': Inte.newGeoEstimate.latLngObject, 
+        }
     }
 }
 
@@ -129,8 +143,6 @@ function EstimateVisualAssets(Inte) {
         let line = L.polyline([fromLatLng, toLatLng], {color: 'red'});
         this.markerLayer.addLayer(line);
     }
-
-    EstimateVisualAssets.prototype.reloadMarkers
 
     /**
      * Connects mouse to a marker via a Leaflet polyline. 
@@ -208,6 +220,21 @@ function EstimateVisualAssets(Inte) {
      */
     EstimateVisualAssets.prototype.clearArcs = function() {
         this.arcLayer.clearLayers();
+    }
+
+    /**
+     * Reloads all arc related visual assets.
+     * @function
+     * 
+     * @param {boolean} ccmEstimate - Flag if CCM method generated estimate. 
+     * @param {object} latLng - Location of arc center (Leafelt latlng)
+     * @param {float} radius - Non-scaled radius of arc.  
+     * @param {integer} innerYear - Estimated year value of pith. 
+     */
+    EstimateVisualAssets.prototype.reloadArcVisuals = function(ccmEstimate, latLng, radius, latLngObj, innerYear) {
+        this.clearArcs();
+        (ccmEstimate) ? this.drawPithEstimateArc(latLng, radius) : this.drawPithEstimateArc(latLng, null, latLngObj);;
+        this.addArcPopup(innerYear);
     }
 
     /**
@@ -313,6 +340,7 @@ function NewGeoEstimate(Inte) {
         this.lengthLatLng_2 = null; 
         this.midLatLng = null;
         this.heightLatLng = null;
+        this.latLngObject = null;
 
         // Push change to undo stack: 
         // Inte.treering.undo.push();
@@ -516,6 +544,7 @@ function NewGeoEstimate(Inte) {
             lengthLatLng_2: this.lengthLatLng_2, 
             heightLatLng: this.heightLatLng,
         }
+        this.latLngObject = latLngObj;
         Inte.estimateVisualAssets.drawPithEstimateArc(this.midLatLng, null, latLngObj);
         Inte.newGeoEstimateDialog.openInterface(this.innerLength, this.innerHeight, this.innerRadius);
     }
@@ -1153,14 +1182,6 @@ function NewCcmEstimateDialog(Inte) {
                 Inte.newCcmEstimate.reloadCcmVisuals();
                 this.reload();
             }
-        });
-
-        $("#PithEstimate-movement-input").on("input", () => {
-            Inte.newCcmEstimate.movementAmount = $("#PithEstimate-movement-input").val();
-        });
-
-        $("#PithEstimate-zoomMultiplier-btn").on("change", () => {
-            Inte.newCcmEstimate.disableZoomMultiplier = $("#PithEstimate-zoomMultiplier-btn").is(":checked");
         });
 
         $("#PithEstimate-ccmConfirm-btn").on("click", () => {           

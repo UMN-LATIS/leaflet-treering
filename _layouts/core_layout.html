@@ -25,6 +25,8 @@
 		<link rel="stylesheet" href="../Style.AreaCapture.css">
 		<link rel="stylesheet" href="../Style.DataAccess.css"> 
 		<link rel="stylesheet" href="../Style.Dating.css"> 
+		<link rel="stylesheet" href="../Style.ImageAdjustment.css"> 
+		<link rel="stylesheet" href="../Style.PithEstimate.css">
 
 		<script src="https://cdn.jsdelivr.net/npm/handlebars@1.1.2/dist/handlebars.js"></script>
 
@@ -60,6 +62,8 @@
 <script type="application/javascript" src="../Leaflet.AreaCapture.js"></script>
 <script type = "application/javascript" src= "../Leaflet.DataAccess.js"></script>
 <script type = "application/javascript" src= "../Leaflet.Dating.js"></script>
+<script type = "application/javascript" src= "../Leaflet.ImageAdjustment.js"></script>
+<script type = "application/javascript" src= "../Leaflet.PithEstimate.js"></script>
 
 <script>
 	var fragmentShader2 = `
@@ -149,29 +153,14 @@
 	}).addTo(map);
 
 	// Add templates to HTML body before interface is loaded:
-	// Promise.all([
-	// 	fetch("templates.html"),
-	// 	fetch("../Template.AreaCapture.html"),
-	// 	fetch("../Template.DataAccess.html"),
-	// 	fetch("../Template.Dating.html")
-	// ]).then((responses) => {
-	// 	Promise.all(
-	// 		responses.map((r) => {return r.text()})
-	// 	).then((body) => {
-	// 		document.body.innerHTML += body.join("");
-	// 		console.log(map, "../", coreData, baseLayer, layer)
-
-	// 		var treering = new LTreering(map, "../", coreData, baseLayer, layer);
-	// 		treering.loadInterface();
-	// 	});
-	// });
-	
 	let html = [];
 	$.when(
 		$.get("templates.html", (dat) => html.push(dat)),
 		$.get("../Template.AreaCapture.html", (dat) => html.push(dat)),
 		$.get("../Template.DataAccess.html", (dat) => html.push(dat)),
 		$.get("../Template.Dating.html", (dat) => html.push(dat)),
+		$.get("../Template.ImageAdjustment.html", (dat) => html.push(dat)),
+		$.get("../Template.PithEstimate.html", (dat) => html.push(dat)),
 	).then(() => {
 		$("body").append(...html);
 		var treering = new LTreering(map, "../", coreData, baseLayer, layer);

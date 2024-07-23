@@ -301,9 +301,15 @@ function JSONFileUpload(Inte) {
             else Inte.treering.areaCaptureInterface.ellipseData.clearJSON();
             if (newDataJSON?.currentView) Inte.treering.imageAdjustmentInterface.imageAdjustment.loadCurrentViewJSON(newDataJSON.currentView);
 
-            if (newDataJSON?.pithInnerYear) {
-                Inte.treering.pithEstimateInterface.estimateData.shownInnerYear = newDataJSON?.pithInnerYear;
-                Inte.treering.pithEstimateInterface.estimateData.shownGrowthRate = newDataJSON?.pithGrowthRate;
+            if (newDataJSON?.pithEstimate) {
+                Inte.treering.pithEstimateInterface.estimateData.updateShownValues(newDataJSON.pithEstimate.innerYear, newDataJSON.pithEstimate.growthRate);
+                Inte.treering.pithEstimateInterface.estimateVisualAssets.reloadArcVisuals(
+                    typeof newDataJSON.pithEstimate.growthRate == "string",
+                    newDataJSON.pithEstimate.pithLatLng, 
+                    newDataJSON.pithEstimate.radius_unCorrected,
+                    newDataJSON.pithEstimate.latLngObject, 
+                    newDataJSON.pithEstimate.innerYear,
+                );
             }
 
             // If the JSON has PPM data, use that instead of loaded data.
@@ -533,8 +539,7 @@ function Download(Inte) {
           'ptWidths': Inte.treering.helper.findDistances(),
           'ellipses': Inte.treering.areaCaptureInterface.ellipseData.getJSON(),
           'currentView': Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON(),
-          'pithGrowthRate': Inte.treering.pithEstimateInterface.estimateData.shownGrowthRate,
-          'pithInnerYear': Inte.treering.pithEstimateInterface.estimateData.shownInnerYear
+          'pithEstimate': Inte.treering.pithEstimateInterface.estimateData.getJSON(),
       };
 
       return data;

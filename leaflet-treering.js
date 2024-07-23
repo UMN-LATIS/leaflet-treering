@@ -39,7 +39,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
     'popoutUrl': options.popoutUrl || null,
     'assetName': options.assetName || 'N/A',
     'attributesObjectArray': options.attributesObjectArray || [],
-    'dbh': fullJSON.dbh_33[0].fieldContents || 0,
+    'dbh': fullJSON?.dbh_33[0].fieldContents || 0,
   }
 
   this.preferences = { // catch for if forwardDirection or subAnnual are undefined/null on line ~2830
@@ -97,10 +97,13 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
 
   this.universalDelete = new UniversalDelete(this);
 
+  this.tools = [this.calibration, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
+  
   // Code hosted in Leaflet.Dating.js
   this.datingInterface = new DatingInterface(this);
   let editToolArr = [this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.insertZeroGrowth.btn, this.cut.btn];
   editToolArr.unshift(...this.datingInterface.btns);
+  this.tools.push(...this.datingInterface.tools);
 
   // --- //
   // Code hosted in Leaflet.AreaCapture.js
@@ -133,8 +136,6 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
   this.createTools = new ButtonBar(this, createToolArr, 'straighten', 'Create new measurements');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
   this.editTools = new ButtonBar(this, editToolArr, 'edit', 'Edit existing measurements');
-  this.tools = [this.calibration, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
-  this.tools.push(...this.datingInterface.tools);
 
   this.baseLayer = {
     'GL Layer': gl_layer,

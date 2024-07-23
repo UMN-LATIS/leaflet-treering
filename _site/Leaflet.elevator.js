@@ -163,7 +163,11 @@ fitImage: function () {
 
 	this.options.bounds = bounds // used by `GridLayer.js#_isValidTile`
 	
-	map.setMaxBounds(bounds)
+	// Inital bounds view:
+	// To only allow initial view: 
+	// map.setMaxBounds(bounds) 
+	// To set inital view, but allow free movement: 
+	map.fitBounds(bounds)
 	this.fitBoundsExactly()
 },
 
