@@ -561,7 +561,7 @@ function NewGeoEstimateDialog(Inte) {
     this.numAvailableYears = 0;
 
     let minWidth = 350;
-    let minHeight = 300;
+    let minHeight = 330;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
     
@@ -586,6 +586,8 @@ function NewGeoEstimateDialog(Inte) {
         this.dialog.setContent(content);
         this.dialog.open();
         this.dialogOpen = true;
+
+        Inte.treering.collapseTools();
     }
 
     /**
