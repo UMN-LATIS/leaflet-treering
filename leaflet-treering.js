@@ -75,7 +75,9 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.undo = new Undo(this);
   this.redo = new Redo(this);
 
-  this.imageAdjustment = new ImageAdjustment(this);
+  // Code hosted in Leaflet.ImageAdjustment.js
+  this.imageAdjustmentInterface = new ImageAdjustmentInterface(this);
+  // this.imageAdjustment = new ImageAdjustment(this);
   //this.PixelAdjustment = new PixelAdjustment(this);
   this.calibration = new Calibration(this);
 
@@ -104,9 +106,10 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.editTools = new ButtonBar(this, editToolArr, 'edit', 'Edit existing measurements');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
-  this.tools = [this.calibration, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustment, this.measurementOptions];
+  this.tools = [this.calibration, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
   this.tools.push(...this.datingInterface.tools);
 
+  // --- //
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
   this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'hdr_strong', 'Manage ellipses');
@@ -116,8 +119,8 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.dataAccessInterface = new DataAccessInterface(this);
 
   this.baseLayer = {
+    'GL Layer': gl_layer,
     'Tree Ring': base_layer,
-    'GL Layer': gl_layer
   };
 
   this.overlay = {
@@ -143,10 +146,11 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     $(map.getContainer()).css('cursor', 'default');
 
     L.control.layers(this.baseLayer, this.overlay).addTo(this.viewer);
+    $(".leaflet-control-layers-selector")[0].click();
 
     // if popout is opened display measuring tools
     if (window.name.includes('popout')) {
-      this.imageAdjustment.btn.addTo(this.viewer);
+      this.imageAdjustmentInterface.imageAdjustment.btn.addTo(this.viewer);
       this.dataAccessInterface.viewData.btn.addTo(this.viewer);
       this.dataAccessInterface.popoutPlots.btn.addTo(this.viewer);
       //this.PixelAdjustment.btn.addTo(this.viewer);
@@ -158,7 +162,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
       this.areaTools.bar.addTo(this.viewer);
       this.undoRedoBar.addTo(this.viewer);
     } else {
-      this.imageAdjustment.btn.addTo(this.viewer);
+      this.imageAdjustmentInterface.imageAdjustment.btn.addTo(this.viewer);
       this.dataAccessInterface.viewData.btn.addTo(this.viewer);
       this.dataAccessInterface.popoutPlots.btn.addTo(this.viewer);
       this.popout.btn.addTo(this.viewer);
@@ -4221,136 +4225,153 @@ function InsertBreak(Lt) {
   };
 }
 
-/**
- * Change color properties of image
- * @constructor
- * @param {Ltreering} Lt - Leaflet treering object
- */
-function ImageAdjustment(Lt) {
-  this.open = false;
+// /**
+//  * Change color properties of image
+//  * @constructor
+//  * @param {Ltreering} Lt - Leaflet treering object
+//  */
+// function ImageAdjustment(Lt) {
+//   this.open = false;
 
-  this.btn = new Button(
-    'brightness_6',
-    'Adjust image appearance settings',
-    () => { Lt.disableTools(); this.enable() },
-    () => { this.disable() }
-  );
+//   this.btn = new Button(
+//     'brightness_6',
+//     'Adjust image appearance settings',
+//     () => { Lt.disableTools(); this.enable() },
+//     () => { this.disable() }
+//   );
 
-  // handlebars from templates.html
-  let content = document.getElementById("image-adjustment-template").innerHTML;
+//   let filterList = [
+//     {
+//       filterType: "e",
+//       value: "50",
+//       inputID: "20",
+//       sliderID: "30"
+//     },
+//     { 
+//       filterType: "e",
+//       value: "50",
+//       inputID: "20",
+//       sliderID: "30"
+//     }
+//    ]
 
-  this.dialog = L.control.dialog({
-    'size': [340, 280],
-    'anchor': [50, 5],
-    'initOpen': false,
-    'position': 'topleft',
-    'minSize': [0, 0]
-  }).setContent(content).addTo(Lt.viewer);
+//   // handlebars from templates.html
+//   let content = document.getElementById("ImageAdjustment-dialog-template").innerHTML;
+//   let template = Handlebars.compile(content);
+//   let html = template({filterList: filterList})
 
-  /**
-   * Update the image filter to reflect slider values
-   * @function updateFilters
-   */
-  ImageAdjustment.prototype.updateFilters = function() {
-    var brightnessSlider = document.getElementById("brightness-slider");
-    var contrastSlider = document.getElementById("contrast-slider");
-    var saturationSlider = document.getElementById("saturation-slider");
-    var hueSlider = document.getElementById("hue-slider");
-    var invert = $("#invert-checkbox").prop('checked')?1:0;
-    var sharpnessSlider = document.getElementById("sharpness-slider").value;
-    var embossSlider = document.getElementById("emboss-slider").value;
-    var edgeDetect = document.getElementById("edgeDetect-slider").value;
-    var unsharpnessSlider = document.getElementById("unsharpness-slider").value;
-    document.getElementsByClassName("leaflet-pane")[0].style.filter =
-      "contrast(" + contrastSlider.value + "%) " +
-      "brightness(" + brightnessSlider.value + "%) " +
-      "saturate(" + saturationSlider.value + "%) " +
-      "invert(" + invert + ")" +
-      "hue-rotate(" + hueSlider.value + "deg)";
-    Lt.baseLayer['GL Layer'].setKernelsAndStrength([
-      {
-			"name":"emboss",
-			"strength": embossSlider
-      },
-      {
-        "name":"edgeDetect3",
-        "strength": edgeDetect
-      },
-      {
-        "name":"sharpness",
-        "strength": sharpnessSlider
-      },
-      {
-        "name":"unsharpen",
-        "strength": unsharpnessSlider
-      }
-    ]);
-  };
+//   this.dialog = L.control.dialog({
+//     'size': [400, 280],
+//     'anchor': [50, 5],
+//     'initOpen': false,
+//     'position': 'topleft',
+//     'minSize': [0, 0]
+//   }).setContent(html).addTo(Lt.viewer);
 
-  /**
-   * Open the filter sliders dialog
-   * @function enable
-   */
-  ImageAdjustment.prototype.enable = function() {
-    this.open = true;
+//   /**
+//    * Update the image filter to reflect slider values
+//    * @function updateFilters
+//    */
+//   ImageAdjustment.prototype.updateFilters = function() {
+//     var brightnessSlider = document.getElementById("brightness-slider");
+//     var contrastSlider = document.getElementById("contrast-slider");
+//     var saturationSlider = document.getElementById("saturation-slider");
+//     var hueSlider = document.getElementById("hue-slider");
+//     var invert = $("#invert-checkbox").prop('checked')?1:0;
+//     var sharpnessSlider = document.getElementById("sharpness-slider").value;
+//     var embossSlider = document.getElementById("emboss-slider").value;
+//     var edgeDetect = document.getElementById("edgeDetect-slider").value;
+//     var unsharpnessSlider = document.getElementById("unsharpness-slider").value;
+//     document.getElementsByClassName("leaflet-pane")[0].style.filter =
+//       "contrast(" + contrastSlider.value + "%) " +
+//       "brightness(" + brightnessSlider.value + "%) " +
+//       "saturate(" + saturationSlider.value + "%) " +
+//       "invert(" + invert + ")" +
+//       "hue-rotate(" + hueSlider.value + "deg)";
+//     Lt.baseLayer['GL Layer'].setKernelsAndStrength([
+//       {
+// 			"name":"emboss",
+// 			"strength": embossSlider
+//       },
+//       {
+//         "name":"edgeDetect3",
+//         "strength": edgeDetect
+//       },
+//       {
+//         "name":"sharpness",
+//         "strength": sharpnessSlider
+//       },
+//       {
+//         "name":"unsharpen",
+//         "strength": unsharpnessSlider
+//       }
+//     ]);
+//   };
 
-    this.dialog.lock();
-    this.dialog.open();
-    var brightnessSlider = document.getElementById("brightness-slider");
-    var contrastSlider = document.getElementById("contrast-slider");
-    var saturationSlider = document.getElementById("saturation-slider");
-    var hueSlider = document.getElementById("hue-slider");
-    var sharpnessSlider = document.getElementById("sharpness-slider");
-    var embossSlider = document.getElementById("emboss-slider");
-    var edgeDetect = document.getElementById("edgeDetect-slider");
-    var unsharpnessSlider = document.getElementById("unsharpness-slider");
-    //Close view if user clicks anywhere outside of slider window
-    $(Lt.viewer.getContainer()).click(e => {
-      this.disable();
-    });
+//   /**
+//    * Open the filter sliders dialog
+//    * @function enable
+//    */
+//   ImageAdjustment.prototype.enable = function() {
+//     this.open = true;
 
-    this.btn.state('active');
-    $(".imageSlider").change(() => {
-      this.updateFilters();
-    });
-    $("#invert-checkbox").change(() => {
-      this.updateFilters();
-    });
-    $("#reset-button").click(() => {
-      $(brightnessSlider).val(100);
-      $(contrastSlider).val(100);
-      $(saturationSlider).val(100);
-      $(hueSlider).val(0);
-      $(sharpnessSlider).val(0);
-      $(embossSlider).val(0);
-      $(edgeDetect).val(0);
-      $(unsharpnessSlider).val(0);
-      this.updateFilters();
-    });
-    $("#invert-button").click(() => {
-      $(brightnessSlider).val(100);
-      $(contrastSlider).val(100);
-      $(saturationSlider).val(100);
-      $(hueSlider).val(0);
-      this.updateFilters();
-    });
-  };
+//     this.dialog.lock();
+//     this.dialog.open();
+//     var brightnessSlider = document.getElementById("brightness-slider");
+//     var contrastSlider = document.getElementById("contrast-slider");
+//     var saturationSlider = document.getElementById("saturation-slider");
+//     var hueSlider = document.getElementById("hue-slider");
+//     var sharpnessSlider = document.getElementById("sharpness-slider");
+//     var embossSlider = document.getElementById("emboss-slider");
+//     var edgeDetect = document.getElementById("edgeDetect-slider");
+//     var unsharpnessSlider = document.getElementById("unsharpness-slider");
+//     //Close view if user clicks anywhere outside of slider window
+//     $(Lt.viewer.getContainer()).click(e => {
+//       this.disable();
+//     });
 
-  /**
-   * Close the filter sliders dialog
-   * @function disable
-   */
-  ImageAdjustment.prototype.disable = function() {
-    if (this.open) {
-      this.dialog.unlock();
-      this.dialog.close();
-    }
+//     this.btn.state('active');
+//     $(".imageSlider").change(() => {
+//       this.updateFilters();
+//     });
+//     $("#invert-checkbox").change(() => {
+//       this.updateFilters();
+//     });
+//     $("#reset-button").click(() => {
+//       $(brightnessSlider).val(100);
+//       $(contrastSlider).val(100);
+//       $(saturationSlider).val(100);
+//       $(hueSlider).val(0);
+//       $(sharpnessSlider).val(0);
+//       $(embossSlider).val(0);
+//       $(edgeDetect).val(0);
+//       $(unsharpnessSlider).val(0);
+//       this.updateFilters();
+//     });
+//     $("#invert-button").click(() => {
+//       $(brightnessSlider).val(100);
+//       $(contrastSlider).val(100);
+//       $(saturationSlider).val(100);
+//       $(hueSlider).val(0);
+//       this.updateFilters();
+//     });
+//   };
+
+//   /**
+//    * Close the filter sliders dialog
+//    * @function disable
+//    */
+//   ImageAdjustment.prototype.disable = function() {
+//     if (this.open) {
+//       this.dialog.unlock();
+//       this.dialog.close();
+//     }
     
-    this.btn.state('inactive');
-    this.open = false;
-  };
+//     this.btn.state('inactive');
+//     this.open = false;
+//   };
 
-}
+// }
 
 /**
 * Change measurement options (set subAnnual, previously hasLatewood, and direction)

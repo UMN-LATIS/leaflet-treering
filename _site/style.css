@@ -469,6 +469,7 @@ textarea {
 	margin-right: 0;
 }
 
+/* Areas on image to initiate autoscroll */
 #AutoScroll-Right-Div {
 	width: 10%;
 	min-width: 50px;
