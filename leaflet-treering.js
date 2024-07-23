@@ -14,7 +14,7 @@
  * @param {string} basePath - this is a path to the treering image folder
  * @param {object} options -
  */
-function LTreering (viewer, basePath, options, base_layer, gl_layer) {
+function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
   this.viewer = viewer;
   this.basePath = basePath;
 
@@ -24,7 +24,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   var latData = urlParams.get("lat");
   var lngData = urlParams.get("lng");
   if (latData && lngData) {
-    setTimeout(function() {find
+    setTimeout(function() {
       viewer.setView([latData, lngData], 16); //  max zoom level is 18
     }, 500);
   }
@@ -39,6 +39,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     'popoutUrl': options.popoutUrl || null,
     'assetName': options.assetName || 'N/A',
     'attributesObjectArray': options.attributesObjectArray || [],
+    'dbh': fullJSON.dbh_33[0].fieldContents || 0,
   }
 
   this.preferences = { // catch for if forwardDirection or subAnnual are undefined/null on line ~2830
@@ -101,22 +102,39 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   let editToolArr = [this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.insertZeroGrowth.btn, this.cut.btn];
   editToolArr.unshift(...this.datingInterface.btns);
 
-  this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
-  this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
-  this.editTools = new ButtonBar(this, editToolArr, 'edit', 'Edit existing measurements');
-  this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
-
-  this.tools = [this.calibration, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
-  this.tools.push(...this.datingInterface.tools);
-
   // --- //
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
   this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'hdr_strong', 'Manage ellipses');
   this.tools.push(...this.areaCaptureInterface.tools);
+  // Code hosted in Leaflet.PithEstimate.js
+  this.pithEstimateInterface = new PithEstimateInterface(this);
+  let createToolArr = [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn];
+  for (btn of this.pithEstimateInterface.btns) {
+    createToolArr.push(btn);
+  }
 
+  // Tools in external files: 
+  // Code hosted in Leaflet.AreaCapture.js
+  this.areaCaptureInterface = new AreaCaptureInterface(this);
+  this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'hdr_strong', 'Manage ellipses');
+  this.areaCaptureInterface.tools.map(tool => {
+    this.tools.push(tool);
+  });
+
+  this.pithEstimateInterface.tools.map(tool => {
+    this.tools.push(tool);
+  });
+  
   // Code hosted in Leaflet.DataAccess.js
   this.dataAccessInterface = new DataAccessInterface(this);
+
+  this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
+  this.createTools = new ButtonBar(this, createToolArr, 'straighten', 'Create new measurements');
+  this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
+  this.editTools = new ButtonBar(this, editToolArr, 'edit', 'Edit existing measurements');
+  this.tools = [this.calibration, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
+  this.tools.push(...this.datingInterface.tools);
 
   this.baseLayer = {
     'GL Layer': gl_layer,
@@ -129,6 +147,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
     'Lines': this.visualAsset.lineLayer,
     'Annotations': this.annotationAsset.markerLayer,
     'Ellipses': this.areaCaptureInterface.ellipseVisualAssets.ellipseLayer,
+    'Pith Estimate': this.pithEstimateInterface.estimateVisualAssets.arcLayer,
   };
 
   /**
@@ -3635,21 +3654,37 @@ function CreateBreak(Lt) {
     'broken_image',
     'Create a within-year break in measurement path\n(Avoid measuring physical specimen gaps & cracks!)',
     () => {
-      Lt.disableTools();
-      this.enable();
-      Lt.mouseLine.from(Lt.data.points[Lt.data.index - 1].latLng);
+      // Code for breaking a pith measurement exists in Leaflet.PithEstimate.js
+      let pithEnabled = Lt.pithEstimateInterface.newGeoEstimate.enabled; 
+      if (pithEnabled) { 
+        Lt.pithEstimateInterface.breakGeoEstimate.enable() 
+      } else { 
+        Lt.disableTools();
+        this.enable(); 
+        Lt.mouseLine.from(Lt.data.points[Lt.data.index - 1].latLng);
+      }
     },
-    () => { this.disable() }
+    () => { 
+      Lt.pithEstimateInterface.breakGeoEstimate.disable();
+      this.disable();
+    }
   );
 
   L.DomEvent.on(window, 'keydown', (e) => {
      if (e.keyCode == 66 && e.getModifierState("Shift") && !e.getModifierState("Control") && // 66 refers to 'b'
      window.name.includes('popout') && !Lt.annotationAsset.dialogAnnotationWindow) { // Dialog windows w/ text cannot be active
-       e.preventDefault();
-       e.stopPropagation();
-       Lt.disableTools();
-       this.enable();
-       Lt.mouseLine.from(Lt.data.points[Lt.data.index - 1].latLng);
+        e.preventDefault();
+        e.stopPropagation();
+
+       // Code for breaking a pith measurement exists in Leaflet.PithEstimate.js
+        let pithEnabled = Lt.pithEstimateInterface.newGeoEstimate.enabled; 
+        if (pithEnabled) { 
+          Lt.pithEstimateInterface.breakGeoEstimate.enable() 
+        } else { 
+          Lt.disableTools();
+          this.enable(); 
+          Lt.mouseLine.from(Lt.data.points[Lt.data.index - 1].latLng);
+        }
      };
   });
 
@@ -4604,6 +4639,12 @@ function MetaDataText (Lt) {
         startAddition = (startPt.earlywood) ? ew + " " : lw + " ";
         endAddition = (endPt.earlywood) ? " " + ew : " " + lw;
       }
+
+      let estInnerYear = Lt.pithEstimateInterface.estimateData.shownInnerYear;
+      if (estInnerYear) {
+        startAddition = `(~${estInnerYear}) ` + startAddition;
+      }
+
       years = startAddition + String(startPt.year) + " — " + String(endPt.year) + endAddition + " &nbsp;|&nbsp; ";
     };
 
@@ -4704,8 +4745,6 @@ function Panhandler(La) {
           panArray = [adjustedPanAmount, 0];
           break;
       }
-
-      console.log(panArray)
       map.panBy(panArray, {
         animate: true,
         delay: 0
@@ -4828,6 +4867,14 @@ function KeyboardShortCutDialog (Lt) {
       {
        'key': 'Shift-b',
        'use': 'Create within-year break',
+      },
+      {
+        'key': 'Shift-p',
+        'use': 'Create inner year estimate with Geometric or Duncan method',
+      },
+      {
+        'key': 'Shift-c',
+        'use': 'Create inner year estimate with Concentric Circles method',
       },
       {
        'key': 'Shift-s',
@@ -4980,14 +5027,18 @@ function Helper(Lt) {
   Helper.prototype.trueDistance = function(p1, p2) {
     var lastPoint = Lt.viewer.project(p1, Lt.getMaxNativeZoom());
     var newPoint = Lt.viewer.project(p2, Lt.getMaxNativeZoom());
+
     var length = Math.sqrt(Math.pow(Math.abs(lastPoint.x - newPoint.x), 2) +
         Math.pow(Math.abs(newPoint.y - lastPoint.y), 2));
+
     var pixelsPerMillimeter = 1;
+
     Lt.viewer.eachLayer((layer) => {
       if (layer.options.pixelsPerMillimeter > 0 || Lt.meta.ppm > 0) {
         pixelsPerMillimeter = Lt.meta.ppm;
       }
     });
+    
     length = length / pixelsPerMillimeter;
     var retinaFactor = 1;
     return length * retinaFactor;
