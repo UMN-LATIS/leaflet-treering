@@ -48,20 +48,20 @@ function EstimateData(Inte) {
      * Save estimate data to array.
      * @function
      * 
-     * @param {float} innerHeight - 
-     * @param {float} innerWidth -
-     * @param {float} innerRadius -
-     * @param {integer} growthRate -
-     * @param {integer} innerYear - 
-     * @param {integer} estYear -
+     * @param {float} innerHeight - Height of pith estimate arc. 
+     * @param {float} innerWidth - Width of pith estimate arc.
+     * @param {float} innerRadius - Inner radius of pith estimate (calculated from height and width).
+     * @param {integer} growthRate - Calculated growth rate of rings.
+     * @param {integer} numYears - Number of years to the pith. 
+     * @param {integer} estYear - Estimated inner year of pith. 
      */
-    EstimateData.prototype.saveGeoEstimateData = function(innerHeight, innerLength, innerRadius, growthRate, innerYear, estYear) {
+    EstimateData.prototype.saveGeoEstimateData = function(innerHeight, innerLength, innerRadius, growthRate, numYears, estYear) {
         let newDataElement = {
             height: innerHeight,
             width: innerLength,
             radius: innerRadius,
             growthRate: growthRate,
-            yearsToPith: innerYear,
+            yearsToPith: numYears,
             estimatedYear: estYear         
         }
 
@@ -116,7 +116,7 @@ function EstimateVisualAssets(Inte) {
      * Creates new Leaflet marker (regular or break).
      * @function
      * 
-     * @param {*} latLng - Leaflet location of new marker. 
+     * @param {object} latLng - Leaflet location of new marker. 
      * @param {boolean} [breakPointBool = false] - Indicates if new marker should be a break point. False by default. 
      * @returns 
      */
@@ -170,10 +170,9 @@ function EstimateVisualAssets(Inte) {
      * Create arc representing the inner most ring measured. 
      * @function
      * 
-     * @param {object} lengthLatLng_1 - First location of length measurement (Leaflet latLng). 
-     * @param {object} lengthLatLng_2 - Second location of length measurement (Leaflet latLng).
-     * @param {object} midLatLng - Location of mid point (Leaflet latLng). 
-     * @param {object} heightLatLng - Location of height point (Leaflet latLng). 
+     * @param {object} center - Center of arc (Leaflet latlng object). 
+     * @param {float} radius - Radisu of arc. 
+     * @param {object} [latLngObj = null] - Container object used by Geometric estimates. 
      */
     EstimateVisualAssets.prototype.drawPithEstimateArc = function(center, radius, latLngObj = null) {
         if (latLngObj) {
@@ -263,6 +262,10 @@ function EstimateVisualAssets(Inte) {
         })
     }
 
+    /**
+     * Removes circles from view.  
+     * @function
+     */
     EstimateVisualAssets.prototype.clearCircles = function() {
         this.circleLayer.clearLayers();
     }
@@ -888,6 +891,10 @@ function NewCcmEstimate(Inte) {
         }
     });
 
+    /**
+     * Enable tool by activating button & starting event chain.
+     * @function
+     */
     NewCcmEstimate.prototype.enable = function() {
         if (!Inte.treering.data.points.length) {
             alert("Error: Measurements must exist to estimate inner year.");
@@ -903,6 +910,10 @@ function NewCcmEstimate(Inte) {
         this.action();
     }
 
+    /**
+     * Disable tool and remove any latent visuals. 
+     * @function
+     */
     NewCcmEstimate.prototype.disable = function() {
         this.btn.state('inactive');
         this.enabled = false;
@@ -917,6 +928,10 @@ function NewCcmEstimate(Inte) {
         Inte.newCcmEstimateDialog.close();
     }
 
+    /**
+     * Event chain of using concentric circle method for estimating true inner year. 
+     * @function
+     */
     NewCcmEstimate.prototype.action = function() {
         this.pithLatLng = null;
 
@@ -940,6 +955,10 @@ function NewCcmEstimate(Inte) {
         });
     }
 
+    /**
+     * Finds all locations for circles used in estimating growth rate. 
+     * @function
+     */
     NewCcmEstimate.prototype.findCircleAnchors = function() {
         let measuredBackwards = !Inte.treering.measurementOptions.forwardDirection;
         let measuredAnnually = !Inte.treering.measurementOptions.subAnnual;
@@ -964,6 +983,10 @@ function NewCcmEstimate(Inte) {
         this.innerRadiiArr = this.findUncorrectedRadii();
     }
 
+    /**
+     * Finds the inner most radius (nearest measured value).
+     * @function
+     */
     NewCcmEstimate.prototype.findInnerMostRadius = function() {
         this.innerMostRadiusLatLng = this.innerMeasurementsArr[0].latLng;
 
@@ -972,6 +995,10 @@ function NewCcmEstimate(Inte) {
         this.radius_unCorrected = this.findUncorrectedDistance(this.pithLatLng, this.innerMostRadiusLatLng); 
     }
 
+    /**
+     * Finds all radii between all used measurement points. Does not correct for image scale. 
+     * @function
+     */
     NewCcmEstimate.prototype.findUncorrectedRadii = function() {
         let arr = [];
         for (point of this.innerMeasurementsArr) {
@@ -983,6 +1010,9 @@ function NewCcmEstimate(Inte) {
         return arr
     }
 
+    /**
+     * Finds all radii for estimated rings. Does not correct for image scale. 
+     */
     NewCcmEstimate.prototype.findUncorrectedEstimatedRadii = function() {
         let pt_A, pt_B, dist, ptDistances = [];
         for (let i = 1; i < this.innerMeasurementsArr.length; i++) {
@@ -1032,6 +1062,10 @@ function NewCcmEstimate(Inte) {
         this.innerYearEst = this.innerMeasurementsArr[0].year - t;
     }
 
+    /**
+     * Draws all visuals used by concentric circle method.
+     * @function
+     */
     NewCcmEstimate.prototype.createCcmVisuals = function() {
         // Draw pith marker:
         Inte.estimateVisualAssets.newMarker(this.pithLatLng);
@@ -1046,6 +1080,9 @@ function NewCcmEstimate(Inte) {
         Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr);
     }
 
+    /**
+     * Reloads all visuals used by concentric circle method when a change occurs (i.e., center moved).
+     */
     NewCcmEstimate.prototype.reloadCcmVisuals = function() {
         // Reload center: 
         Inte.estimateVisualAssets.clearMarkers();
@@ -1061,19 +1098,40 @@ function NewCcmEstimate(Inte) {
         Inte.estimateVisualAssets.createCircles(this.pithLatLng, this.innerEstimatedRadiiArr);
     }
 
+    /**
+     * Finds disatnce between two points. Does not correct for image scale.
+     * @function
+     *  
+     * @param {object} latLng1 - Location of first point (Leaflet latlng object).
+     * @param {object} latLng2 - Location of second point (Leaflet latlng object).
+     */
     NewCcmEstimate.prototype.findUncorrectedDistance = function(latLng1, latLng2) {
         let d = Math.sqrt(Math.pow(Math.abs(latLng1.lng - latLng2.lng), 2) + Math.pow(Math.abs(latLng1.lat - latLng2.lat), 2));
         return d
     }
 
+    /**
+     * Creates keyboard event listener for movement. 
+     * @function
+     */
     NewCcmEstimate.prototype.enablePithLocationMovement = function() {
         L.DomEvent.on(window, 'keydown', this.movePith, this);
     }
 
+    /**
+     * Destoryes keybaord event listener for movement. 
+     * @function
+     */
     NewCcmEstimate.prototype.disablePithLocationMovement = function() {
         L.DomEvent.off(window, 'keydown', this.movePith, this)
     }
 
+    /**
+     * Controls movement of pith estimate marker. 
+     * @function
+     * 
+     * @param {object} event - Keyboard event. 
+     */
     NewCcmEstimate.prototype.movePith = function(event) {
         switch(event.keyCode) {
             case(87): // "w"
@@ -1168,6 +1226,10 @@ function NewCcmEstimateDialog(Inte) {
         this.dialogOpen = false;
     }
 
+    /**
+     * Creates all event listeners for dialog. 
+     * @function
+     */
     NewCcmEstimateDialog.prototype.createEventListeners = function() {
         $("#PithEstimate-instruction-button").on("click", () => {
             $("#PithEstimate-instruction-container").fadeToggle();
@@ -1194,6 +1256,10 @@ function NewCcmEstimateDialog(Inte) {
         })
     }
 
+    /**
+     * Reloads dialog contents with new info.
+     * @function
+     */
     NewCcmEstimateDialog.prototype.reload = function() {
         let distanceDenominator = Inte.newCcmEstimate.radius_corrected + this.totalDistance;
         let pithPercent = Math.round(100*(Inte.newCcmEstimate.radius_corrected / distanceDenominator));
