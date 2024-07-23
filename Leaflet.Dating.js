@@ -170,6 +170,12 @@ function Dating(Inte) {
       }
     }
 
+    /**
+     * Checks whether point needs to be incremented when redating. 
+     * @function
+     * 
+     * @param {object} pt - Measurement point created from leaflet.treering.js.  
+     */
     Dating.prototype.checkIncrementYear = function(pt) {
         let annual = !Inte.treering.measurementOptions.subAnnual; // Measured annually. 
         let subAnnual = Inte.treering.measurementOptions.subAnnual; // Measured subannually (distinguish between early- and late-wood).
@@ -180,6 +186,13 @@ function Dating(Inte) {
         return (annual || (forward && !pt.earlywood) || (backward && pt.earlywood));
     }
 
+    /**
+     * Shifts a collection of points by a specified amount. 
+     * @function
+     * 
+     * @param {integer} shift - Number of years to shift point.  
+     * @param {array} points - Array of points that need adjustment. 
+     */
     Dating.prototype.shiftYears = function(shift, points) {
         points.map((point) => {
             if (point && (point?.year || point?.year == 0)) point.year += shift;
@@ -206,6 +219,13 @@ function DatingPopup(Inte) {
     // 4 = Shift only selected point
     this.shiftOption = 1;
 
+    /**
+     * Opens popup with dating dialog.
+     * @function
+     * 
+     * @param {integer} year - Current year of point.  
+     * @param {object} location - Leaflet latlng location of point. 
+     */
     DatingPopup.prototype.openPopup = function(year, location) {
         // Handlebars from templates.html
         let content = document.getElementById("Dating-template").innerHTML;
@@ -222,10 +242,18 @@ function DatingPopup(Inte) {
         this.createEventListeners();
     }
 
+    /**
+     * Closes popup.
+     * @function
+     */
     DatingPopup.prototype.closePopup = function() {
         this.popup.remove(Inte.treering.viewer);
     }
 
+    /**
+     * Creates all event listeners for HTML content within popup. 
+     * @function
+     */
     DatingPopup.prototype.createEventListeners = function() {
         $("#Dating-year-input").on("input", () => {
             this.yearInput = parseInt($("#Dating-year-input").val());
@@ -248,6 +276,10 @@ function DatingPopup(Inte) {
         })
     }
 
+    /**
+     * Set default values for HTML content in popup. Maintains users previous choice.
+     * @function
+     */
     DatingPopup.prototype.setDefaults = function() {
         // Select previous option: 
         switch(this.shiftOption) {
