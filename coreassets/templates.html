@@ -55,33 +55,8 @@
   <input type="number" style="border:none; width:50px;" value="10" id="length"></input> mm
 </script>
 
-<script id="dating-template" type="text/x-handlebars-template">
-  <input type="number" style="border:none;width:60px;" value= {{date_year}} id="year_input"></input>
-</script>
-
 <script id="start-point-popup-template" type="text/x-handlebars-template">
   <input type="number" style="border:none; width:50px;" value="0" id="year_input"></input>
-</script>
-
-<script id="image-adjustment-template" type="text/x-handlebars-template">
-  <div><label style="text-align:center;display:block;">Brightness</label>
-  <input class="imageSlider" id="brightness-slider" value=100 min=0 max=300 type=range>
-  <label style="text-align:center;display:block;">Contrast</label>
-  <input class="imageSlider" id="contrast-slider" type=range min=50 max=350 value=100></div>
-  <label style="text-align:center;display:block;">Saturation</label>
-  <input class="imageSlider" id="saturation-slider" type=range min=0 max=350 value=100></div>
-  <label style="text-align:center;display:block;">Hue Rotation</label>
-  <input class="imageSlider" id="hue-slider" type=range min=0 max=360 value=0>
-   <label style="text-align:center;display:block;">Sharpness</label>
-  <input class="imageSlider" id="sharpness-slider" value=0 min=0 max=1 step=0.05 type=range>
-  <label style="text-align:center;display:block;">Emboss</label>
-  <input class="imageSlider" id="emboss-slider" value=0 min=0 max=1 step=0.05 type=range>
-  <label style="text-align:center;display:block;">edgeDetect</label>
-  <input class="imageSlider" id="edgeDetect-slider" value=0 min=0 max=1 step=0.05 type=range>
-  <label style="text-align:center;display:block;">unsharpen</label>
-  <input class="imageSlider" id="unsharpness-slider" value=0 min=0 max=1 step=0.05 type=range>
-  <div class = "checkbox" style = "text-align:center; margin-left:auto; margin-right:auto; margin-top: 5px;display:block;"> <label> <input type = "checkbox" id = "invert-checkbox" > Invert </label></div>
-  <button id="reset-button" style="margin-left:auto; margin-right:auto; margin-top: 5px;display:block;" class="mdc-button mdc-button--unelevated mdc-button-compact">reset</button></div>
 </script>
 
 <script id="measurement-options-dialog-template" type="text/x-handlebars-template">

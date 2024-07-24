@@ -24,6 +24,9 @@
 
 		<link rel="stylesheet" href="../Style.AreaCapture.css">
 		<link rel="stylesheet" href="../Style.DataAccess.css"> 
+		<link rel="stylesheet" href="../Style.Dating.css"> 
+		<link rel="stylesheet" href="../Style.ImageAdjustment.css"> 
+		<link rel="stylesheet" href="../Style.PithEstimate.css">
 
 		<script src="https://cdn.jsdelivr.net/npm/handlebars@1.1.2/dist/handlebars.js"></script>
 
@@ -57,8 +60,10 @@
 <script type="text/javascript" src="../leaflet-treering.js"></script>
 
 <script type="application/javascript" src="../Leaflet.AreaCapture.js"></script>
-
 <script type = "application/javascript" src= "../Leaflet.DataAccess.js"></script>
+<script type = "application/javascript" src= "../Leaflet.Dating.js"></script>
+<script type = "application/javascript" src= "../Leaflet.ImageAdjustment.js"></script>
+<script type = "application/javascript" src= "../Leaflet.PithEstimate.js"></script>
 
 <script>
 	var fragmentShader2 = `
@@ -147,18 +152,18 @@
 		tileLayers: [baseLayer],
 	}).addTo(map);
 
-	// add templates to body before interface loaded
-	$.get("templates.html", function (coreassestsData) {
-		$.get("../Template.AreaCapture.html", function (areaCaptureData) {
-			$.get("../Template.DataAccess.html", function (dataAccessData) {
-				$("body").append(coreassestsData);
-				$("body").append(areaCaptureData);
-				$("body").append(dataAccessData);
-
-				var treering = new LTreering(map, "../", coreData, baseLayer, layer);
-				treering.loadInterface();
-			})
-		})
-		
+	// Add templates to HTML body before interface is loaded:
+	let html = [];
+	$.when(
+		$.get("templates.html", (dat) => html.push(dat)),
+		$.get("../Template.AreaCapture.html", (dat) => html.push(dat)),
+		$.get("../Template.DataAccess.html", (dat) => html.push(dat)),
+		$.get("../Template.Dating.html", (dat) => html.push(dat)),
+		$.get("../Template.ImageAdjustment.html", (dat) => html.push(dat)),
+		$.get("../Template.PithEstimate.html", (dat) => html.push(dat)),
+	).then(() => {
+		$("body").append(...html);
+		var treering = new LTreering(map, "../", coreData, baseLayer, layer);
+		treering.loadInterface();
 	});
 </script>
