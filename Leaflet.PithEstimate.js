@@ -1208,6 +1208,7 @@ function NewCcmEstimateDialog(Inte) {
                 yearPercent: "NA", 
                 estVSsumEst: "NA",
                 measureLengthPercent: "NA",
+                showConfirmButton: false,
             });
 
         this.dialog.setContent(html);
@@ -1248,7 +1249,12 @@ function NewCcmEstimateDialog(Inte) {
             }
         });
 
-        $("#PithEstimate-ccmConfirm-btn").on("click", () => {           
+        $("#PithEstimate-ccmConfirm-btn").on("click", () => {
+            if (!Inte.newCcmEstimate.pithLatLng) {
+                alert("Error: Must place a starting location for pith estimation");
+                return
+            }
+
             Inte.estimateData.updateShownValues(Inte.newCcmEstimate.innerYearEst, "CCM");
             Inte.estimateVisualAssets.drawPithEstimateArc(Inte.newCcmEstimate.pithLatLng, Inte.newCcmEstimate.radius_unCorrected);
             Inte.estimateVisualAssets.addArcPopup(Inte.newCcmEstimate.innerYearEst);
@@ -1278,6 +1284,7 @@ function NewCcmEstimateDialog(Inte) {
                 yearPercent: yearPercent, 
                 estVSsumEst: "NA",
                 measureLengthPercent: "NA",
+                showConfirmButton: true,
             });
 
         this.dialog.setContent(html);

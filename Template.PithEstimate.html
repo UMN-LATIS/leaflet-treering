@@ -135,19 +135,11 @@
         </div>
 
         <div class="PithEstimate-sub-container PithEstimate-center-content">
+            {{#if showConfirmButton}}
             <div id="PithEstimate-ccmConfirm-btn" class="PithEstimate-big-btn PithEstimate-confirm-btn">
                 C o n f i r m
             </div>
+            {{/if}}
         </div>
-
-        <!-- <table class="PithEstimate-table" style="margin: 8px 0;">
-            <tr><th>Total</th><th>Measured</th><th>Estimated</th></tr>
-            <tr>
-                <td>{{totalYears}} years</td><td>{{measuredYears}} years</td><td>{{numYearEst}} years</td>
-            </tr>
-            <tr>
-                <td>{{totalDistance}} mm</td><td>{{measuredDistance}} mm</td><td>{{pithDistance}} mm</td>
-            </tr>
-        </table> -->
     </div>  
 </script>
