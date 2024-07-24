@@ -301,7 +301,7 @@ function JSONFileUpload(Inte) {
             else Inte.treering.areaCaptureInterface.ellipseData.clearJSON();
             if (newDataJSON?.currentView) Inte.treering.imageAdjustmentInterface.imageAdjustment.loadCurrentViewJSON(newDataJSON.currentView);
 
-            if (newDataJSON?.pithEstimate) {
+            if (newDataJSON?.pithEstimate && (newDataJSON.pithEstimate.innerYear || newDataJSON.pithEstimate.innerYear == 0)) {
                 Inte.treering.pithEstimateInterface.estimateData.updateShownValues(newDataJSON.pithEstimate.innerYear, newDataJSON.pithEstimate.growthRate);
                 Inte.treering.pithEstimateInterface.estimateVisualAssets.reloadArcVisuals(
                     typeof newDataJSON.pithEstimate.growthRate == "string",
