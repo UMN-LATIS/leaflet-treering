@@ -605,7 +605,8 @@ function NewGeoEstimateDialog(Inte) {
         this.dialog.open();
         this.dialogOpen = true;
 
-        Inte.treering.collapseTools();
+        // Do not collapse tools so that break points may be placed. 
+        // Inte.treering.collapseTools();
     }
 
     /**
