@@ -182,11 +182,13 @@
 }
 
 .PithEstimate-warning-color {
-    background-color: rgb(255, 253, 134);
+    /* background-color: rgb(255, 253, 134); */
+    color: rgb(185, 142, 0);
 }
 
 .PithEstimate-critical-color {
-    background-color: rgb(255, 138, 138);
+    /* background-color: rgb(255, 138, 138); */
+    color: rgb(161, 0, 0);
 }
 
 #PithEstimate-instruction-button {
