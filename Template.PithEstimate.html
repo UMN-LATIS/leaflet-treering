@@ -125,10 +125,42 @@
             <br>
             <p class="PithEstimate-title">Estimated values:</p>
             <div class="PithEstimate-ccmOptions-div">
-                <span> Offset distance: <b>{{pithDistance}} mm</b> ({{pithPercent}}% of measured + estimated)</span>
+                <span> Offset distance: <b>{{pithDistance}} mm</b> 
+                    {{#if pithPercent_isRed}}
+                    <span class="PithEstimate-critical-color">
+                        ({{pithPercent}}% of measured + estimated)
+                    </span>
+                    {{else}} 
+                        {{#if pithPercent_isYellow}}
+                        <span class="PithEstimate-warning-color">
+                            ({{pithPercent}}% of measured + estimated)
+                        </span>
+                        {{else}}
+                        <span>
+                            ({{pithPercent}}% of measured + estimated)
+                        </span>
+                        {{/if}}
+                    {{/if}}
+                </span>
             </div>
             <div class="PithEstimate-ccmOptions-div">
-                <span> Offset years: <b>{{numYearEst}}</b> ({{yearPercent}}% of measured + estimated)</span>
+                <span> Offset years: <b>{{numYearEst}}</b> 
+                    {{#if yearPercent_isRed}}
+                    <span class="PithEstimate-critical-color">
+                        ({{yearPercent}}% of measured + estimated)
+                    </span>
+                    {{else}}
+                        {{#if yearPercent_isYellow}}
+                        <span class="PithEstimate-warning-color">
+                            ({{yearPercent}}% of measured + estimated)
+                        </span>
+                        {{else}}
+                        <span>
+                            ({{yearPercent}}% of measured + estimated)
+                        </span>
+                        {{/if}}
+                    {{/if}}
+                </span>
             </div>
             <div class="PithEstimate-ccmOptions-div">
                 <span> Inner year estimate: <b>{{innerYearEst}}</b> ({{innerYearMeasured}} measured) </span>

@@ -181,6 +181,14 @@
     margin-bottom: 6px;
 }
 
+.PithEstimate-warning-color {
+    background-color: rgb(255, 253, 134);
+}
+
+.PithEstimate-critical-color {
+    background-color: rgb(255, 138, 138);
+}
+
 #PithEstimate-instruction-button {
     border: none;
     border-radius: 4px;

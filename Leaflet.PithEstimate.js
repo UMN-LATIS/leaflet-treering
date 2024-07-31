@@ -581,11 +581,11 @@ function NewGeoEstimateDialog(Inte) {
     let minWidth = 350;
     let minHeight = 330;
     this.size = [minWidth, minHeight];
-    this.anchor = [50, 0];
+    let anchor = [50, 0];
     
     this.dialog = L.control.dialog({
         "size": this.size,
-        "anchor": this.anchor,
+        "anchor": anchor,
         "initOpen": false,
         "position": 'topleft',
         "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
@@ -600,6 +600,11 @@ function NewGeoEstimateDialog(Inte) {
      * @function
      */
     NewGeoEstimateDialog.prototype.openInstructions = function() {
+        let top = 50;
+        let left = window.innerWidth - this.size[0] - 20; // (-20) is arbutary. Adds small buffer from right side. 
+        let anchor = [top, left];
+        this.dialog.setLocation(anchor);
+
         let content = document.getElementById("PithEstimate-duncanInstructionDialog-template").innerHTML;
         this.dialog.setContent(content);
         this.dialog.open();
@@ -1157,12 +1162,12 @@ function NewCcmEstimateDialog(Inte) {
     let minWidth = 420;
     let minHeight = 290;
     this.size = [minWidth, minHeight];
-    this.anchor = [50, 0];
+    let anchor = [50, 0];
     
     this.template = null;
     this.dialog = L.control.dialog({
         "size": this.size,
-        "anchor": this.anchor,
+        "anchor": anchor,
         "initOpen": false,
         "position": 'topleft',
         "maxSize": [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
@@ -1177,6 +1182,11 @@ function NewCcmEstimateDialog(Inte) {
      * @function
      */
     NewCcmEstimateDialog.prototype.openInstructions = function() {
+        let top = 50;
+        let left = window.innerWidth - this.size[0] - 20; // (-20) is arbutary. Adds small buffer from right side. 
+        let anchor = [top, left];
+        this.dialog.setLocation(anchor);
+
         let distances = Inte.treering.helper.findDistances();
         this.innerYearMeasured = Math.min(...distances.tw.x);
         this.totalDistance = distances.tw.y.reduce((sum, x) => {return sum + x}, 0);
@@ -1198,9 +1208,11 @@ function NewCcmEstimateDialog(Inte) {
                 innerYearEst: "NA",
                 innerYearMeasured: this.innerYearMeasured,
                 pithPercent: "NA",
+                pithPercent_isRed: false,
+                pithPercent_isYellow: false,
                 yearPercent: "NA", 
-                estVSsumEst: "NA",
-                measureLengthPercent: "NA",
+                yearPercent_isRed: false,
+                yearPercent_isYellow: false,
                 showConfirmButton: false,
             });
 
@@ -1274,9 +1286,11 @@ function NewCcmEstimateDialog(Inte) {
                 innerYearEst: Inte.newCcmEstimate.innerYearEst,
                 innerYearMeasured: this.innerYearMeasured,
                 pithPercent: pithPercent,
+                pithPercent_isRed: pithPercent > 30,
+                pithPercent_isYellow: pithPercent >= 20,
                 yearPercent: yearPercent, 
-                estVSsumEst: "NA",
-                measureLengthPercent: "NA",
+                yearPercent_isRed: yearPercent > 30,
+                yearPercent_isYellow: yearPercent >= 20,
                 showConfirmButton: true,
             });
 
