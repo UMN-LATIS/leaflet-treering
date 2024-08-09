@@ -49,6 +49,7 @@
 
 		<script src="../assets/leaflet-ellipse/l.ellipse.js"></script>
 		<script src="https://unpkg.com/leaflet-lasso@2.2.12/dist/leaflet-lasso.umd.min.js"></script>
+		<script src="../geotiff.js"></script>
 	</head>
 
 	<body>
@@ -68,42 +69,47 @@
 <script>
 	var fragmentShader2 = `
 
-	uniform float u_kernel[9];
-	uniform float u_flipY;
-	uniform float u_kernelWeight;
-	// all based on https://webglfundamentals.org/webgl/lessons/webgl-image-processing-continued.html
-	vec3 texSample(const float x, const float y, in vec2 fragCoord)
-	{
-			vec2 uv = fragCoord;
-			uv = (uv + vec2((x)/256.0 , (y)/256.0 ));
-			// this also fixed the seam by clamping one pixel from the bottom, but it's super hacky
-			// if(uv.y > 0.996) {
-			//     uv.y = 0.99;
-			// }
-				return texture2D(uTexture0, uv).xyz;
-		}
-	vec3 embossFilter(in vec2 fragCoord, float strength){
-			vec3 f =
-			texSample(-1.,-1., fragCoord) *  u_kernel[0] +
-			texSample( 0.,-1., fragCoord) *  u_kernel[1] +
-			texSample( 1.,-1., fragCoord) *  u_kernel[2] +
-			texSample(-1., 0., fragCoord) *  u_kernel[3] +
-			texSample( 0., 0., fragCoord) *  u_kernel[4] +
-			texSample( 1., 0., fragCoord) *  u_kernel[5] +
-			texSample(-1., 1., fragCoord) *  u_kernel[6] +
-			texSample( 0., 1., fragCoord) *  u_kernel[7] +
-			texSample( 1., 1., fragCoord) *  u_kernel[8]
-			;
-			return mix(texSample( 0., 0., fragCoord), f , strength);
-	}
-	void main(void){
-			// gl_Position = vec4(clipSpace * vec2(1, u_flipY), 0, 1);
-			vec4 targetTexture = texture2D(uTexture0, vec2(vTextureCoords.x, vTextureCoords.y));
-			// gl_FragColor = targetTexture;
-			vec3 result = embossFilter(vec2(vTextureCoords.x, vTextureCoords.y), uSharpenStrength);
-			gl_FragColor = vec4((result / u_kernelWeight).rgb,targetTexture.a);
-	}
-	`;
+uniform float u_kernel[9];
+uniform float u_flipY;
+uniform float u_kernelWeight;
+// all based on https://webglfundamentals.org/webgl/lessons/webgl-image-processing-continued.html
+vec3 texSample(const float x, const float y, in vec2 fragCoord)
+{
+	vec2 uv = fragCoord;
+    uv = (uv + vec2((x)/256.0 , (y)/256.0 ));
+    // this also fixed the seam by clamping one pixel from the bottom, but it's super hacky
+    // if(uv.y > 0.996) {
+    //     uv.y = 0.99;
+    // }
+	return texture2D(uTexture0, uv).xyz;
+}
+
+
+vec3 embossFilter(in vec2 fragCoord, float strength){
+	vec3 f =
+	texSample(-1.,-1., fragCoord) *  u_kernel[0] +
+	texSample( 0.,-1., fragCoord) *  u_kernel[1] +
+	texSample( 1.,-1., fragCoord) *  u_kernel[2] +
+	texSample(-1., 0., fragCoord) *  u_kernel[3] +
+	texSample( 0., 0., fragCoord) *  u_kernel[4] +
+	texSample( 1., 0., fragCoord) *  u_kernel[5] +
+	texSample(-1., 1., fragCoord) *  u_kernel[6] +
+	texSample( 0., 1., fragCoord) *  u_kernel[7] +
+	texSample( 1., 1., fragCoord) *  u_kernel[8]
+	;
+	return mix(texSample( 0., 0., fragCoord), f , strength);
+}
+
+void main(void){
+    // gl_Position = vec4(clipSpace * vec2(1, u_flipY), 0, 1);
+
+    vec4 targetTexture = texture2D(uTexture0, vec2(vTextureCoords.x, vTextureCoords.y));
+    // gl_FragColor = targetTexture;
+    vec3 result = embossFilter(vec2(vTextureCoords.x, vTextureCoords.y), uSharpenStrength);
+
+    gl_FragColor = vec4((result / u_kernelWeight).rgb,targetTexture.a);
+}
+`;
 </script>
 
 {{ content }}
@@ -121,22 +127,115 @@
         trackResize: true,
     }).setView([0, 0], 0);
 
-    var baseLayer = L.tileLayer.elevator(function(coords, tile, done) {
-    	var params = {Bucket: 'elevator-assets', Key: "sample_cores/" + corePath+ "/tiledBase_files/" + coords.z + "/" + coords.x + "_" + coords.y + ".jpeg"};
 
-		return "https://s3.amazonaws.com/" + params.Bucket + "/" + params.Key;
-    },
+	var tiledImageLoadFunction = function(coords, tile, done) {
+    	var params = {Bucket: 'elevator-assets', Key: "sample_cores/" + corePath+ "/tiledBase_files/" + coords.z + "/" + coords.x + "_" + coords.y + ".jpeg"};
+		tile.src = "https://s3.amazonaws.com/" + params.Bucket + "/" + params.Key;
+        return tile;
+    };
+
+
+	var tiff;
+	var image;
+	var count;
+	var subimages = {};
+	var loadIndex = async function() {
+		tiff = await GeoTIFF.fromUrl("https://s3.amazonaws.com/elevator-assets/sample_cores/" + corePath + "/tiled-iiif");
+		image = await tiff.getImage();
+	}
+
+	function hexStringToUint8Array(hexString) {
+		if (hexString.length % 2 !== 0) {
+			throw "Invalid hexString";
+		} /*from  w w w.  j  av a 2s  . c  o  m*/
+		var arrayBuffer = new Uint8Array(hexString.length / 2);
+
+		for (var i = 0; i < hexString.length; i += 2) {
+			var byteValue = parseInt(hexString.substr(i, 2), 16);
+			if (isNaN(byteValue)) {
+				throw "Invalid hexString";
+			}
+			arrayBuffer[i / 2] = byteValue;
+		}
+
+		return arrayBuffer;
+	}
+	var iiifImageLoadFunction =  async function(coords, tile, done) {
+		if(subimages[coords.z] == undefined) {
+			subimages[coords.z] = await tiff.getImage(maxNativeZoom-1 - coords.z);
+		}
+		const tileSize = this.options.tileSize;;
+		const subimage = subimages[coords.z];
+		async function getData() {
+			
+			const numTilesPerRow = Math.ceil(subimage.getWidth() / subimage.getTileWidth());
+			const numTilesPerCol = Math.ceil(subimage.getHeight() / subimage.getTileHeight());
+			const index = (coords.y * numTilesPerRow) + coords.x;
+			let offset;
+			let byteCount;
+			// do this with our own fetch instead of geotiff so that we can get parallel requests
+			offset = subimage.fileDirectory.TileOffsets[index];
+			byteCount = subimage.fileDirectory.TileByteCounts[index];
+			
+			var url = "https://s3.amazonaws.com/elevator-assets/sample_cores/" + corePath + "/tiled-iiif";
+			const response = await fetch(url, {
+				headers: {
+					Range: `bytes=${offset}-${offset+byteCount}`,
+				},
+			});
+			const buffer = await response.arrayBuffer();
+			return buffer
+		}
+		getData().then(function (data) {
+			// const rawData = await subimage.source.fetch([{offset,length: byteCount}]);
+			const uintRaw = new Uint8Array(data);
+			
+			// magic adobe header which forces the jpeg to be interpreted as RGB instead of YCbCr
+			// Note that it's likely this is necessary because when vips writes JPEGs at 90 or greater q,
+			// it disables subsampling. Maybe they're just not flagging it right? 
+			const rawAdobeHeader = hexStringToUint8Array("FFD8FFEE000E41646F626500640000000000");
+			var mergedArray = new Uint8Array(rawAdobeHeader.length + uintRaw.length + subimage.fileDirectory.JPEGTables.length -2 - 2 - 2);
+			mergedArray.set(rawAdobeHeader);
+			// first two bytes of the quant tables have start of image token which we have to strip, and last two bytes are image end which we gotta strip too
+			mergedArray.set(subimage.fileDirectory.JPEGTables.slice(2, -2), rawAdobeHeader.length);
+			mergedArray.set(uintRaw.slice(2), rawAdobeHeader.length + subimage.fileDirectory.JPEGTables.length-2 - 2);
+			url =URL.createObjectURL(new Blob([mergedArray], {type:"image/jpeg"})); 
+			tile.src = url;
+		});
+		// return tile;
+	}
+
+
+	var tileLoadFunction = window[loadFunction];
+	var tileType
+	if(loadFunction == "tiledImageLoadFunction") {
+		tileType = "tiled";
+		loadIndex = async function() {
+
+		};
+	}
+	else {
+		tileType = "iiif";
+	}
+	if(tilesize == 254) {
+		tilesize = 256;
+	}
+
+	var loadedCallback = async function() {
+		await loadIndex();
+    var baseLayer = L.tileLayer.elevator(tileLoadFunction,
     {
 		width: width,
         height: height,
-        tileSize :254,
-		maxNativeZoom: maxNativeZoom,
-        maxZoom: maxNativeZoom + 1,
+        tileSize :tilesize,
+		maxNativeZoom: maxNativeZoom -1,
+        maxZoom: maxNativeZoom + 0,
         overlap: 1,
 		detectRetina: false,
         pixelsPerMillimeter: 480, //(NEW)
         lineColor: 'blue',
-		updateWhenIdle: true
+		updateWhenIdle: true,
+		tileType: tileType,
     }).addTo(map);
 
 	var layer = L.tileLayer.gl({
@@ -146,7 +245,7 @@
 					crs: L.CRS.Simple,
 					noWrap: true,
 					infinite: false,
-					tileSize: 256,
+					tileSize: tilesize,
 					detectRetina: false,
 		fragmentShader: fragmentShader2,
 		tileLayers: [baseLayer],
@@ -166,4 +265,6 @@
 		var treering = new LTreering(map, "../", coreData, baseLayer, layer);
 		treering.loadInterface();
 	});
+}
+	setTimeout(loadedCallback, 30);
 </script>
