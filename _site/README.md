@@ -1,10 +1,8 @@
 ## Repository Link: [leaflet-treering](https://github.com/UMN-LATIS/leaflet-treering)
 
 ## To Run Code:
-1. Select the green 'Code' dropdown while on the 'main' GitHub branch.
-2. Select 'Download ZIP' or open file with GitHub Desktop.
-3. Unzip/Extract files from ZIP folder.
-4. Run any .html file in folder through preferred browser.
+The repository contains a docker-compose file to assist with development. To begin, run `docker compose up` to start the container. After it launches, you can visit http://localhost:4000 to access Leaflet Treering. 
+
 
 ## General Code Style/Organization:
 ####  Variable Conventions:
