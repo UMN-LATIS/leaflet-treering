@@ -59,7 +59,7 @@ function EstimateData(Inte) {
         this.pithLatLng = pithLatLng;
         this.toPithRadius = toPithRadius;
         this.estRadiiArr = estRadiiArr;
-        Inte.treering.metaDataText.updateText();
+        Inte.treering.metaDataText.updateText(); // need ot add clear function
     }
 
     /**
@@ -1041,8 +1041,6 @@ function NewCcmEstimate(Inte) {
             let m = totalGrowth / n;
             return m*t;
         }
-
-        let firstStartPoint = 
 
         this.estimatedRadiiArr = [this.toPith_RadiusUncorrected];
         let prevRadiusEstimate = Number.MAX_SAFE_INTEGER;
