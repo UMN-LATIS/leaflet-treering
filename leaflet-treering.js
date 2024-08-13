@@ -228,7 +228,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
     this.metaDataText.initialize();
 
     this.loadData();
-
+    this.loadExternalTools();
   };
 
   /**
@@ -239,6 +239,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
     this.measurementOptions.preferencesInfo();
     this.visualAsset.reload();
     this.annotationAsset.reload();
+
     if ( this.meta.savePermission ) {
       // load the save information in buttom left corner
       this.dataAccessInterface.cloudUpload.displayDate();
@@ -248,6 +249,24 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
     }
     this.metaDataText.updateText();
   };
+
+  /**
+   * Load the JSON data into an external tool if it exists
+   * @function
+   * 
+   * @param {object} [data = options.initialData] - Data object from JSON. Uses inital data package if not included. 
+   */
+  LTreering.prototype.loadExternalTools = function(data = options.initialData) {
+      // Code hosted in Leaflet.AreaCapture.js
+      if (data.ellipses) this.areaCaptureInterface.ellipseData.loadJSON(data.ellipses);
+      else this.areaCaptureInterface.ellipseData.clearJSON();
+
+      // Code hosted in Leaflet.PithEstimate.js
+      if (data.pithEstimate) this.pithEstimateInterface.estimateData.loadJSON(data.pithEstimate);
+
+      // Code hosted in Leaflet.ImageAdjustment.js
+      if (data.currentView) this.imageAdjustmentInterface.imageAdjustment.loadCurrentViewJSON(data.currentView);
+  }
 
   /**
    * Disable any tools
@@ -290,11 +309,6 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
       });
       return maxNativeZoom;
   };
-
-  // --- //
-  // Code hosted in Leaflet.AreaCapture.js
-  if (options.initialData.ellipses) this.areaCaptureInterface.ellipseData.loadJSON(options.initialData.ellipses);
-  // --- //
 }
 
 /*******************************************************************************/
@@ -4641,9 +4655,9 @@ function MetaDataText (Lt) {
         endAddition = (endPt.earlywood) ? " " + ew : " " + lw;
       }
 
-      let estInnerYear = Lt.pithEstimateInterface.estimateData.shownInnerYear;
-      if (estInnerYear) {
-        startAddition = `(~${estInnerYear}) ` + startAddition;
+      let estYear = Lt.pithEstimateInterface.estimateData.yearEst;
+      if (estYear) {
+        startAddition = `(~${estYear}) ` + startAddition;
       }
 
       years = startAddition + String(startPt.year) + " — " + String(endPt.year) + endAddition + " &nbsp;|&nbsp; ";
