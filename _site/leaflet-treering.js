@@ -78,7 +78,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
 
   // Code hosted in Leaflet.ImageAdjustment.js
   this.imageAdjustmentInterface = new ImageAdjustmentInterface(this);
-  // this.imageAdjustment = new ImageAdjustment(this);
+
   //this.PixelAdjustment = new PixelAdjustment(this);
   this.calibration = new Calibration(this);
 
@@ -90,18 +90,22 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
   this.cut = new Cut(this);
   this.insertPoint = new InsertPoint(this);
   this.convertToStartPoint = new ConvertToStartPoint(this);
-  this.insertZeroGrowth = new InsertZeroGrowth(this);
+
+  this.insertInPlaceInterface = new InsertInPlaceInterface(this);
+  this.insertZeroGrowth = this.insertInPlaceInterface.insertZeroGrowth;
+  this.insertCoreBreak = this.insertInPlaceInterface.insertCoreBreak;
+
   this.insertBreak = new InsertBreak(this);
 
   this.keyboardShortCutDialog = new KeyboardShortCutDialog(this);
 
   this.universalDelete = new UniversalDelete(this);
 
-  this.tools = [this.calibration, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
+  this.tools = [this.calibration, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertCoreBreak, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
   
   // Code hosted in Leaflet.Dating.js
   this.datingInterface = new DatingInterface(this);
-  let editToolArr = [this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.insertZeroGrowth.btn, this.cut.btn];
+  let editToolArr = [this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.insertZeroGrowth.btn, this.insertCoreBreak.btn, this.cut.btn];
   editToolArr.unshift(...this.datingInterface.btns);
   this.tools.push(...this.datingInterface.tools);
 
@@ -131,6 +135,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
   
   // Code hosted in Leaflet.DataAccess.js
   this.dataAccessInterface = new DataAccessInterface(this);
+
 
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
   this.createTools = new ButtonBar(this, createToolArr, 'straighten', 'Create new measurements');
@@ -387,9 +392,9 @@ function MeasurementData (dataObject, Lt) {
     let direction = directionCheck();
 
     if (start) {
-      this.points[this.index] = {'start': true, 'skip': false, 'break': false, 'latLng': latLng};
+      this.points[this.index] = {'start': true, 'skip': false, 'break': false, 'corebreak': false, 'latLng': latLng};
     } else {
-      this.points[this.index] = {'start': false, 'skip': false, 'break': false, 'year': this.year, 'earlywood': this.earlywood, 'latLng': latLng};
+      this.points[this.index] = {'start': false, 'skip': false, 'break': false, 'corebreak': false, 'year': this.year, 'earlywood': this.earlywood, 'latLng': latLng};
       // Change year value if lw point (forward) or ew point (backwards) or annual measurements.
       if ((measurementOptions.subAnnual && ((direction == forwardInTime && !this.earlywood) ||
                                             (direction == backwardInTime && this.earlywood))) ||
@@ -430,7 +435,7 @@ function MeasurementData (dataObject, Lt) {
         second_points = this.points.slice().splice(i + 1, this.index - 1);
         second_points.map(e => {
           if (i === 0) {
-            this.points[i] = {'start': true, 'skip': false, 'break': false,
+            this.points[i] = {'start': true, 'skip': false, 'break': false, 'corebreak': false,
               'latLng': e.latLng};
           } else {
             this.points[i] = e;
@@ -579,7 +584,7 @@ function MeasurementData (dataObject, Lt) {
     }
 
     // If first start point removed, create new one.
-    if (!this.points[0].start) this.points[0] =  {'start': true, 'skip': false, 'break': false, 'latLng': this.points[0].latLng};
+    if (!this.points[0].start) this.points[0] =  {'start': true, 'skip': false, 'break': false, 'corebreak': false, 'latLng': this.points[0].latLng};
 
     // Updates after points are cut
     Lt.helper.updateFunctionContainer(true);
@@ -647,7 +652,7 @@ function MeasurementData (dataObject, Lt) {
     coord = Lt.viewer.latLngToLayerPoint(latLng)
     new_coord = Lt.visualAsset.lines[i].closestLayerPoint(coord)
     new_latLng = Lt.viewer.layerPointToLatLng(new_coord)
-    new_pt = {'start': false, 'skip': false, 'break': false,
+    new_pt = {'start': false, 'skip': false, 'break': false, 'corebreak': false,
               'year': year_adjusted, 'earlywood': earlywood_adjusted,
               'latLng': new_latLng};
     new_points.splice(i, 0, new_pt);
@@ -831,13 +836,13 @@ function MeasurementData (dataObject, Lt) {
       }
 
       let pt_A = {
-        'start': false, 'skip': false, 'break': false,
+        'start': false, 'skip': false, 'break': false, 'corebreak': false,
         'year': yearA, 'earlywood': ewA, 'latLng': latLng
       };
       new_points.splice(indexA, 0, pt_A);
 
       let pt_B = {
-        'start': false, 'skip': false, 'break': false,
+        'start': false, 'skip': false, 'break': false, 'corebreak': false,
         'year': yearB, 'earlywood': ewB, 'latLng': latLng
       };
       new_points.splice(indexB, 0, pt_B);
@@ -852,7 +857,7 @@ function MeasurementData (dataObject, Lt) {
       if (this.points[i].start && Lt.insertZeroGrowth.adjustOuter) k++;
 
       let new_pt = {
-        'start': false, 'skip': false, 'break': false,
+        'start': false, 'skip': false, 'break': false, 'corebreak': false,
         'year': yearAdjusted, 'earlywood': true, 'latLng': latLng
       };
       new_points.splice(k, 0, new_pt);
@@ -1562,15 +1567,24 @@ function VisualAsset (Lt) {
             weight: '5' });
       this.lineLayer.addLayer(this.lines[i + 2]);
     }
+
+    //Core break function does not disable after action; disable it if dragged (not clicked)
+    Lt.insertCoreBreak.disable();
     });
 
     // Tell marker what to do when dragging is done.
     this.markers[i].on('dragend', (e) => {
+      // console.log(this.markers[i-1])
+      // console.log(this.markers[i])
+      // console.log(this.markers[i+1])
+      // console.log(Lt.measurementOptions.subAnnual)
+      
       Lt.undo.push();
       pts[i].latLng = e.target._latlng;
 
       // Check if moving icon disturbed a zero growth icon.
-      if (this.markers[i]?.zero || this.markers[i - 1]?.zero || this.markers[i + 1]?.zero) {
+      let forward = Lt.measurementOptions.forwardDirection;
+      if (this.markers[i]?.zero || (this.markers[i - 1]?.zero && !forward) || (this.markers[i + 1]?.zero && forward)) {
         let k = i;
         if (!this.markers[i].zero && this.markers[i - 1]?.zero) k = i - 1;
         else if (!this.markers[i].zero && this.markers[i + 1]?.zero) k = i + 1;
@@ -1621,6 +1635,18 @@ function VisualAsset (Lt) {
           alert('Zero width years must be added at the annual ring boundary, (i.e. latewood points)');
         } else {
           Lt.insertZeroGrowth.openDialog(e, i);
+        }
+      }
+
+      if (Lt.insertCoreBreak.active) {
+        // Cannot add a core break to earlywood, start points (shifted when measuring backwards), or break sets.
+        if ((Lt.measurementOptions.subAnnual && pts[i].earlywood && !pts[i].start) ||
+            (Lt.measurementOptions.forwardDirection && pts[i].start) ||
+            (!Lt.measurementOptions.forwardDirection && pts[i + 1]?.start) ||
+             pts[i].break || (pts[i].start && pts[i - 1]?.break)) {
+          alert('Core breaks must be added at the annual ring boundary, (i.e. latewood points)');
+        } else {
+          Lt.insertCoreBreak.openDialog(e, i);
         }
       }
 
@@ -3619,12 +3645,12 @@ function CreateZeroGrowth(Lt) {
         return;
       };
 
-      Lt.data.points[Lt.data.index] = {'start': false, 'skip': false, 'break': false,
+      Lt.data.points[Lt.data.index] = {'start': false, 'skip': false, 'break': false, 'corebreak': false,
         'year': Lt.data.year, 'earlywood': firstEWCheck, 'latLng': latLng};
       Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index, latLng, false, true);
       Lt.data.index++;
       if (subAnnualIncrement) {
-        Lt.data.points[Lt.data.index] = {'start': false, 'skip': false, 'break': false,
+        Lt.data.points[Lt.data.index] = {'start': false, 'skip': false, 'break': false, 'corebreak': false,
           'year': yearAdjustment, 'earlywood': secondEWCheck, 'latLng': latLng};
         Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index, latLng, false, true);
         Lt.data.index++;
@@ -3710,7 +3736,7 @@ function CreateBreak(Lt) {
       Lt.undo.push();
 
       Lt.viewer.dragging.disable();
-      Lt.data.points[Lt.data.index] = {'start': false, 'skip': false, 'break': true,
+      Lt.data.points[Lt.data.index] = {'start': false, 'skip': false, 'break': true, 'corebreak': false,
         'latLng': latLng};
       Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index, latLng);
       Lt.data.index++;
@@ -4042,86 +4068,6 @@ function ConvertToStartPoint(Lt) {
 };
 
 /**
- * Insert a zero growth measurement in the middle of a chronology
- * @constructor
- * @param {Ltrering} Lt - Leaflet treering object
- */
-function InsertZeroGrowth(Lt) {
-  this.title = "Insert zero width year: ";
-  this.desc = "To insert a zero width year, you must adjust the dating of earlier or later points.";
-  this.optA = "shift dating of later points forward in time";
-  this.optB = "shift dating of earlier points back in time";
-  this.size = [312, 230];
-  this.adjustOuter = false;
-  this.selectedAdjustment = false;
-  this.maintainAdjustment = false;
-
-  this.active = false;
-  this.btn = new Button(
-    'exposure_zero',
-    'Insert a year with 0 mm width between two other points ',
-    () => { Lt.disableTools(); this.enable() },
-    () => { this.disable() }
-  );
-
-  /**
-   * Insert a zero growth year after point i
-   * @function action
-   * @param i int - index of a point to add a zero growth year after
-   */
-  InsertZeroGrowth.prototype.action = function(i) {
-    var latLng = Lt.data.points[i].latLng;
-
-    Lt.undo.push();
-
-    var k = Lt.data.insertZeroGrowth(i, latLng);
-    if (k !== null) {
-      Lt.visualAsset.reload();
-    }
-
-    this.disable();
-  };
-
-  /**
-   * Open dialog for user to choose shift direction
-   * @function openDialog
-   */
-  InsertZeroGrowth.prototype.openDialog = function(e, i) {
-    if (this.maintainAdjustment) {
-      this.action(i);
-    } else {
-      Lt.helper.createEditToolDialog(e.containerPoint.x, e.containerPoint.y, i, "insertZeroGrowth");
-    }
-  };
-
-  /**
-   * Enable adding a zero growth year
-   * @function enable
-   */
-  InsertZeroGrowth.prototype.enable = function() {
-    this.btn.state('active');
-    this.active = true;
-    this.selectedAdjustment = false;
-    Lt.viewer.getContainer().style.cursor = 'pointer';
-  };
-
-  /**
-   * Disable adding a zero growth year
-   * @function disable
-   */
-  InsertZeroGrowth.prototype.disable = function() {
-    $(Lt.viewer.getContainer()).off('click');
-    this.btn.state('inactive');
-    Lt.viewer.getContainer().style.cursor = 'default';
-    this.active = false;
-    this.selectedAdjustment = false;
-    Lt.viewer.dragging.enable();
-    Lt.mouseLine.disable();
-  };
-
-}
-
-/**
  * Insert a break in the middle of a chronology
  * @constructor
  * @param {Ltreering} Lt - Leaflet treering object
@@ -4183,7 +4129,7 @@ function InsertBreak(Lt) {
         let secondLayerCoord = Lt.viewer.latLngToLayerPoint(this.secondLatLng)
         let secondSnapLayerCoord = Lt.visualAsset.lines[this.closestSecondIndex].closestLayerPoint(secondLayerCoord)
         let secondSnapLatLng = Lt.viewer.layerPointToLatLng(secondSnapLayerCoord)
-        let secondBreakPt = {'start': true, 'skip': false, 'break': false, 'latLng': secondSnapLatLng};
+        let secondBreakPt = {'start': true, 'skip': false, 'break': false, 'corebreak': false, 'latLng': secondSnapLatLng};
         Lt.data.points.splice(this.closestSecondIndex, 0, secondBreakPt);
         Lt.data.index = Lt.data.points.length;
         Lt.visualAsset.reload();
@@ -4210,7 +4156,7 @@ function InsertBreak(Lt) {
         let firstLayerCoord = Lt.viewer.latLngToLayerPoint(this.firstLatLng)
         let firstSnapLayerCoord = Lt.visualAsset.lines[this.closestFirstIndex].closestLayerPoint(firstLayerCoord)
         let firstSnapLatLng = Lt.viewer.layerPointToLatLng(firstSnapLayerCoord)
-        let firstBreakPt = {'start': false, 'skip': false, 'break': true, 'latLng': firstSnapLatLng};
+        let firstBreakPt = {'start': false, 'skip': false, 'break': true, 'corebreak': false, 'latLng': firstSnapLatLng};
         Lt.data.points.splice(this.closestFirstIndex, 0, firstBreakPt);
         Lt.visualAsset.reload();
 
@@ -5128,7 +5074,8 @@ function Helper(Lt) {
           prevPt = e;
        } else if (e.break) {
           disToBreak = Lt.helper.trueDistance(prevPt.latLng, e.latLng);
-       } else if (e.year || e.year == 0) {
+       } 
+        else if (e.year || e.year == 0) {
           // Only add year once. If subannual, both early- and late-wood points have the same year, must only add one of them. 
           let annual = !Lt.measurementOptions.subAnnual;
           let subAnnual = Lt.measurementOptions.subAnnual;
@@ -5137,13 +5084,16 @@ function Helper(Lt) {
           }
 
           var width = Lt.helper.trueDistance(prevPt.latLng, e.latLng) + disToBreak;
+          if (e.corebreak && width === 0) {width = -1.000}
+          else {e.corebreak = false};
+
           width = parseFloat(width.toFixed(5));
           if (e.earlywood && subAnnual) {
               ewWidthArray.push(width);
           } else if (!e.earlywood && subAnnual) {
               lwWidthArray.push(width)
           } else {
-              twWidthArray.push(width)
+            twWidthArray.push(width)
           }
           disToBreak = 0;
           prevPt = e;
@@ -5177,7 +5127,18 @@ function Helper(Lt) {
        for (var i = 0; i < length; i++) {
          j = (forward) ? i : ewYears.length - 1 - i;
          k = (forward) ? i : lwYears.length - 1 - i;
-         width = parseFloat((ewWidthArray[j] + lwWidthArray[k]).toFixed(5));
+
+         //if there is a core break, set tw to -1
+         if (ewWidthArray[j] === -1 && lwWidthArray[k] === -1) {
+          width = parseFloat("-1.000")
+         }
+         //if there is a core break only at ew/lw, treat -1 value as zero
+         else if (ewWidthArray[j] === -1 || lwWidthArray[k] === -1) {
+          width = parseFloat((ewWidthArray[j] + lwWidthArray[k] + 1).toFixed(5))
+         }
+         else {
+          width = parseFloat((ewWidthArray[j] + lwWidthArray[k]).toFixed(5))
+         };
          (forward) ? twWidthArray.push(width) : twWidthArray.unshift(width);
        }
 

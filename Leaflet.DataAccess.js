@@ -82,6 +82,7 @@ function ViewDataDialog(Inte) {
                 let dec_idx = decimal.indexOf('.');
                 rounded = decimal.slice(0, dec_idx + 4);
             }
+            if (decimal === -1) {rounded = "-1.000"}
             
             return rounded;
         }
