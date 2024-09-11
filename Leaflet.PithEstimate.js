@@ -1,10 +1,8 @@
 /**
- * @file Leaflet Pith Estamte
+ * @file Leaflet Pith Estimite
  * @author Jessica Thorne <thorn573@umn.edu>
  * @version 1.0.0
  */
-
-const { point } = require("leaflet");
 
 /**
  * Interface for pith estimate tools. 

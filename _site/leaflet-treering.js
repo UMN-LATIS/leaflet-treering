@@ -105,32 +105,31 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
   editToolArr.unshift(...this.datingInterface.btns);
   this.tools.push(...this.datingInterface.tools);
 
-  // --- //
-  // Code hosted in Leaflet.AreaCapture.js
-  this.areaCaptureInterface = new AreaCaptureInterface(this);
-  this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'hdr_strong', 'Manage ellipses');
-  this.tools.push(...this.areaCaptureInterface.tools);
+// --- // Tools in external files: 
   // Code hosted in Leaflet.PithEstimate.js
   this.pithEstimateInterface = new PithEstimateInterface(this);
   let createToolArr = [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn];
   for (btn of this.pithEstimateInterface.btns) {
     createToolArr.push(btn);
   }
-
-  // Tools in external files: 
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
   this.areaTools = new ButtonBar(this, this.areaCaptureInterface.btns, 'hdr_strong', 'Manage ellipses');
   this.areaCaptureInterface.tools.map(tool => {
     this.tools.push(tool);
   });
-
   this.pithEstimateInterface.tools.map(tool => {
     this.tools.push(tool);
   });
-  
   // Code hosted in Leaflet.DataAccess.js
   this.dataAccessInterface = new DataAccessInterface(this);
+  // Code hosted in Leaflet.BSI.js
+  this.bsiInterface = new BSIInterface(this);
+  this.bsiTools = new ButtonBar(this, this.bsiInterface.btns, "grid_on", "BSI stuff");
+  this.bsiInterface.tools.map(tool => {
+    this.tools.push(tool);
+  });
+// --- //
 
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
   this.createTools = new ButtonBar(this, createToolArr, 'straighten', 'Create new measurements');
@@ -181,6 +180,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
       this.settings.bar.addTo(this.viewer);
       this.areaTools.bar.addTo(this.viewer);
       this.undoRedoBar.addTo(this.viewer);
+      this.bsiTools.bar.addTo(this.viewer);
     } else {
       this.imageAdjustmentInterface.imageAdjustment.btn.addTo(this.viewer);
       this.dataAccessInterface.viewData.btn.addTo(this.viewer);
