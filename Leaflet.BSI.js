@@ -4,6 +4,8 @@
  * @version 1.0.0
  */
 
+const { point } = require("leaflet");
+
 /**
  * Interface for BSI analysis tools. 
  * @constructor
@@ -39,7 +41,77 @@ function Data(Inte) {
  * @param {object} Inte - BSIInterface object. Allows access to all other tools.  
  */
 function VisualAssets(Inte) {
-    console.log("Visual assets");
+    this.polygonLayer = L.layerGroup().addTo(Inte.treering.viewer);
+    
+    VisualAssets.prototype.drawPolygons = function(points) {
+        let height = 20; // user option
+        let width = 0;
+        let angle = 0;
+
+        let afterBoundaryPercent = 0.2 // user option
+        let beforeBoundaryPercent = 0.5 // user option
+        let afterBoundary, beforeBoundary;
+
+        let pt, prevPt;
+        let vertices, rotatedVertices;
+        let polygon;
+
+        // Skip inital start point. 
+        for (let i = 1; i < points.length; i++) {
+            if (points[i].year) {
+                prevPt = Inte.treering.viewer.latLngToLayerPoint(points[i-1].latLng);
+                pt = Inte.treering.viewer.latLngToLayerPoint(points[i].latLng);
+
+                width = this.distanceCalc(pt, prevPt);
+                afterBoundary = width*afterBoundaryPercent;
+                beforeBoundary = width*beforeBoundaryPercent;
+
+                // Step 1: Define rectangle width and height. 
+                vertices = [
+                    L.point(-beforeBoundary,-height),
+                    L.point(-beforeBoundary,height),
+                    L.point(afterBoundary,height),
+                    L.point(afterBoundary,-height)
+                ];
+
+                // Step 2: Rotate rectangle about origin (0,0).
+                angle = Math.atan2(pt.y - prevPt.y, pt.x - prevPt.x);
+                rotatedVertices = vertices.map(v => this.rotatePoint(v, angle));
+
+                // Step 3: Translate ratated rectangle to center at measurement point. 
+                rotatedVertices = rotatedVertices.map(v => {
+                    v.x += pt.x;
+                    v.y += pt.y;
+                    return Inte.treering.viewer.layerPointToLatLng(v);
+                });
+
+                polygon = L.polygon(rotatedVertices, {color: "red"});
+                this.polygonLayer.addLayer(polygon);
+            }
+        }
+    }
+
+    VisualAssets.prototype.clearPolygons = function() {
+        this.polygonLayer.clearLayers();
+    }
+
+    VisualAssets.prototype.rotatePoint = function(point, angle) {
+        let x = Math.cos(angle)*point.x - Math.sin(angle)*point.y;
+        let y = Math.sin(angle)*point.x + Math.cos(angle)*point.y;
+
+        return L.point(x, y);
+    }
+
+    /**
+    * Calculate the distance between 2 points.
+    * @function 
+    * @param {object} pointA
+    * @param {object} pointB
+    */
+    VisualAssets.prototype.distanceCalc = function(pointA, pointB) {
+      return Math.sqrt(Math.pow((pointB.x - pointA.x), 2) +
+                       Math.pow((pointB.y - pointA.y), 2));
+    };
 }
 
 /**
@@ -56,6 +128,8 @@ function NewBSIAnalysis(Inte) {
         () => { this.disable() },
     );
 
+    this.anchors = [];
+
     /**
      * Enable tool by activating button. 
      * @function
@@ -67,6 +141,7 @@ function NewBSIAnalysis(Inte) {
         }
 
         this.btn.state('active');
+        Inte.visualAssets.clearPolygons();
         this.action();
     }
 
@@ -85,10 +160,19 @@ function NewBSIAnalysis(Inte) {
      * @function
      */
     NewBSIAnalysis.prototype.action = function() {
-        console.log("bsi action")
+        this.getAnchors();
+        Inte.visualAssets.drawPolygons(this.anchors);
     }
 
     NewBSIAnalysis.prototype.getAnchors = function() {
-        console.log("anchors")
+        let points = (Inte.treering.measurementOptions.forwardDirection) ? Inte.treering.data.points : Inte.treering.helper.reverseData();
+
+        let annual = !Inte.treering.measurementOptions.subAnnual;
+        let subAnnual = Inte.treering.measurementOptions.subAnnual;
+        let anchors = points.filter(pt => 
+            (annual || (subAnnual && !pt.earlywood)) // Boundry point check.
+        );
+
+        this.anchors = anchors;
     }
 }
