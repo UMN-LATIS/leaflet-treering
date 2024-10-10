@@ -41,9 +41,12 @@ function Data(Inte) {
  * @param {object} Inte - BSIInterface object. Allows access to all other tools.  
  */
 function VisualAssets(Inte) {
-    this.polygonLayer = L.layerGroup().addTo(Inte.treering.viewer);
+    this.directionalPolygonLayer = L.layerGroup().addTo(Inte.treering.viewer);
+    this.samplingPolygonLayer = L.layerGroup().addTo(Inte.treering.viewer);
     
-    VisualAssets.prototype.drawPolygons = function(points) {
+    VisualAssets.prototype.drawDirectionalPolygons = function(points) {
+        let sampleSpaceVertices = [];
+
         let height = 20; // user option
         let width = 0;
         let angle = 0;
@@ -85,14 +88,50 @@ function VisualAssets(Inte) {
                     return Inte.treering.viewer.layerPointToLatLng(v);
                 });
 
+                sampleSpaceVertices.push(rotatedVertices);
                 polygon = L.polygon(rotatedVertices, {color: "red"});
-                this.polygonLayer.addLayer(polygon);
+                this.directionalPolygonLayer.addLayer(polygon);
             }
         }
+
+        return sampleSpaceVertices;
+    }
+
+    VisualAssets.prototype.drawSamplingPolygons = function(sampleSpaceVertices) {
+        let searchSpaceVertices = [];
+        let top, bottom, left, right;
+        let polygon;
+
+        let sampleVertices = [];
+        for (let vertices of sampleSpaceVertices) {
+            top = -Number.MAX_SAFE_INTEGER;
+            bottom = Number.MAX_SAFE_INTEGER;
+            left = Number.MAX_SAFE_INTEGER;
+            right = -Number.MAX_SAFE_INTEGER;
+            for (let v of vertices) {
+                if (v.lat > top) top = v.lat;
+                if (v.lat < bottom) bottom = v.lat;
+                if (v.lng < left) left = v.lng;
+                if (v.lng > right) right = v.lng;
+            }
+
+            sampleVertices = [
+                L.latLng(top, left),
+                L.latLng(top, right),
+                L.latLng(bottom, right),
+                L.latLng(bottom, left)
+            ];
+
+            searchSpaceVertices.push(sampleVertices);
+            polygon = L.polygon(sampleVertices, {color: "blue"});
+            this.samplingPolygonLayer.addLayer(polygon);
+        }
+
+        return searchSpaceVertices;
     }
 
     VisualAssets.prototype.clearPolygons = function() {
-        this.polygonLayer.clearLayers();
+        this.directionalPolygonLayer.clearLayers();
     }
 
     VisualAssets.prototype.rotatePoint = function(point, angle) {
@@ -129,6 +168,8 @@ function NewBSIAnalysis(Inte) {
     );
 
     this.anchors = [];
+    this.sampleSpaceVertices = [];
+    this.searchSpaceVertices = [];
 
     /**
      * Enable tool by activating button. 
@@ -161,7 +202,9 @@ function NewBSIAnalysis(Inte) {
      */
     NewBSIAnalysis.prototype.action = function() {
         this.getAnchors();
-        Inte.visualAssets.drawPolygons(this.anchors);
+        this.sampleSpaceVertices = Inte.visualAssets.drawDirectionalPolygons(this.anchors);
+        this.searchSpaceVertices = Inte.visualAssets.drawSamplingPolygons(this.sampleSpaceVertices);
+        this.findRGBValues();
     }
 
     NewBSIAnalysis.prototype.getAnchors = function() {
@@ -174,5 +217,71 @@ function NewBSIAnalysis(Inte) {
         );
 
         this.anchors = anchors;
+    }
+
+    NewBSIAnalysis.prototype.findRGBValues = function() {
+        let startPoint, endPoint, P;
+        let startX, startY;
+        let endX, endY;
+
+        let searchSpace, sampleSpace;
+        let A, B, C, D;
+        let rectangleArea, triangleArea;
+
+        let latLng;
+        let latLngsToSample = [];
+        for (let i = 0; i < this.searchSpaceVertices.length; i++) {
+            searchSpace = this.searchSpaceVertices[i];
+            sampleSpace = this.sampleSpaceVertices[i];
+
+            // Rotated rectangle to search in:
+            A = Inte.treering.viewer.latLngToLayerPoint(sampleSpace[0]);
+            B = Inte.treering.viewer.latLngToLayerPoint(sampleSpace[1]);
+            C = Inte.treering.viewer.latLngToLayerPoint(sampleSpace[2]);
+            D = Inte.treering.viewer.latLngToLayerPoint(sampleSpace[3]);
+            ABDistance = this.findDistance(A, B);
+            BCDistance = this.findDistance(B, C);
+            rectangleArea = Math.ceil(ABDistance * BCDistance);
+
+            // All searchSpaceVertices elements start at the top-left point, then rotate clockwise around the rectangle.
+            // Goal is to traverse from top-left to bottom-right and collect RGB values.  
+            startPoint = Inte.treering.viewer.latLngToLayerPoint(searchSpace[0]);
+            startX = startPoint.x;
+            startY = startPoint.y
+
+            endPoint = Inte.treering.viewer.latLngToLayerPoint(searchSpace[2]);
+            endX = endPoint.x;
+            endY = endPoint.y;
+
+            // Use triangle geometry to detemrine if the search point is which the sample space. 
+            for (let x = startX; x < endX; x++) {
+                for (let y = startY; y < endY; y++) {
+                    // Point to check:
+                    P = L.point(x, y);
+
+                    // Must find areas of △APD, △DPC, △CPB, △PBA.
+                    APDArea = this.findTriangleArea(A, P, D);
+                    DPCArea = this.findTriangleArea(D, P, C);
+                    CPBArea = this.findTriangleArea(C, P, B);
+                    PBAArea = this.findTriangleArea(P, B, A);
+                    triangleArea = APDArea + DPCArea + CPBArea + PBAArea;
+
+
+                    if (triangleArea <= rectangleArea) {
+                        latLng = Inte.treering.viewer.layerPointToLatLng(P);
+                        latLngsToSample.push(latLng);
+                    }
+                }
+            }
+        }
+        console.log(latLngsToSample);
+    }
+    
+    NewBSIAnalysis.prototype.findDistance = function(A, B) {
+        return Math.sqrt(Math.pow((A.x - B.x), 2) + Math.pow((A.y - B.y), 2));
+    }
+
+    NewBSIAnalysis.prototype.findTriangleArea = function(A, B, C) {
+        return Math.abs((B.x * A.y - A.x * B.y) + (C.x * B.y - B.x * C.y) + (A.x * C.y - C.x * A.y)) / 2;
     }
 }
