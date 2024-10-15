@@ -4,8 +4,6 @@
  * @version 1.0.0
  */
 
-const { point } = require("leaflet");
-
 /**
  * Interface for BSI analysis tools. 
  * @constructor
@@ -43,11 +41,13 @@ function Data(Inte) {
 function VisualAssets(Inte) {
     this.directionalPolygonLayer = L.layerGroup().addTo(Inte.treering.viewer);
     this.samplingPolygonLayer = L.layerGroup().addTo(Inte.treering.viewer);
+
+    this.defaultZoom = 0;
     
     VisualAssets.prototype.drawDirectionalPolygons = function(points) {
         let sampleSpaceVertices = [];
 
-        let height = 20; // user option
+        let height = 100; // user option
         let width = 0;
         let angle = 0;
 
@@ -123,7 +123,7 @@ function VisualAssets(Inte) {
             ];
 
             searchSpaceVertices.push(sampleVertices);
-            polygon = L.polygon(sampleVertices, {color: "blue"});
+            polygon = L.polygon(sampleVertices, {color: "white", fill: false, dashArray: [10, 10]});
             this.samplingPolygonLayer.addLayer(polygon);
         }
 
@@ -151,6 +151,15 @@ function VisualAssets(Inte) {
       return Math.sqrt(Math.pow((pointB.x - pointA.x), 2) +
                        Math.pow((pointB.y - pointA.y), 2));
     };
+
+    VisualAssets.prototype.zoomIn = function() {
+        this.defaultZoom = Inte.treering.viewer.getZoom();
+        Inte.treering.viewer.zoomIn(999);
+    }
+
+    VisualAssets.prototype.zoomOut = function() {
+        Inte.treering.viewer.setZoom(this.defaultZoom);
+    }
 }
 
 /**
@@ -170,6 +179,8 @@ function NewBSIAnalysis(Inte) {
     this.anchors = [];
     this.sampleSpaceVertices = [];
     this.searchSpaceVertices = [];
+    this.sampleLatLngs = [];
+    this.rgbValues = [];
 
     /**
      * Enable tool by activating button. 
@@ -201,10 +212,16 @@ function NewBSIAnalysis(Inte) {
      * @function
      */
     NewBSIAnalysis.prototype.action = function() {
-        this.getAnchors();
-        this.sampleSpaceVertices = Inte.visualAssets.drawDirectionalPolygons(this.anchors);
-        this.searchSpaceVertices = Inte.visualAssets.drawSamplingPolygons(this.sampleSpaceVertices);
-        this.findRGBValues();
+        Inte.treering.viewer.on("zoomend", () => {
+            Inte.treering.viewer.off("zoomend");
+
+            this.getAnchors();
+            this.sampleSpaceVertices = Inte.visualAssets.drawDirectionalPolygons(this.anchors);
+            this.searchSpaceVertices = Inte.visualAssets.drawSamplingPolygons(this.sampleSpaceVertices);
+            this.getSampleLatLngs();
+            this.startTileCaterpillar();
+        });
+        Inte.visualAssets.zoomIn();
     }
 
     NewBSIAnalysis.prototype.getAnchors = function() {
@@ -219,7 +236,9 @@ function NewBSIAnalysis(Inte) {
         this.anchors = anchors;
     }
 
-    NewBSIAnalysis.prototype.findRGBValues = function() {
+    NewBSIAnalysis.prototype.getSampleLatLngs = function() {
+        let delta = 10; // user option
+
         let startPoint, endPoint, P;
         let startX, startY;
         let endX, endY;
@@ -228,8 +247,8 @@ function NewBSIAnalysis(Inte) {
         let A, B, C, D;
         let rectangleArea, triangleArea;
 
-        let latLng;
-        let latLngsToSample = [];
+        let arr, latLng;
+        this.sampleLatLngs = [];
         for (let i = 0; i < this.searchSpaceVertices.length; i++) {
             searchSpace = this.searchSpaceVertices[i];
             sampleSpace = this.sampleSpaceVertices[i];
@@ -241,7 +260,8 @@ function NewBSIAnalysis(Inte) {
             D = Inte.treering.viewer.latLngToLayerPoint(sampleSpace[3]);
             ABDistance = this.findDistance(A, B);
             BCDistance = this.findDistance(B, C);
-            rectangleArea = Math.ceil(ABDistance * BCDistance);
+            // Add 5 pixel buffer to account for rounding errors. 
+            rectangleArea = Math.ceil(ABDistance * BCDistance)+5;
 
             // All searchSpaceVertices elements start at the top-left point, then rotate clockwise around the rectangle.
             // Goal is to traverse from top-left to bottom-right and collect RGB values.  
@@ -254,8 +274,9 @@ function NewBSIAnalysis(Inte) {
             endY = endPoint.y;
 
             // Use triangle geometry to detemrine if the search point is which the sample space. 
-            for (let x = startX; x < endX; x++) {
-                for (let y = startY; y < endY; y++) {
+            arr = [];
+            for (let x = startX; x < endX; x += delta) {
+                for (let y = startY; y < endY; y += delta) {
                     // Point to check:
                     P = L.point(x, y);
 
@@ -269,12 +290,12 @@ function NewBSIAnalysis(Inte) {
 
                     if (triangleArea <= rectangleArea) {
                         latLng = Inte.treering.viewer.layerPointToLatLng(P);
-                        latLngsToSample.push(latLng);
+                        arr.push(latLng);
                     }
                 }
             }
+            this.sampleLatLngs.push(arr);
         }
-        console.log(latLngsToSample);
     }
     
     NewBSIAnalysis.prototype.findDistance = function(A, B) {
@@ -283,5 +304,39 @@ function NewBSIAnalysis(Inte) {
 
     NewBSIAnalysis.prototype.findTriangleArea = function(A, B, C) {
         return Math.abs((B.x * A.y - A.x * B.y) + (C.x * B.y - B.x * C.y) + (A.x * C.y - C.x * A.y)) / 2;
+    }
+
+    NewBSIAnalysis.prototype.startTileCaterpillar = function() {
+        let i = 1;
+        let length = this.anchors.length;
+        let anchor = Inte.newBSIAnalysis.anchors[i];
+        let val, count = 0;
+        let j;
+        $(Inte.treering.tileLayer).bind("load mouveend", () => {
+            count = 0
+            if (this.sampleLatLngs[i]?.length) {
+                for (let latLng of this.sampleLatLngs[i]) {
+                    Inte.treering.baseLayer['GL Layer'].getColor(latLng);
+                    // val = Inte.treering.baseLayer['GL Layer'].getColor(latLng);
+                    
+                    // j = 0;
+                    // while (!val && j < 10) {
+                    //     val = Inte.treering.baseLayer['GL Layer'].getColor(latLng);
+                    //     j++;
+                    // }
+                    // count++;
+                    
+                    // this.rgbValues.push(val);
+                }
+                console.log(count, this.sampleLatLngs[i].length);
+            }
+
+            i++;
+            if (i < length) {
+                anchor = Inte.newBSIAnalysis.anchors[i];
+                Inte.treering.viewer.setView(anchor.latLng);
+            };
+        });
+        Inte.treering.viewer.setView(anchor.latLng);
     }
 }

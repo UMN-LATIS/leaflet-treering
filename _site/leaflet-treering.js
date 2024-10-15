@@ -17,6 +17,7 @@
 function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
   this.viewer = viewer;
   this.basePath = basePath;
+  this.tileLayer = gl_layer;
 
   var getURL = window.location.href;
   var parsedURL = new URL(getURL);
