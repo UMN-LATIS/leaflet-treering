@@ -813,7 +813,7 @@ function NewEllipse(Inte) {
  */
 function NewEllipseDialog(Inte) {
     let minWidth = 180;
-    let minHeight = 130;
+    let minHeight = 170;
     this.size = [minWidth, minHeight];
     this.anchor = [50, 0];
 
