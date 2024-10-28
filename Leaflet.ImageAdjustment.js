@@ -97,90 +97,6 @@ function ImageAdjustment(Inte) {
       CSSFilter: false,
       GLName: "edgeDetect3"
     },
-    // {
-    //   filterType: "gaussianBlur",
-    //   defaultValue: "0",
-    //   inputID: "gaussianBlur-input",
-    //   sliderID: "gaussianBlur-slider",
-    //   min: "0",
-    //   max: "10",
-    //   step: "0.5",
-    //   label: "Gausian Blur (0-10)",
-    //   CSSFilter: false,
-    //   GLName: "gaussianBlur"
-    // },
-    // {
-    //   filterType: "triangleBlur",
-    //   defaultValue: "0",
-    //   inputID: "triangleBlur-input",
-    //   sliderID: "triangleBlur-slider",
-    //   min: "0",
-    //   max: "10",
-    //   step: "0.5",
-    //   label: "Triangle Blur (0-10)",
-    //   CSSFilter: false,
-    //   GLName: "triangleBlur"
-    // },
-    // {
-    //   filterType: "boxBlur",
-    //   defaultValue: "0",
-    //   inputID: "boxBlur-input",
-    //   sliderID: "boxBlur-slider",
-    //   min: "0",
-    //   max: "10",
-    //   step: "0.5",
-    //   label: "Box Blur (0-10)",
-    //   CSSFilter: false,
-    //   GLName: "boxBlur"
-    // },
-    // {
-    //   filterType: "sobelHorizontal",
-    //   defaultValue: "0",
-    //   inputID: "sobelHorizontal-input",
-    //   sliderID: "sobelHorizontal-slider",
-    //   min: "0",
-    //   max: "1",
-    //   step: "0.05",
-    //   label: "Sobel Horizontal",
-    //   CSSFilter: false,
-    //   GLName: "sobelHorizontal"
-    // },
-    // {
-    //   filterType: "sobelVertical",
-    //   defaultValue: "0",
-    //   inputID: "sobelVertical-input",
-    //   sliderID: "sobelVertical-slider",
-    //   min: "0",
-    //   max: "1",
-    //   step: "0.05",
-    //   label: "Sobel Vertical",
-    //   CSSFilter: false,
-    //   GLName: "sobelVertical"
-    // },
-    // {
-    //   filterType: "previtHorizontal",
-    //   defaultValue: "0",
-    //   inputID: "previtHorizontal-input",
-    //   sliderID: "previtHorizontal-slider",
-    //   min: "0",
-    //   max: "1",
-    //   step: "0.05",
-    //   label: "previt Horizontal",
-    //   CSSFilter: false,
-    //   GLName: "previtHorizontal"
-    // },
-    // {
-    //   filterType: "previtVertical",
-    //   defaultValue: "0",
-    //   inputID: "previtVertical-input",
-    //   sliderID: "previtVertical-slider",
-    //   min: "0",
-    //   max: "1",
-    //   step: "0.05",
-    //   label: "previt Vertical",
-    //   CSSFilter: false,
-    //   GLName: "previtVertical"
-    // },
     ];
 
   // Stores info of whether or not image is inverted
@@ -414,4 +330,28 @@ function ImageAdjustment(Inte) {
     this.invert = JSONdata["invert"];
     this.updateFilters();
     }
+
+  ImageAdjustment.prototype.setDetectionSettings = function() {
+    for (filter of filterList) {
+      let sliderID = filter.filterType + "-slider";
+      let inputID = filter.filterType + "-input";
+      let slider = document.getElementById(sliderID);
+      let input = document.getElementById(inputID);
+
+      if (filter.filterType === "brightness") {
+        slider.value = 100;
+        input.value = slider.value;
+      }
+      else if (filter.filterType === "contrast") {
+        slider.value = 350;
+        input.value = slider.value;
+      }
+      else {
+        slider.value = 0;
+        input.value = 0;
+      }
+    }
+
+    this.updateFilters();
+  }
   }

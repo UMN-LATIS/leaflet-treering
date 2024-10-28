@@ -4,6 +4,8 @@
  * @version 1.0.0
  */
 
+const { marker } = require("leaflet");
+
 // 'use strict';
 
 /**
@@ -86,6 +88,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.createPoint = new CreatePoint(this);
   this.zeroGrowth = new CreateZeroGrowth(this);
   this.createBreak = new CreateBreak(this);
+  this.autoRingDetection = new AutoRingDetection(this);
 
   this.deletePoint = new DeletePoint(this);
   this.cut = new Cut(this);
@@ -99,11 +102,11 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer) {
   this.universalDelete = new UniversalDelete(this);
 
   this.undoRedoBar = new L.easyBar([this.undo.btn, this.redo.btn]);
-  this.createTools = new ButtonBar(this, [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
+  this.createTools = new ButtonBar(this, [this.createPoint.btn, this.autoRingDetection.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn], 'straighten', 'Create new measurements');
   this.editTools = new ButtonBar(this, [this.dating.btn, this.insertPoint.btn, this.insertBreak.btn, this.convertToStartPoint.btn, this.insertZeroGrowth.btn, this.cut.btn], 'edit', 'Edit existing measurements');
   this.settings = new ButtonBar(this, [this.measurementOptions.btn, this.calibration.btn, this.keyboardShortCutDialog.btn], 'settings', 'Measurement preferences & distance calibration');
 
-  this.tools = [this.calibration, this.dating, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
+  this.tools = [this.calibration, this.dating, this.createPoint, this.autoRingDetection, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
   // --- //
   // Code hosted in Leaflet.AreaCapture.js
   this.areaCaptureInterface = new AreaCaptureInterface(this);
@@ -4540,6 +4543,235 @@ function InsertBreak(Lt) {
 //   };
 
 // }
+
+/**
+ * Use GL Layer filters and ring detection algorithms to automatically
+ * place points.
+ * @param {LTreering} Lt - Leaflet treering object
+ */
+function AutoRingDetection(Lt) {
+  this.active = false;
+  this.colorArray = [];
+  this.btn = new Button(
+    'search',
+    'Auto ring detection',
+    () => { Lt.disableTools(); this.enable() },
+    () => { this.disable() }
+  );
+  this.currentImageSettings = Lt.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON();
+
+  AutoRingDetection.prototype.enable = function () {
+    this.active = true;
+    this.btn.state('active');
+    Lt.viewer.getContainer().style.cursor = 'pointer';
+
+    this.tuneGLLayer(false);
+    this.selectPoints();
+  }
+
+  AutoRingDetection.prototype.disable = function () {
+    if (this.active) {
+      this.active = false;
+      this.btn.state('inactive');
+      Lt.viewer.getContainer().style.cursor = 'default';
+
+      this.tuneGLLayer(true);
+    }
+  }
+
+  AutoRingDetection.prototype.selectPoints = function() {
+    $(document).on('keyup', e => {
+      var key = e.which || e.key;
+      if (key === 'Escape') {
+        this.disable();
+      }
+    });
+
+    var clickCount = 0;
+    $(Lt.viewer.getContainer()).on("click", e => {
+      clickCount++;
+
+      switch(clickCount) {
+        case 1: {
+          first = e;
+          break;
+        }
+        case 2: {
+          second = e;
+          this.createDataCollectionPath(first, second);
+          // this.createColorArray(first, second);
+          this.disable();
+          break;
+        }
+      }
+    })
+  }
+
+  AutoRingDetection.prototype.createDataCollectionPath = function(first, second) {
+    var firstLatLng = Lt.viewer.mouseEventToLatLng(first);
+    var secondLatLng = Lt.viewer.mouseEventToLatLng(second);
+
+    L.circleMarker(firstLatLng, {radius: 2, color: 'red'}).addTo(Lt.viewer)     
+    L.circleMarker(secondLatLng, {radius: 2, color: 'red'}).addTo(Lt.viewer)     
+
+    Lt.viewer.setZoom(19, {animate: false})
+    Lt.viewer.flyTo(firstLatLng, 19, {animate: false})
+
+    let firstPixelCords = Lt.viewer.latLngToLayerPoint(firstLatLng)
+    let secondPixelCords = Lt.viewer.latLngToLayerPoint(secondLatLng)
+
+    let deltaX = secondPixelCords.x - firstPixelCords.x;
+    let deltaY = secondPixelCords.y - firstPixelCords.y;
+    let numPixels = (deltaX**2 + deltaY**2)**(1/2);
+    let latLngPerPixel = (secondLatLng.lng - firstLatLng.lng) / deltaX
+
+    let incX = deltaX/numPixels * latLngPerPixel
+    let incY = -(deltaY/numPixels * latLngPerPixel)
+
+    var leftMost = firstLatLng;
+    var rightMost = secondLatLng;
+    if (firstLatLng.lng > secondLatLng.lng) {
+      leftMost = secondLatLng
+      rightMost = firstLatLng
+      incX = -incX
+      incY = -incY
+    }
+
+    let collectionParams = {
+      leftMost: leftMost,
+      pixelCount: 0,
+      numPixels: numPixels,
+      incX: incX,
+      incY: incY,
+    }
+
+    this.collectColorData(collectionParams)
+  }
+
+  AutoRingDetection.prototype.collectColorData = function(collectionParams) {
+    let pixelCount = collectionParams.pixelCount;
+    let numPixels = collectionParams.numPixels;
+    let leftMost = collectionParams.leftMost;
+    let incX = collectionParams.incX;
+    let incY = collectionParams.incY;
+
+    Lt.baseLayer["GL Layer"].on("load", () => {
+      for (let c = pixelCount; c <= numPixels; c++) {
+        let lng = leftMost.lng + c*incX;
+        let lat = leftMost.lat + c*incY;
+        let latlng = L.latLng(lat, lng)
+        let centerLatlng = latlng
+
+        var color = Lt.baseLayer['GL Layer'].getColor(latlng)
+        if (color) {
+          let lineData = [];
+          L.circleMarker(latlng, {radius: .5, color: 'red'}).addTo(Lt.viewer)
+          lineData.push(color)
+
+          let areaHeight = 3
+          let buffer = 30
+
+          var orthIncX = incY;
+          var orthIncY = -incX;
+          for (let o = 1; o <= areaHeight; o++) {
+            var orthLng = (lng + buffer*o*orthIncX)
+            var orthLat = (lat + buffer*o*orthIncY)
+            
+            var orthlatlng = L.latLng(orthLat, orthLng)
+            color = Lt.baseLayer['GL Layer'].getColor(orthlatlng)
+            lineData.push(color)
+            L.circleMarker(orthlatlng, {radius: .5, color: 'blue'}).addTo(Lt.viewer)
+          }
+
+          orthIncX = -incY;
+          orthIncY = incX;
+          for (let o = 1; o <= areaHeight; o++) {
+            var orthLng = (lng + buffer*o*orthIncX)
+            var orthLat = (lat + buffer*o*orthIncY)
+            
+            var orthlatlng = L.latLng(orthLat, orthLng)
+            color = Lt.baseLayer['GL Layer'].getColor(orthlatlng)
+            lineData.push(color)
+            L.circleMarker(orthlatlng, {radius: .5, color: 'blue'}).addTo(Lt.viewer)
+          }
+
+          let colorObj = {
+            'latlng': centerLatlng,
+            'value': this.average(lineData)
+          }
+          this.colorArray.push(colorObj)
+        }
+        else {
+          Lt.baseLayer["GL Layer"].removeEventListener("load")
+          let data = {
+            leftMost: leftMost,
+            pixelCount: c,
+            numPixels: numPixels,
+            incX: incX,
+            incY: incY,
+          }
+          Lt.viewer.flyTo(latlng, 19, {animate: false})
+          this.collectColorData(data)
+          return
+        }
+      }
+
+
+      Lt.baseLayer["GL Layer"].removeEventListener("load")
+      let data = {
+        leftMost: leftMost,
+        pixelCount: numPixels,
+        numPixels: numPixels,
+        incX: incX,
+        incY: incY,
+      }
+      // console.log(numPixels)
+      console.log(this.colorArray)
+      this.csv(this.colorArray)
+      return
+    })
+    //return object w/ latlng stopped at and collected data
+    // return new Promise ((resolve) => {
+    //   resolve(data)
+    // })
+  }
+
+
+
+  AutoRingDetection.prototype.csv = function (colorArray) {
+    let out = "r\tg\tb\n"
+    for (let obj of colorArray) {
+      out += Math.round(obj.value[0]) + "\t" + Math.round(obj.value[1]) + "\t" + Math.round(obj.value[2]) + "\n" 
+    }
+    navigator.clipboard.writeText(out)
+    console.log(out)
+  }
+
+  AutoRingDetection.prototype.average = function(orthData) {
+    let redSum = 0;
+    let greenSum = 0;
+    let blueSum = 0;
+    for (let colorData of orthData) {
+      redSum += colorData[0];
+      greenSum += colorData[1];
+      blueSum += colorData[2];
+    }
+    return [redSum / orthData.length, greenSum / orthData.length, blueSum / orthData.length]
+  }
+
+  AutoRingDetection.prototype.tuneGLLayer = function (reset) {
+    if (this.active) {
+      this.currentImageSettings = Lt.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON()
+    }
+
+    if (reset && this.currentImageSettings != {}) {
+      Lt.imageAdjustmentInterface.imageAdjustment.loadCurrentViewJSON(this.currentImageSettings)
+    }
+    else if (!reset) {
+      Lt.imageAdjustmentInterface.imageAdjustment.setDetectionSettings()
+    }
+  }
+}
 
 /**
 * Change measurement options (set subAnnual, previously hasLatewood, and direction)
