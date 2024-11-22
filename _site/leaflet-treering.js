@@ -1862,7 +1862,7 @@ function AnnotationAsset(Lt) {
     for (var i = 0; i < cookieArray.length; i++) {;
       var cookieNameArray = cookieArray[i].split('=');
       var cookieNameIndex = cookieNameArray.indexOf('attributesObjectArray');
-      var cookieAttributesObjectArray = cookieNameArray[cookieNameIndex + 1];
+      //var cookieAttributesObjectArray = cookieNameArray[cookieNameIndex + 1]; // revert
     };
 
     var defaultAttributes = [
@@ -1894,17 +1894,17 @@ function AnnotationAsset(Lt) {
         'options': [
                     {
                       'title': 'Earlywood',
-                      'code': 'EW',
+                      'code': '2',
                       'uniqueNum': '000010'
                     },
                     {
                       'title': 'Latewood',
-                      'code': 'LW',
+                      'code': '3',
                       'uniqueNum': '000020'
                     },
                     {
                       'title': 'Dormant',
-                      'code': 'D',
+                      'code': '0',
                       'uniqueNum': '000030'
                     },
                   ]

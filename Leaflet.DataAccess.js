@@ -192,7 +192,7 @@ function ViewDataDialog(Inte) {
         $("#delete").on("click", () => { if (Inte.treering.data.points.length) Inte.deleteDataDialog.open() });
 
         $("#copy").on("click",() => { Inte.download.copy() });
-        $("#csv").on("click", () => { Inte.download.csv() });
+        $("#csv").on("click", () => { Inte.download.csv() }); 
         $("#tsv").on("click", () => { Inte.download.tsv() });
         $("#rwl").on("click", () => { Inte.download.rwl() });
         $("#json").on("click", () => { Inte.download.json() });
@@ -585,6 +585,27 @@ function Download(Inte) {
 
         return outLst;
     }
+    
+    Download.prototype.annotationData = function(sep) {
+        let yearDat = Inte.treering.helper.findDistances();
+
+        let annotationDat = Object.values(Inte.treering.aData.annotations);
+        if (annotationDat.length < 1) return
+
+        let assetName = Inte.treering.meta.assetName;
+        let innerYear = yearDat.tw.x[0];
+        let outerYear = yearDat.tw.x[yearDat.tw.x.length-1];
+
+        out = `${assetName}${sep}${innerYear}${sep}${outerYear}`;
+        for (annotation of Object.values(annotationDat)) {
+            out += `${sep}${annotation.calculatedYear}`;
+            for (code of JSON.parse(JSON.stringify(annotation.code)).reverse()) {
+                out += `.${code}`;
+            }
+        }
+
+        console.log(out);
+    }
 
     /**
      * Create zip folder.
@@ -629,10 +650,12 @@ function Download(Inte) {
      * @function
      */
     Download.prototype.csv = function() {
-        let allDatString = this.seperateDataCombined(",");
-        let datStringLst = this.seperateDataDifferent(",");
-        if (datStringLst.length > 1) this.zipFiles("csv", "csv", datStringLst[0], allDatString, datStringLst[1], datStringLst[2]);
-        else this.zipFiles("csv", "csv", datStringLst[0]);
+        this.annotationData(",");
+
+        // let allDatString = this.seperateDataCombined(",");
+        // let datStringLst = this.seperateDataDifferent(",");
+        // if (datStringLst.length > 1) this.zipFiles("csv", "csv", datStringLst[0], allDatString, datStringLst[1], datStringLst[2]);
+        // else this.zipFiles("csv", "csv", datStringLst[0]);
     }
 
     /**
