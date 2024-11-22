@@ -205,6 +205,8 @@ function NewBSIAnalysis(Inte) {
         this.btn.state('inactive');
         this.enabled = false;
         Inte.treering.viewer.getContainer().style.cursor = 'default';
+
+        $(Inte.treering.tileLayer).off("load");
     }
 
     /**
@@ -309,34 +311,62 @@ function NewBSIAnalysis(Inte) {
     NewBSIAnalysis.prototype.startTileCaterpillar = function() {
         let i = 1;
         let length = this.anchors.length;
-        let anchor = Inte.newBSIAnalysis.anchors[i];
-        let val, count = 0;
+        let anchor = this.anchors[i];
+        let val;
         let j;
-        $(Inte.treering.tileLayer).bind("load mouveend", () => {
-            count = 0
-            if (this.sampleLatLngs[i]?.length) {
-                for (let latLng of this.sampleLatLngs[i]) {
-                    Inte.treering.baseLayer['GL Layer'].getColor(latLng);
-                    // val = Inte.treering.baseLayer['GL Layer'].getColor(latLng);
-                    
-                    // j = 0;
-                    // while (!val && j < 10) {
-                    //     val = Inte.treering.baseLayer['GL Layer'].getColor(latLng);
-                    //     j++;
-                    // }
-                    // count++;
-                    
-                    // this.rgbValues.push(val);
-                }
-                console.log(count, this.sampleLatLngs[i].length);
-            }
 
+        function test() {
+            for (let latLng of this.sampleLatLngs[i]) {
+                val = Inte.treering.baseLayer['GL Layer'].getColor(latLng);
+                
+                j = 0;
+                while (!val && j < 10) {
+                    val = Inte.treering.baseLayer['GL Layer'].getColor(latLng);
+                    j++;
+                }
+                
+                this.rgbValues.push(val);
+            }
             i++;
+
             if (i < length) {
                 anchor = Inte.newBSIAnalysis.anchors[i];
+
+                $(Inte.treering.tileLayer).off("load");
+                Inte.treering.viewer.setView(L.latLng(0,0));
+                $(Inte.treering.tileLayer).on("load", () => test());
                 Inte.treering.viewer.setView(anchor.latLng);
-            };
-        });
+            } else {
+                $(Inte.treering.tileLayer).off("load");
+            }
+        }
+        
+        // $(Inte.treering.tileLayer).on("load", () => { 
+        //     for (let latLng of this.sampleLatLngs[i]) {
+        //         val = Inte.treering.baseLayer['GL Layer'].getColor(latLng);
+                
+        //         j = 0;
+        //         while (!val && j < 10) {
+        //             val = Inte.treering.baseLayer['GL Layer'].getColor(latLng);
+        //             j++;
+        //         }
+                
+        //         this.rgbValues.push(val);
+        //     }
+        //     i++;
+
+        //     if (i < length) {
+        //         anchor = Inte.newBSIAnalysis.anchors[i];
+
+        //         $(Inte.treering.tileLayer).off("load");
+        //         Inte.treering.viewer.setView(L.latLng(0,0));
+        //         $(Inte.treering.tileLayer).on("load", () => console.log("test"));
+        //         Inte.treering.viewer.setView(anchor.latLng);
+        //     } else {
+        //         $(Inte.treering.tileLayer).off("load");
+        //     }
+        // });
         Inte.treering.viewer.setView(anchor.latLng);
+        test();
     }
 }
