@@ -1,0 +1,20 @@
+<script id="AutoRingDetection-dialog-template" type="text/x-handlebars-template">
+    <!-- <div class="auto-ring-detection-header-div" style="padding-top: 0px; height: 25px;">
+        <h4 class="auto-ring-detection-header" style="font-weight: bold; margin: 0px; font-size: 20px;">Auto Ring Detection</h4>
+    </div>
+    <button id="auto-ring-detection-point-button">Add Point</button>
+    <input type="number" id="auto-ring-detection-point-input">
+
+    <button id="auto-ring-detection-print-data">Show me data</button> -->
+
+    <label for="auto-ring-detection-window-size-slider">Window Size</label>
+    <input type="range" id="auto-ring-detection-window-size-slider" min="25" max="401" step="2" value="175">
+    <label for="auto-ring-detection-threshold-scalar-slider1">Light To Dark Threshold Scalar</label>
+    <input type="range" id="auto-ring-detection-threshold-scalar-slider1" min="0.25" max="0.9" step="0.01" value="0.5">
+    <label for="auto-ring-detection-threshold-scalar-slider2">Dark To Light Threshold Scalar</label>
+    <input type="range" id="auto-ring-detection-threshold-scalar-slider2" min="0.25" max="0.9" step="0.01" value="0.5">
+    <label for="auto-ring-detection-poly-degree-input">Polynomial Degree</label>
+    <input type="number" id="auto-ring-detection-poly-degree-input" min="3" max="15" step="1" value="3">
+    
+    <div style="height: 1"><canvas id="ard-canvas" width="1" height="1"></canvas></div>
+</script>

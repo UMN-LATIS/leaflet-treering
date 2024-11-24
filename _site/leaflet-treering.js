@@ -3,10 +3,8 @@
  * @author Malik Nusseibeh <nusse007@umn.edu>
  * @version 1.0.0
  */
-
-const { marker } = require("leaflet");
-
 // 'use strict';
+
 
 /**
  * A leaflet treering object
@@ -4551,7 +4549,11 @@ function InsertBreak(Lt) {
  */
 function AutoRingDetection(Lt) {
   this.active = false;
-  this.colorArray = [];
+
+  this.markers = [];
+  this.tilesInPath = [];
+  this.dataSets = [];
+
   this.btn = new Button(
     'search',
     'Auto ring detection',
@@ -4560,10 +4562,44 @@ function AutoRingDetection(Lt) {
   );
   this.currentImageSettings = Lt.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON();
 
+  AutoRingDetection.prototype.displayDialog = function () {
+    // handlebars from templates.html
+    let content = document.getElementById("AutoRingDetection-dialog-template").innerHTML;
+    this.dialog = L.control.dialog({
+       'size': [250, 200],
+       'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+       'anchor': [50, 50],
+       'initOpen': true,
+       'position': 'topleft',
+       'minSize': [0, 0]
+     }).setContent(content).addTo(Lt.viewer);
+  
+    // var canvas = document.getElementById("ard-canvas")
+    // this.context = canvas.getContext('2d');
+    return this.dialog;
+  };
+
+  AutoRingDetection.prototype.tuneGLLayer = function (reset) {
+    if (this.active) {
+      this.currentImageSettings = Lt.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON()
+    }
+
+    if (reset && this.currentImageSettings != {}) {
+      Lt.imageAdjustmentInterface.imageAdjustment.loadCurrentViewJSON(this.currentImageSettings)
+    }
+    else if (!reset) {
+      Lt.imageAdjustmentInterface.imageAdjustment.setDetectionSettings()
+    }
+  };
+
   AutoRingDetection.prototype.enable = function () {
     this.active = true;
     this.btn.state('active');
     Lt.viewer.getContainer().style.cursor = 'pointer';
+    // if (!this.dialog) {
+    //   this.dialog = this.displayDialog();
+    //   console.log(this.dialog)
+    // };
 
     this.tuneGLLayer(false);
     this.selectPoints();
@@ -4571,11 +4607,16 @@ function AutoRingDetection(Lt) {
 
   AutoRingDetection.prototype.disable = function () {
     if (this.active) {
+      // if (this.dialog) {
+      //   this.dialog.unlock();
+      //   this.dialog.close();
+      // };
+
       this.active = false;
       this.btn.state('inactive');
       Lt.viewer.getContainer().style.cursor = 'default';
 
-      this.tuneGLLayer(true);
+      // this.tuneGLLayer(true);
     }
   }
 
@@ -4590,7 +4631,6 @@ function AutoRingDetection(Lt) {
     var clickCount = 0;
     $(Lt.viewer.getContainer()).on("click", e => {
       clickCount++;
-
       switch(clickCount) {
         case 1: {
           first = e;
@@ -4598,179 +4638,236 @@ function AutoRingDetection(Lt) {
         }
         case 2: {
           second = e;
-          this.createDataCollectionPath(first, second);
-          // this.createColorArray(first, second);
-          this.disable();
+          this.displayDialog()
+          let firstLatLng = Lt.viewer.mouseEventToLatLng(first);
+          let secondLatLng = Lt.viewer.mouseEventToLatLng(second);
+          console.log(firstLatLng, secondLatLng)
+          L.circleMarker(firstLatLng, {radius: 3, color: 'red'}).addTo(Lt.viewer);
+          L.circleMarker(secondLatLng, {radius: 3, color: "red"}).addTo(Lt.viewer);
+
+
+          (async () => {
+            let imageData = await Lt.baseLayer['GL Layer'].getColorMatrix(firstLatLng, secondLatLng, 100);
+            let lineAvg = this.averageOrthogonalPoints(imageData);
+            let points = this.findPoints(lineAvg, 175, 0.5, 0.5, 3);
+            let v = this.findUnitScalar(firstLatLng, secondLatLng);
+            this.placePoints(lineAvg, firstLatLng, v.x, v.y, points);
+
+            this.disable();
+          })();
           break;
         }
       }
     })
   }
 
-  AutoRingDetection.prototype.createDataCollectionPath = function(first, second) {
-    var firstLatLng = Lt.viewer.mouseEventToLatLng(first);
-    var secondLatLng = Lt.viewer.mouseEventToLatLng(second);
+  AutoRingDetection.prototype.averageOrthogonalPoints = function (imageDataMatrix) {
+    let matrixHeight = imageDataMatrix.length;
+    let matrixLength = imageDataMatrix[0].length;
+    let out = [];
+    let r,g,b
 
-    L.circleMarker(firstLatLng, {radius: 2, color: 'red'}).addTo(Lt.viewer)     
-    L.circleMarker(secondLatLng, {radius: 2, color: 'red'}).addTo(Lt.viewer)     
+    for (let col = 0; col < matrixLength; col++) {
+      let sum = 0;
+      for (let row = 0; row < matrixHeight; row++) {
+        let pointRGB = imageDataMatrix[row][col]
+        r = pointRGB[0];
+        g = pointRGB[1];
+        b = pointRGB[2];
 
-    Lt.viewer.setZoom(19, {animate: false})
-    Lt.viewer.flyTo(firstLatLng, 19, {animate: false})
+        sum += (r + g + b)/3
+      }
+      out.push(sum/matrixHeight)
+    }
 
-    let firstPixelCords = Lt.viewer.latLngToLayerPoint(firstLatLng)
-    let secondPixelCords = Lt.viewer.latLngToLayerPoint(secondLatLng)
+    console.log(out)
+    return out
+  }
 
-    let deltaX = secondPixelCords.x - firstPixelCords.x;
-    let deltaY = secondPixelCords.y - firstPixelCords.y;
+  AutoRingDetection.prototype.findUnitScalar = function(firstLatLng, secondLatLng) {
+    let firstPixelCoords = Lt.baseLayer["GL Layer"]._map.project(firstLatLng, Lt.getMaxNativeZoom()).floor();
+    let secondPixelCoords = Lt.baseLayer["GL Layer"]._map.project(secondLatLng, Lt.getMaxNativeZoom()).floor();
+
+    let deltaX = secondPixelCoords.x - firstPixelCoords.x;
+    let deltaY = secondPixelCoords.y - firstPixelCoords.y;
     let numPixels = (deltaX**2 + deltaY**2)**(1/2);
     let latLngPerPixel = (secondLatLng.lng - firstLatLng.lng) / deltaX
 
-    let incX = deltaX/numPixels * latLngPerPixel
-    let incY = -(deltaY/numPixels * latLngPerPixel)
+    let dx = deltaX/numPixels * latLngPerPixel
+    let dy = -(deltaY/numPixels * latLngPerPixel)
+    return {x: dx, y: dy}
 
-    var leftMost = firstLatLng;
-    var rightMost = secondLatLng;
-    if (firstLatLng.lng > secondLatLng.lng) {
-      leftMost = secondLatLng
-      rightMost = firstLatLng
-      incX = -incX
-      incY = -incY
-    }
 
-    let collectionParams = {
-      leftMost: leftMost,
-      pixelCount: 0,
-      numPixels: numPixels,
-      incX: incX,
-      incY: incY,
-    }
+    // let firstPixelCoord = Lt.baseLayer["GL Layer"].project(firstLatLng, Lt.getMaxNativeZoom()).floor();
+    // let secondPixelCoord = Lt.baseLayer["GL Layer"].project(secondLatLng, Lt.getMaxNativeZoom()).floor();
 
-    this.collectColorData(collectionParams)
+    // let deltaX = secondLatLng.lng - firstLatLng.lng;
+    // let deltaY = secondLatLng.lat - firstLatLng.lat;
+    // let distance = (deltaX**2 + deltaY**2)**(1/2);
+
+    // let dx = deltaX/distance;
+    // let dy = deltaY/distance;
+
+    // return {x: dx, y: dy}
   }
 
-  AutoRingDetection.prototype.collectColorData = function(collectionParams) {
-    let pixelCount = collectionParams.pixelCount;
-    let numPixels = collectionParams.numPixels;
-    let leftMost = collectionParams.leftMost;
-    let incX = collectionParams.incX;
-    let incY = collectionParams.incY;
+  //Equal Weighted average across lines
+  // AutoRingDetection.prototype.organizeIntoArray = function(colorDataObject) {
+  //   let lineLength = colorDataObject['line0'].length
+  //   out = [];
+  //   for (let point = 1; point < lineLength; point++) {
+  //     let sum = 0;
+  //     for (let lineNum = 0; lineNum < 7; lineNum++) {
+  //       let dataPoint = colorDataObject['line'+lineNum][point]
+  //       let brightness = (dataPoint[0] + dataPoint[1] + dataPoint[2])/3
 
-    Lt.baseLayer["GL Layer"].on("load", () => {
-      for (let c = pixelCount; c <= numPixels; c++) {
-        let lng = leftMost.lng + c*incX;
-        let lat = leftMost.lat + c*incY;
-        let latlng = L.latLng(lat, lng)
-        let centerLatlng = latlng
+  //       sum += brightness
 
-        var color = Lt.baseLayer['GL Layer'].getColor(latlng)
-        if (color) {
-          let lineData = [];
-          L.circleMarker(latlng, {radius: .5, color: 'red'}).addTo(Lt.viewer)
-          lineData.push(color)
+  //     }
+  //     out.push(sum/7)
+  //   }
+  //   return out
+  // }
 
-          let areaHeight = 3
-          let buffer = 30
+  AutoRingDetection.prototype.findPoints = function(imageData, winSize, LTDThresholdScalar, DTLThresholdScalar, polyDegree) {
+    let firstDerivSggOptions = {
+      windowSize: winSize,
+      derivative: 1,
+      polynomial: polyDegree,
+    };  
 
-          var orthIncX = incY;
-          var orthIncY = -incX;
-          for (let o = 1; o <= areaHeight; o++) {
-            var orthLng = (lng + buffer*o*orthIncX)
-            var orthLat = (lat + buffer*o*orthIncY)
-            
-            var orthlatlng = L.latLng(orthLat, orthLng)
-            color = Lt.baseLayer['GL Layer'].getColor(orthlatlng)
-            lineData.push(color)
-            L.circleMarker(orthlatlng, {radius: .5, color: 'blue'}).addTo(Lt.viewer)
-          }
+    let secondDerivSggOptions = {
+      windowSize: winSize,
+      derivative: 2,
+      polynomial: polyDegree,
+    };  
 
-          orthIncX = -incY;
-          orthIncY = incX;
-          for (let o = 1; o <= areaHeight; o++) {
-            var orthLng = (lng + buffer*o*orthIncX)
-            var orthLat = (lat + buffer*o*orthIncY)
-            
-            var orthlatlng = L.latLng(orthLat, orthLng)
-            color = Lt.baseLayer['GL Layer'].getColor(orthlatlng)
-            lineData.push(color)
-            L.circleMarker(orthlatlng, {radius: .5, color: 'blue'}).addTo(Lt.viewer)
-          }
+    //Calculate points first and second derivatives of a smoothed curve
+    let firstDeriv = sgg(imageData, 1, firstDerivSggOptions)
+    let secondDeriv = sgg(imageData, 1, secondDerivSggOptions)
 
-          let colorObj = {
-            'latlng': centerLatlng,
-            'value': this.average(lineData)
-          }
-          this.colorArray.push(colorObj)
-        }
-        else {
-          Lt.baseLayer["GL Layer"].removeEventListener("load")
-          let data = {
-            leftMost: leftMost,
-            pixelCount: c,
-            numPixels: numPixels,
-            incX: incX,
-            incY: incY,
-          }
-          Lt.viewer.flyTo(latlng, 19, {animate: false})
-          this.collectColorData(data)
-          return
+    //Find mins and maxes of first derivative, given they are above/below a certain threshold
+    let minThreshold = Math.min(...firstDeriv)*LTDThresholdScalar;
+    let maxThreshold = Math.max(...firstDeriv)*DTLThresholdScalar; //mins and maxes tend to have different peaks
+
+    let extremaDict = {}
+
+    let criticalPoints = [];
+    let pointsToAdd = [];
+    for (let i = 1; i < firstDeriv.length; i++) {
+      if (secondDeriv[i-1] < 0 && secondDeriv[i] > 0 || secondDeriv[i-1] > 0 && secondDeriv[i] < 0) {
+        criticalPoints.push(i)
+        if (firstDeriv[i] <= minThreshold || firstDeriv[i] >= maxThreshold) {
+          pointsToAdd.push(i)
+          extremaDict[i] = firstDeriv[i]
         }
       }
+    }
+    // console.log(extremaDict)
+    // this.validatePoints(pointsToAdd, extremaDict)
+    return pointsToAdd
+  }
 
+  // AutoRingDetection.prototype.validatePoints = function(pointsToAdd, extremaDict) {
+  //   for (let i = 1; i < pointsToAdd.length; i++) {
+  //     let prevPoint = pointsToAdd[i-1];
+  //     let currentPoint = pointsToAdd[i]
 
-      Lt.baseLayer["GL Layer"].removeEventListener("load")
-      let data = {
-        leftMost: leftMost,
-        pixelCount: numPixels,
-        numPixels: numPixels,
-        incX: incX,
-        incY: incY,
-      }
-      // console.log(numPixels)
-      console.log(this.colorArray)
-      this.csv(this.colorArray)
-      return
+  //     if (extremaDict[prevPoint] * extremaDict[currentPoint] > 0) {
+  //       console.log('point:', currentPoint, 'index:', i)
+  //     }
+  //   }
+  // }
+
+  AutoRingDetection.prototype.placePoints = function (imageData, startLatLng, incX, incY, pointsToAdd) {
+    for (point of pointsToAdd) {
+      let lng = startLatLng.lng + point*incX;
+      let lat = startLatLng.lat + point*incY;
+      let latLng = L.latLng(lat, lng)
+
+      let pointMarker = L.circleMarker(latLng, {radius: 3, color: 'yellow'})
+      this.markers.push(pointMarker)
+      pointMarker.addTo(Lt.viewer)
+    }
+
+    $("#auto-ring-detection-window-size-slider").on('input', () => {
+      this.updatePlacedPoints(imageData, startLatLng, incX, incY)
     })
-    //return object w/ latlng stopped at and collected data
-    // return new Promise ((resolve) => {
-    //   resolve(data)
-    // })
+
+    $("#auto-ring-detection-threshold-scalar-slider1").on('input', () => {
+      this.updatePlacedPoints(imageData, startLatLng, incX, incY)
+    })
+
+    $("#auto-ring-detection-threshold-scalar-slider2").on('input', () => {
+      this.updatePlacedPoints(imageData, startLatLng, incX, incY)
+    })
+
+    $("#auto-ring-detection-poly-degree-input").on("input", () => {
+      this.updatePlacedPoints(imageData, startLatLng, incX, incY)
+    })
   }
 
+  AutoRingDetection.prototype.updatePlacedPoints = function (imageData, startLatLng, incX, incY) {
+    let winSize = parseInt($("#auto-ring-detection-window-size-slider").val())
+    let LTDThresholdScalar = parseFloat($("#auto-ring-detection-threshold-scalar-slider1").val())
+    let DTLThresholdScalar = parseFloat($("#auto-ring-detection-threshold-scalar-slider2").val())
+    let polyDegree = parseInt($("#auto-ring-detection-poly-degree-input").val())
 
-
-  AutoRingDetection.prototype.csv = function (colorArray) {
-    let out = "r\tg\tb\n"
-    for (let obj of colorArray) {
-      out += Math.round(obj.value[0]) + "\t" + Math.round(obj.value[1]) + "\t" + Math.round(obj.value[2]) + "\n" 
+    for (pointMarker of this.markers) {
+      pointMarker.remove()
     }
-    navigator.clipboard.writeText(out)
-    console.log(out)
+    let newPoints = this.findPoints(imageData, winSize, LTDThresholdScalar, DTLThresholdScalar, polyDegree)
+    for (point of newPoints) {
+      let lng = startLatLng.lng + point*incX;
+      let lat = startLatLng.lat + point*incY;
+      let latLng = L.latLng(lat, lng)
+
+      // L.circleMarker(latLng, {radius: 3, color: 'yellow'}).addTo(Lt.viewer)
+      let pointMarker = L.circleMarker(latLng, {radius: 3, color: 'yellow'})
+      this.markers.push(pointMarker)
+      pointMarker.addTo(Lt.viewer)
+      }
   }
+  
+  // AutoRingDetection.prototype.csvMassData = function (colorDataObject) {
+  //   let lineLength = colorDataObject['line0'].length
+  //   let out = 'CenterBrightness\tAbove1Brightness\tAbove2Brightness\tAbove3Brightness\tBelow1Brightness\tBelow2Brightness\tBelow3Brightness\n';
+  //   for (let point = 1; point < lineLength; point++) {
+  //     for (let lineNum = 0; lineNum < 7; lineNum++) {
+  //       let dataPoint = colorDataObject['line'+lineNum][point]
+  //       let avg = (dataPoint[0] + dataPoint[1] + dataPoint[2])/3
+        
+  //       if (lineNum < 6) {
+  //         out += avg + '\t'
+  //       }
+  //       else {
+  //         out += avg + '\n'
+  //       }
+  //     }
+  //   }
+  //   console.log(out)
+  // }
 
-  AutoRingDetection.prototype.average = function(orthData) {
-    let redSum = 0;
-    let greenSum = 0;
-    let blueSum = 0;
-    for (let colorData of orthData) {
-      redSum += colorData[0];
-      greenSum += colorData[1];
-      blueSum += colorData[2];
-    }
-    return [redSum / orthData.length, greenSum / orthData.length, blueSum / orthData.length]
-  }
+  // AutoRingDetection.prototype.average = function(orthData) {
+  //   let redSum = 0;
+  //   let greenSum = 0;
+  //   let blueSum = 0;
+  //   for (let colorData of orthData) {
+  //     redSum += colorData[0];
+  //     greenSum += colorData[1];
+  //     blueSum += colorData[2];
+  //   }
+  //   return [redSum / orthData.length, greenSum / orthData.length, blueSum / orthData.length]
+  // }
 
-  AutoRingDetection.prototype.tuneGLLayer = function (reset) {
-    if (this.active) {
-      this.currentImageSettings = Lt.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON()
-    }
-
-    if (reset && this.currentImageSettings != {}) {
-      Lt.imageAdjustmentInterface.imageAdjustment.loadCurrentViewJSON(this.currentImageSettings)
-    }
-    else if (!reset) {
-      Lt.imageAdjustmentInterface.imageAdjustment.setDetectionSettings()
-    }
-  }
+    // AutoRingDetection.prototype.csvLineAvg = function (colorArray) {
+  //   let out = "r\tg\tb\n"
+  //   for (let obj of colorArray) {
+  //     out += Math.round(obj.value[0]) + "\t" + Math.round(obj.value[1]) + "\t" + Math.round(obj.value[2]) + "\n" 
+  //   }
+  //   navigator.clipboard.writeText(out)
+  //   console.log(out)
+  // }
 }
 
 /**

@@ -97,6 +97,18 @@ function ImageAdjustment(Inte) {
       CSSFilter: false,
       GLName: "edgeDetect3"
     },
+    { 
+      filterType: "gaussianBlur",
+      defaultValue: "1",
+      inputID: "gaussianBlur-input",
+      sliderID: "gaussianBlur-slider",
+      min: "0",
+      max: "3",
+      step: "0.01",
+      label: "Gaussian Blur (0-1)",
+      CSSFilter: false,
+      GLName: "gaussianBlur2"
+    },
     ];
 
   // Stores info of whether or not image is inverted
@@ -332,24 +344,49 @@ function ImageAdjustment(Inte) {
     }
 
   ImageAdjustment.prototype.setDetectionSettings = function() {
+    let detectionSettings = {
+      brightness: 100,
+      contrast: 100,
+      sharpness: 0.15,
+      emboss: 0.1,
+      saturation: 100,
+      edgeDetect: 0.1,
+      gaussianBlur: 1.25
+    }
+
+
     for (filter of filterList) {
       let sliderID = filter.filterType + "-slider";
       let inputID = filter.filterType + "-input";
       let slider = document.getElementById(sliderID);
       let input = document.getElementById(inputID);
 
-      if (filter.filterType === "brightness") {
-        slider.value = 100;
-        input.value = slider.value;
-      }
-      else if (filter.filterType === "contrast") {
-        slider.value = 350;
-        input.value = slider.value;
-      }
-      else {
-        slider.value = 0;
-        input.value = 0;
-      }
+      slider.value = detectionSettings[filter.filterType] ? detectionSettings[filter.filterType] : filter.defaultValue;
+      input.value = slider.value;
+
+      // slider.value = detectionSettings[filter.filterType]
+      // input.value = slider.value
+
+      // if (filter.filterType === "sharpness") {
+      //   slider.value = 0.2;
+      //   input.value = slider.value;
+      // }
+      // else if (filter.filterType === "emboss") {
+      //   slider.value = 0.12;
+      //   input.value = slider.value;
+      // }
+      // else if (filter.filterType === "edge-detect") {
+      //   slider.value = 0.1;
+      //   input.value = slider.value
+      // }
+      // else if (filter.filterType === "gaussianBlur") {
+      //   slider.value = 3;
+      //   input.value = slider.value
+      // }
+      // else {
+      //   slider.value = slider.defaultValue;
+      //   input.value = slider.defaultValue;
+      // }
     }
 
     this.updateFilters();

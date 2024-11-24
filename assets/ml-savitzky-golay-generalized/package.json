@@ -1,0 +1,65 @@
+{
+  "name": "ml-savitzky-golay-generalized",
+  "version": "4.2.0",
+  "description": "Savitzky–Golay filter in Javascript",
+  "main": "lib/index.js",
+  "module": "lib-esm/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "src",
+    "lib-esm"
+  ],
+  "scripts": {
+    "build": "npm run tsc-esm && cheminfo-build --entry lib-esm/index.js --root SGG",
+    "check-types": "tsc --noEmit",
+    "clean": "rimraf lib lib-esm",
+    "eslint": "eslint src",
+    "eslint-fix": "npm run eslint -- --fix",
+    "prepack": "npm run tsc",
+    "prettier": "prettier --check src",
+    "prettier-write": "prettier --write src",
+    "test": "npm run test-coverage && npm run eslint && npmr run prettier && npm run check-types",
+    "test-coverage": "jest --coverage",
+    "test-only": "jest",
+    "tsc": "npm run clean && npm run tsc-cjs && npm run tsc-esm",
+    "tsc-cjs": "tsc --project tsconfig.cjs.json",
+    "tsc-esm": "tsc --project tsconfig.esm.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mljs/savitzky-golay-generalized"
+  },
+  "keywords": [
+    "signal",
+    "filtering",
+    "transformation",
+    "savitzky",
+    "Golay",
+    "derivative"
+  ],
+  "author": {
+    "name": "Miguel Asencio",
+    "email": "maasencioh@gmail.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mljs/savitzky-golay-generalized/issues"
+  },
+  "homepage": "https://github.com/mljs/savitzky-golay-generalized",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "cheminfo-build": "^1.2.0",
+    "eslint": "^8.57.0",
+    "eslint-config-cheminfo-typescript": "^12.3.0",
+    "jest": "^29.7.0",
+    "prettier": "^3.2.5",
+    "rimraf": "^5.0.5",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "cheminfo-types": "^1.7.3",
+    "is-any-array": "^2.0.1"
+  }
+}
