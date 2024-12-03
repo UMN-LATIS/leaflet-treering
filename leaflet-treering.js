@@ -1862,7 +1862,7 @@ function AnnotationAsset(Lt) {
     for (var i = 0; i < cookieArray.length; i++) {;
       var cookieNameArray = cookieArray[i].split('=');
       var cookieNameIndex = cookieNameArray.indexOf('attributesObjectArray');
-      //var cookieAttributesObjectArray = cookieNameArray[cookieNameIndex + 1]; // revert
+      var cookieAttributesObjectArray = cookieNameArray[cookieNameIndex + 1]; 
     };
 
     var defaultAttributes = [

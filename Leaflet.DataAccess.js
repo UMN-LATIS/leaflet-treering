@@ -586,15 +586,21 @@ function Download(Inte) {
         return outLst;
     }
     
+    /**
+     * Creates data string of annotation data. 
+     * @function
+     * 
+     * @param {string} sep - Seperator / deliminator character. 
+     */
     Download.prototype.annotationData = function(sep) {
         let yearDat = Inte.treering.helper.findDistances();
 
         let annotationDat = Object.values(Inte.treering.aData.annotations);
-        if (annotationDat.length < 1) return
+        if (annotationDat.length < 1) return "";
 
         let assetName = Inte.treering.meta.assetName;
-        let innerYear = yearDat.tw.x[0];
-        let outerYear = yearDat.tw.x[yearDat.tw.x.length-1];
+        let innerYear = (yearDat.tw.x[0]) ? yearDat.tw.x[0] : "NA";
+        let outerYear = (yearDat.tw.x[yearDat.tw.x.length-1]) ? yearDat.tw.x[yearDat.tw.x.length-1] : "NA";
 
         out = `${assetName}${sep}${innerYear}${sep}${outerYear}`;
         for (annotation of Object.values(annotationDat)) {
@@ -604,7 +610,7 @@ function Download(Inte) {
             }
         }
 
-        console.log(out);
+        return out;
     }
 
     /**
@@ -614,12 +620,17 @@ function Download(Inte) {
      * @param {string} fileType - File type (i.e. csv, tsv).
      * @param {string} fileExt - Extension at end of file. 
      * @param {string} twDatString - String of total width data.
+     * @param {string} annotationDatString - String of annotation data. 
      * @param {string} [o] allDatString - Optional string of all data.
      * @param {string} [o] ewDatString - Optional string of earlywood width data. 
      * @param {string} [o] lwDatString - Optional string of latewood width data.
      */
-    Download.prototype.zipFiles = function(fileType, fileExt, twDatString, allDatString, ewDatString, lwDatString) {
+    Download.prototype.zipFiles = function(fileType, fileExt, twDatString, annotationDatString, allDatString, ewDatString, lwDatString) {
         let zip = new JSZip();
+
+        if (annotationDatString.length) {
+            zip.file((Inte.treering.meta.assetName + "_Annotation_" + fileType + "." + fileExt), annotationDatString);
+        }
 
         if (ewDatString && lwDatString) {
           zip.file((Inte.treering.meta.assetName + "_EW_" + fileType + "." + fileExt), ewDatString);
@@ -631,6 +642,7 @@ function Download(Inte) {
         }
 
         zip.file((Inte.treering.meta.assetName + "_TW_" + fileType + "." + fileExt), twDatString);
+
         zip.generateAsync({type: 'blob'})
             .then((blob) => {
                 saveAs(blob, (Inte.treering.meta.assetName + "_" + fileType + ".zip"));
@@ -650,12 +662,10 @@ function Download(Inte) {
      * @function
      */
     Download.prototype.csv = function() {
-        this.annotationData(",");
-
-        // let allDatString = this.seperateDataCombined(",");
-        // let datStringLst = this.seperateDataDifferent(",");
-        // if (datStringLst.length > 1) this.zipFiles("csv", "csv", datStringLst[0], allDatString, datStringLst[1], datStringLst[2]);
-        // else this.zipFiles("csv", "csv", datStringLst[0]);
+        let allDatString = this.seperateDataCombined(",");
+        let datStringLst = this.seperateDataDifferent(",");
+        let annotationDatString = this.annotationData(",");
+        this.zipFiles("csv", "csv", datStringLst[0], annotationDatString, allDatString, datStringLst[1], datStringLst[2]);
     }
 
     /**
@@ -665,8 +675,8 @@ function Download(Inte) {
     Download.prototype.tsv = function() {
         let allDatString = this.seperateDataCombined("\t");
         let datStringLst = this.seperateDataDifferent("\t");
-        if (datStringLst.length > 1) this.zipFiles("tsv", "tsv", datStringLst[0], allDatString, datStringLst[1], datStringLst[2]);
-        else this.zipFiles("tsv", "tsv", datStringLst[0]);
+        let annotationDatString = this.annotationData("\t");
+        this.zipFiles("tsv", "tsv", datStringLst[0], annotationDatString, allDatString, datStringLst[1], datStringLst[2]);
     }
 
     /**
