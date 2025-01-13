@@ -99,16 +99,28 @@ function ImageAdjustment(Inte) {
     },
     { 
       filterType: "gaussianBlur",
-      defaultValue: "1",
+      defaultValue: "0",
       inputID: "gaussianBlur-input",
       sliderID: "gaussianBlur-slider",
       min: "0",
-      max: "3",
-      step: "0.01",
+      max: "10",
+      step: "0.5",
       label: "Gaussian Blur (0-1)",
       CSSFilter: false,
-      GLName: "gaussianBlur2"
-    },
+      GLName: "gaussianBlur"
+    },     
+    // { 
+    //   filterType: "sobelVertical",
+    //   defaultValue: "0",
+    //   inputID: "sobelVertical-input",
+    //   sliderID: "sobelVertical-slider",
+    //   min: "0",
+    //   max: "1",
+    //   step: "0.01",
+    //   label: "sobel Vertical (0-1)",
+    //   CSSFilter: false,
+    //   GLName: "sobelVertical"
+    // },    
     ];
 
   // Stores info of whether or not image is inverted
@@ -170,7 +182,7 @@ function ImageAdjustment(Inte) {
    * @function
    */
   ImageAdjustment.prototype.updateFilters = function() {
-    updateCSSFilterString = "";
+    let updateCSSFilterString = "";
     let invertValue = (this.invert) ? "1" : "0";
     updateCSSFilterString += "invert(" + invertValue + ")";
 
@@ -187,6 +199,8 @@ function ImageAdjustment(Inte) {
         });
       }
     }
+
+    // updateCSSFilterString += "blur(5px)"
 
     document.getElementsByClassName("leaflet-pane")[0].style.filter = updateCSSFilterString;
     Inte.treering.baseLayer['GL Layer'].setKernelsAndStrength(updateGLFilterObjs);
@@ -347,11 +361,12 @@ function ImageAdjustment(Inte) {
     let detectionSettings = {
       brightness: 100,
       contrast: 100,
-      sharpness: 0.15,
-      emboss: 0.1,
-      saturation: 100,
-      edgeDetect: 0.1,
-      gaussianBlur: 1.25
+      sharpness: 0,
+      emboss: 0.0,
+      saturate: 100,
+      edgeDetect: 0,
+      gaussianBlur: 1.5,
+      // sobelVertical: 0.2
     }
 
 
@@ -361,7 +376,8 @@ function ImageAdjustment(Inte) {
       let slider = document.getElementById(sliderID);
       let input = document.getElementById(inputID);
 
-      slider.value = detectionSettings[filter.filterType] ? detectionSettings[filter.filterType] : filter.defaultValue;
+      // slider.value = detectionSettings[filter.filterType] ? detectionSettings[filter.filterType] : filter.defaultValue;
+      slider.value = detectionSettings[filter.filterType]
       input.value = slider.value;
 
       // slider.value = detectionSettings[filter.filterType]

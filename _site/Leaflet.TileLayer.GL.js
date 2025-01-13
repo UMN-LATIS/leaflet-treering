@@ -117,7 +117,7 @@
        -2, -1,  0,
        -1,  1,  1,
         0,  1,  2
-    ]
+    ],
   };
 
   var effects = [
@@ -840,9 +840,17 @@ nextHighestPowerOfTwo: function(x) {
 	getColorMatrix: async function(firstLatLng, secondLatLng, areaHeight) {
 		this.subAreaDataSets = []; //Array containing the raw data of sub areas (see comments about canvas dimensions below)
 		
-		let canvas = document.createElement("canvas");
-		// let canvas = document.getElementById("ard-canvas")
+		// let canvas = document.createElement("canvas");
+		let canvas = document.getElementById("ard-canvas")
+		// if (areaHeight < 255) {
+		// 	canvas.height = 255;
+		// }
+		// else {
+		// 	canvas.height = 2*areaHeight
+		// }
+		canvas.height = 2*areaHeight
 		let ctx = canvas.getContext('2d');
+
 		let size = this.getTileSize();
 
 		let firstPoint = this._map.project(firstLatLng, this.options.maxNativeZoom).floor();
@@ -857,10 +865,10 @@ nextHighestPowerOfTwo: function(x) {
 		while (sizeError) {
 			try {
 				canvas.width = (distance / subAreaScalar) + 500; //Extra width probably unnecessary, helpful for visual testing
-				ctx.translate(1,1) //Expects error here; cannot translate if canvas is too large
+				// ctx.translate(0,areaHeight/2) //Expects error here; cannot translate if canvas is too large
+				ctx.translate(0, areaHeight/2)
 
 				//Code that fires if there is no error
-				ctx.translate(-1,-1) //Undo the translation
 				sizeError = false;
 				break;
 			} catch {
@@ -868,6 +876,7 @@ nextHighestPowerOfTwo: function(x) {
 				continue;
 			}
 		}
+		
 		//End rectangle will be broken up into n rectangles, where n = subAreaScalar
 
 		let firstTileCoords = firstPoint.unscaleBy(size).floor(); //Find center coordinates of tile that first latlng exists in
@@ -921,6 +930,8 @@ nextHighestPowerOfTwo: function(x) {
 			subAreaScalar: subAreaScalar, //Number of subdivisions of main collection area
 			subAreaIndex: 1 //Index of sub area currently being collected
 		}
+		// ctx.filter = "contrast(2.15)"
+		// ctx.filter = "brightness(1.1) contrast(1.05)"
 		this._map.setZoom(this.options.maxNativeZoom, {animate: false});
 		this._map.flyTo(firstLatLng, this.options.maxNativeZoom, {animate: false})
 
@@ -934,13 +945,6 @@ nextHighestPowerOfTwo: function(x) {
 
 		let colorMatrix = await placeTiles(this)
 		return colorMatrix
-		
-		// placeTiles(this).then((result) => {
-		// 	console.log('resolved:', result)
-		// 	return result
-		// })
-		// this.collectColorData(collectionParametersObject)
-
 	},
 
 	collectColorData: function(cpo, resolveCallback) { //collection parameters object
@@ -1036,7 +1040,7 @@ nextHighestPowerOfTwo: function(x) {
 
 			//Take image data over area 1/2 height above and below starting point, length of distance between points
 			//length is smaller if area broken up into smaller parts
-			let subAreaImageData = cpo.ctx.getImageData(cpo.offset.x, cpo.offset.y - (cpo.areaHeight / 2), cpo.endScalar, cpo.areaHeight);
+			let subAreaImageData = cpo.ctx.getImageData(cpo.offset.x, cpo.offset.y, cpo.endScalar, cpo.areaHeight);
 			this.subAreaDataSets.push(subAreaImageData)
 
 			cpo.ctx.beginPath();
@@ -1117,7 +1121,6 @@ nextHighestPowerOfTwo: function(x) {
 				}
 			}
 		}
-		// console.log(out)
 		return out
 	}
 });
