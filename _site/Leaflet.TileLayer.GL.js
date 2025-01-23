@@ -848,7 +848,7 @@ nextHighestPowerOfTwo: function(x) {
 		// else {
 		// 	canvas.height = 2*areaHeight
 		// }
-		canvas.height = 2*areaHeight
+		canvas.height = 2*areaHeight + 255
 		let ctx = canvas.getContext('2d');
 
 		let size = this.getTileSize();

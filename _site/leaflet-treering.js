@@ -4653,7 +4653,8 @@ function AutoRingDetection(Lt) {
 
 
           // this.detectRings(firstLatLng, secondLatLng)
-          this.edgeDetection(firstLatLng, secondLatLng);
+          // this.edgeDetection(firstLatLng, secondLatLng);
+          this.detectionSetup(firstLatLng, secondLatLng)
           this.disable();
           break;
         }
@@ -4709,26 +4710,66 @@ function AutoRingDetection(Lt) {
     })
   }
 
-  AutoRingDetection.prototype.edgeDetection = async function (firstLatLng, secondLatLng) {
+  AutoRingDetection.prototype.detectionSetup = async function (firstLatLng, secondLatLng) {
     this.drawRect(firstLatLng, secondLatLng, 200)
-    let imageData = await Lt.baseLayer['GL Layer'].getColorMatrix(firstLatLng, secondLatLng, 200);
-    console.log(imageData)
-    // let winSize = parseInt($("#auto-ring-detection-sgg-window").val());
+    let imageData = await Lt.baseLayer['GL Layer'].getColorMatrix(firstLatLng, secondLatLng, 300);
+
+    let winSize = 11;
+    let extremaThreshold = 0.3;
+    let columnThreshold = 0.75;
+    this.edgeDetection(firstLatLng, secondLatLng, imageData, winSize, extremaThreshold, columnThreshold);
+
+    //Update based on sliders
+    $("#auto-ring-detection-window-size").on("change", () => {
+      $("#auto-ring-detection-window-size-text").html($("#auto-ring-detection-window-size").val());
+      winSize = parseInt($("#auto-ring-detection-window-size").val());
+      extremaThreshold = parseFloat($("#auto-ring-detection-extrema-threshold").val());
+      columnThreshold = parseFloat($("#auto-ring-detection-column-threshold").val());
+
+      this.edgeDetection(firstLatLng, secondLatLng, imageData, winSize, extremaThreshold, columnThreshold);
+    });
+
+    $("#auto-ring-detection-extrema-threshold").on("change", () => {
+      $("#auto-ring-detection-extrema-threshold-text").html($("#auto-ring-detection-extrema-threshold").val());
+      winSize = parseInt($("#auto-ring-detection-window-size").val());
+      extremaThreshold = parseFloat($("#auto-ring-detection-extrema-threshold").val());
+      columnThreshold = parseFloat($("#auto-ring-detection-column-threshold").val());
+
+      this.edgeDetection(firstLatLng, secondLatLng, imageData, winSize, extremaThreshold, columnThreshold);
+    });
+
+    $("#auto-ring-detection-column-threshold").on("change", () => {
+      $("#auto-ring-detection-column-threshold-text").html($("#auto-ring-detection-column-threshold").val());
+      winSize = parseInt($("#auto-ring-detection-window-size").val());
+      extremaThreshold = parseFloat($("#auto-ring-detection-extrema-threshold").val());
+      columnThreshold = parseFloat($("#auto-ring-detection-column-threshold").val());
+
+      this.edgeDetection(firstLatLng, secondLatLng, imageData, winSize, extremaThreshold, columnThreshold);
+    })
+  }
+
+  AutoRingDetection.prototype.edgeDetection =  function (firstLatLng, secondLatLng, imageData, winSize, T1, T2) {
+    for (pointMarker of this.markers) { pointMarker.remove() };
+    this.markers = [];
+
+    let u = this.findDirectionVector(firstLatLng, secondLatLng);
+    let nextTransitionDark = null;
+
     let firstDerivSggOptions = {
-      windowSize: 11,
+      windowSize: winSize,
       derivative: 1,
       polynomial: 3,
     };  
 
     let secondDerivSggOptions = {
-      windowSize: 11,
+      windowSize: winSize,
       derivative: 2,
       polynomial: 3,
     };  
+
     
     let r, g, b;
-
-    let transitions = [];
+    let transitions = {};
 
     //Horizontal Pass
     for (let i = 0; i < imageData.length; i ++) {
@@ -4740,59 +4781,76 @@ function AutoRingDetection(Lt) {
         b = pixel[2];
         rowData.push((r + b + g) / 3);
       }
-      // console.log(rowData)
 
       let firstDeriv = sgg(rowData, 1, firstDerivSggOptions);
       let secondDeriv = sgg(rowData, 1, secondDerivSggOptions);
 
-      let minThreshold = Math.min(...firstDeriv)*0.3;
-      let maxThreshold = Math.max(...firstDeriv)*0.3; 
+      let minThreshold = Math.min(...firstDeriv)*T1;
+      let maxThreshold = Math.max(...firstDeriv)*T1; 
 
 
       for (let j = 1; j < firstDeriv.length; j++) {
         if (secondDeriv[j-1] * secondDeriv[j] < 0) {
-          // transitions.push([100 - i, j])
           if (firstDeriv[j] <= minThreshold || firstDeriv[j] >= maxThreshold) {
-            transitions.push([100 - i, j])
+            transitions[[i,j]] = firstDeriv[j];
           }
         }
       }
     }
 
-    //Vertical Pass
-    for (let j = 0; j < imageData[0].length; j++) {
-      let colData = [];
-      for (let i = 0; i < imageData.length; i++) {
-        let pixel = imageData[i][j];
-        r = pixel[0];
-        g = pixel[1];
-        b = pixel[2];
-        colData.push((r + b + g) / 3);
-      }
+    let imgMap = [];
+    for (let i = 0; i < imageData.length; i++) {
+      let rowMap = [];
+      for (let j = 0; j < imageData[0].length; j++) {
+        rowMap.push(false);
+      };
+      imgMap.push(rowMap)
+    }
 
-      let firstDeriv = sgg(colData, 1, firstDerivSggOptions);
-      let secondDeriv = sgg(colData, 1, secondDerivSggOptions);
+    for (let j = 1; j < imageData[0].length; j++) {
+      let lightCount = 0;
+      let darkCount = 0;
+      for (let i = 0; i < imageData.length; i ++) {
+        let transitionKey = i + "," + j;
+        if (transitions[transitionKey] < 0) {
+          imgMap[i][j] = "dark";
+        }
+        else if (transitions[transitionKey] > 0) {
+          imgMap[i][j] = "light";
+        }
+        else {
+          imgMap[i][j] = imgMap[i][j-1]
+        }
 
-      let minThreshold = Math.min(...firstDeriv)*0.3;
-      let maxThreshold = Math.max(...firstDeriv)*0.3; 
-
-      for (let i = 1; i < firstDeriv.length; i++) {
-        if (secondDeriv[i - 1] * secondDeriv[i] < 0) {
-          if (firstDeriv[i] <= minThreshold || firstDeriv[i] >= maxThreshold) {
-            transitions.push([100 - i, j])
-          }
+        if (imgMap[i][j] === "dark") {
+          darkCount++;
+        }
+        else if (imgMap[i][j] === "light") {
+          lightCount++;
         }
       }
-    }
-    // console.log(transitions)
 
-    let u = this.findDirectionVector(firstLatLng, secondLatLng);
-    for (point of transitions) {
-      let lat = firstLatLng.lat + point[1] * u.y + point[0] * u.x;
-      let lng = firstLatLng.lng + point[1] * u.x - point[0] * u.y;
-      let latLng = L.latLng(lat, lng);
-      let pointMarker = L.circleMarker(latLng, {radius: 0.5, color: 'yellow'});
-      pointMarker.addTo(Lt.viewer)
+      if (darkCount >= T2 * 300 && (nextTransitionDark || nextTransitionDark === null)) {
+        nextTransitionDark = false;
+
+        let lng = firstLatLng.lng + j*u.x;
+        let lat = firstLatLng.lat + j*u.y;
+        let latLng = L.latLng(lat, lng);
+        let pointMarker = L.circleMarker(latLng, {radius: 2, color: 'yellow'});
+        this.markers.push(pointMarker)
+        pointMarker.addTo(Lt.viewer)
+      }
+
+      if (lightCount >= T2 * 300 && (!nextTransitionDark || nextTransitionDark === null)) {
+        nextTransitionDark = true;
+
+        let lng = firstLatLng.lng + j*u.x;
+        let lat = firstLatLng.lat + j*u.y;
+        let latLng = L.latLng(lat, lng);
+        let pointMarker = L.circleMarker(latLng, {radius: 2, color: 'yellow'});
+        this.markers.push(pointMarker)
+        pointMarker.addTo(Lt.viewer)
+      }
     }
   }
 
