@@ -316,7 +316,7 @@ void main(void){
 	var count;
 	var subimages = {};
 	var loadIndex = async function() {
-		tiff = await GeoTIFF.fromUrl("https://s3.amazonaws.com/elevator-assets/sample_cores/" + corePath + "/tiled-iiif");
+		tiff = await GeoTIFF.fromUrl("https://s3.amazonaws.com/elevator-assets/sample_cores/" + corePath);
 		image = await tiff.getImage();
 	}
 
@@ -353,7 +353,7 @@ void main(void){
 			offset = subimage.fileDirectory.TileOffsets[index];
 			byteCount = subimage.fileDirectory.TileByteCounts[index];
 			
-			var url = "https://s3.amazonaws.com/elevator-assets/sample_cores/" + corePath + "/tiled-iiif";
+			var url = "https://s3.amazonaws.com/elevator-assets/sample_cores/" + corePath;
 			const response = await fetch(url, {
 				headers: {
 					Range: `bytes=${offset}-${offset+byteCount}`,
