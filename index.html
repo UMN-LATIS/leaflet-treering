@@ -75,6 +75,9 @@
       <button class='tabBtns' onclick='openTab(event, "CCS134A")'>CCS134A</button>
       <button class='tabBtns' onclick='openTab(event, "BSK06")'>BSK06</button>
       <button class='tabBtns' onclick='openTab(event, "CCL01A")'>CCL01A</button>
+      <button class="tabBtns" onclick='openTab(event, "ENG15A")'>ENG15A</button>
+      <button class="tabBtns" onclick='openTab(event, "CHC01A")'>CHC01A</button>
+      <button class="tabBtns" onclick='openTab(event, "GR0402A")'>GR0402A</button>
     </div>
 
     <div id='iframe-container'>
@@ -108,6 +111,18 @@
        'src': 'coreassets/ccl01a.html',
        'description': 'Core measured backwards subannually.',
       },
+      {'assetName': 'ENG15A',
+        'src': 'coreassets/eng15a.html',
+        'description': 'Core measured forward annually',
+      },
+      {'assetName': 'CHC01A',
+        'src': 'coreassets/chc01a.html',
+        'description': 'Core measured xxx...'
+      },
+      {'assetName': 'GR0402A',
+        'src': 'coreassets/gr0402a.html',
+        'description': 'Core measured xxx...'
+      }
     ];
 
     function openTab (e, assetName) {
@@ -172,8 +187,6 @@
     };
 
     document.getElementById('default-btn').click();
-
     </script>
-
   </body>
 </html>

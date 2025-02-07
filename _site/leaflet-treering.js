@@ -4562,13 +4562,15 @@ function AutoRingDetection(Lt) {
   );
   this.currentImageSettings = Lt.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON();
 
-  AutoRingDetection.prototype.displayDialog = function () {
-    // handlebars from templates.html
-    let content = document.getElementById("AutoRingDetection-dialog-template").innerHTML;
+  AutoRingDetection.prototype.displayDialog = function (pageNumber, size = [250, 200], anchor = [50, 50]) {
+    let contentId = "AutoRingDetection-page-" + pageNumber;
+    let content = document.getElementById(contentId).innerHTML;
     this.dialog = L.control.dialog({
-       'size': [250, 250],
+      //  'size': [200, 200],
+      'size': size,
        'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
-       'anchor': [50, 50],
+      //  'anchor': [50, 50],
+      'anchor': anchor,
        'initOpen': true,
        'position': 'topleft',
        'minSize': [0, 0]
@@ -4596,15 +4598,20 @@ function AutoRingDetection(Lt) {
     this.active = true;
     this.btn.state('active');
     Lt.viewer.getContainer().style.cursor = 'pointer';
-    // if (!this.dialog) {
-    //   this.dialog = this.displayDialog();
-    //   console.log(this.dialog)
-    // };
+
     for (pointMarker of this.markers) {
       pointMarker.remove()
     }
     // this.tuneGLLayer(false);
-    this.selectPoints();
+
+    this.displayDirections(2);
+    // if (Lt.data.points.length = 0) {
+    //   this.displayDirections(1)
+    // } 
+    // else {
+    //   this.displayDirections(2)
+    // }
+    // this.selectPoints();
   }
 
   AutoRingDetection.prototype.disable = function () {
@@ -4622,7 +4629,39 @@ function AutoRingDetection(Lt) {
     }
   }
 
+  AutoRingDetection.prototype.displayDirections = function (pageNumber) {
+    let currentDialog = this.displayDialog(pageNumber);
+    this.executeDirectionFunctions(pageNumber)
+    $(".auto-ring-detection-page-turn").on("click", () => {
+      pageNumber++;
+      currentDialog.remove(Lt.viewer);
+      this.displayDirections(pageNumber);
+    }) 
+  }
+
+  AutoRingDetection.prototype.executeDirectionFunctions = function (pageNumber) {
+    switch (pageNumber) {
+      //Measurement Settings
+      case 1:
+        
+        break;
+      //Set Detection Path
+      case 2:
+        this.selectPoints()
+        break;
+      //Adjust auto placements
+      case 3:
+        break;
+      //Adj. individual points and confirm
+      case 4:
+        break;
+    }
+  }
+
   AutoRingDetection.prototype.selectPoints = function() {
+    this.firstLatLng = null;
+    this.secondLatLng = null;
+
     $(document).on('keyup', e => {
       var key = e.which || e.key;
       if (key === 'Escape') {
@@ -4636,88 +4675,62 @@ function AutoRingDetection(Lt) {
       switch(clickCount) {
         case 1: {
           first = e;
-          let firstLatLng = Lt.viewer.mouseEventToLatLng(first);
-          L.circleMarker(firstLatLng, {radius: 3, color: 'red'}).addTo(Lt.viewer);
+          this.firstLatLng = Lt.viewer.mouseEventToLatLng(first);
+          this.firstPointMarker = L.circleMarker(this.firstLatLng, {radius: 3, color: 'red'}).addTo(Lt.viewer);
+          // this.firstPointMarker = L.marker()
+
+          $("#auto-ring-detection-path-step-1").css('font-weight', 'normal')
+          $("#auto-ring-detection-path-step-2").css('font-weight', 'bold')
 
           break;
         }
         case 2: {
           second = e;
-          this.displayDialog()
-          let firstLatLng = Lt.viewer.mouseEventToLatLng(first);
-          let secondLatLng = Lt.viewer.mouseEventToLatLng(second);
-          // secondLatLng.lat = firstLatLng.lat;
-          // console.log(firstLatLng, secondLatLng)
-          L.circleMarker(firstLatLng, {radius: 3, color: 'red'}).addTo(Lt.viewer);
-          L.circleMarker(secondLatLng, {radius: 3, color: "red"}).addTo(Lt.viewer);
+          this.secondLatLng = Lt.viewer.mouseEventToLatLng(second);
+          // this.secondPointMarker = L.circleMarker(this.secondLatLng, {radius: 3, color: "red"}).addTo(Lt.viewer);
+          this.secondPointMarker = L.marker(this.secondLatLng, {
+            icon: L.icon({
+              iconUrl : "../images/AutoEarlywoodPoint.png",
+              iconSize: [32, 32]
+            }), 
+            draggable: true}).addTo(Lt.viewer)
 
+          let detectionHeight = $("#auto-ring-detection-height-input").val()
 
-          // this.detectRings(firstLatLng, secondLatLng)
-          // this.edgeDetection(firstLatLng, secondLatLng);
-          this.detectionSetup(firstLatLng, secondLatLng)
-          this.disable();
+          this.rect = this.drawRect(detectionHeight)
+
+          $("#auto-ring-detection-path-step-2").css('font-weight', 'normal')
+          $("#auto-ring-detection-path-step-3").css('font-weight', 'bold')
+          // $(".auto-ring-detection-page-turn").on("click", () => {
+          //   let detectionHeight = $("#auto-ring-detection-height-input").val()
+          //   this.detectionSetup(detectionHeight);
+          //   this.disable();
+          // });
           break;
         }
+        // case 3: {
+        //   $("#auto-ring-detection-path-step-3").css('font-weight', 'normal')
+        //   $("#auto-ring-detection-path-step-1").css('font-weight', 'bold')
+
+        //   this.rect.removeFrom(Lt.viewer);
+        //   this.firstPointMarker.removeFrom(Lt.viewer);
+        //   this.secondPointMarker.removeFrom(Lt.viewer);
+        //   this.selectPoints();
+        // }
       }
     })
   }
 
-  AutoRingDetection.prototype.detectRings = async function(firstLatLng, secondLatLng) {
-    this.drawRect(firstLatLng, secondLatLng, 250)
-    let imageData = await Lt.baseLayer['GL Layer'].getColorMatrix(firstLatLng, secondLatLng, 250);
-
-    // this.getStats(imageData);
-    this.stats = this.getStats(imageData)
-
-    let lineAvg = this.averageOrthogonalPoints(imageData);
-    let inflectionPoints = this.findInflectionPoints(lineAvg);
-
-    let classificationData = this.classifyPoints(imageData);
-    let classificationTransitionPoints = this.findTransitions(classificationData);
-
-    let ringBoundaries = this.findBoundaryPoints(inflectionPoints, classificationTransitionPoints)
-    let u = this.findDirectionVector(firstLatLng, secondLatLng);
-    this.placePoints(firstLatLng, u.x, u.y, ringBoundaries)
-
-    $("#auto-ring-detection-ld-pixel-threshold").on("change", () => {
-      $("#auto-ring-detection-ld-pixel-threshold-text").html($("#auto-ring-detection-ld-pixel-threshold").val());
-      inflectionPoints = this.findInflectionPoints(lineAvg);
-      classificationData = this.classifyPoints(imageData);
-      classificationTransitionPoints = this.findTransitions(classificationData);
-  
-      ringBoundaries = this.findBoundaryPoints(inflectionPoints, classificationTransitionPoints)
-      this.placePoints(firstLatLng, u.x, u.y, ringBoundaries)
-    })
-
-    $("#auto-ring-detection-ld-ratio-threshold").on("change", () => {
-      $("#auto-ring-detection-ld-ratio-threshold-text").html($("#auto-ring-detection-ld-ratio-threshold").val());
-      inflectionPoints = this.findInflectionPoints(lineAvg);
-      let classificationData = this.classifyPoints(imageData);
-      let classificationTransitionPoints = this.findTransitions(classificationData);
-  
-      let ringBoundaries = this.findBoundaryPoints(inflectionPoints, classificationTransitionPoints)
-      this.placePoints(firstLatLng, u.x, u.y, ringBoundaries)
-    });
-
-    $("#auto-ring-detection-sgg-window").on("change", () => {
-      $("#auto-ring-detection-sgg-window-text").html($("#auto-ring-detection-sgg-window").val());
-      inflectionPoints = this.findInflectionPoints(lineAvg);
-      let classificationData = this.classifyPoints(imageData);
-      let classificationTransitionPoints = this.findTransitions(classificationData);
-  
-      let ringBoundaries = this.findBoundaryPoints(inflectionPoints, classificationTransitionPoints)
-      this.placePoints(firstLatLng, u.x, u.y, ringBoundaries)
-    })
-  }
-
-  AutoRingDetection.prototype.detectionSetup = async function (firstLatLng, secondLatLng) {
-    this.drawRect(firstLatLng, secondLatLng, 200)
-    let imageData = await Lt.baseLayer['GL Layer'].getColorMatrix(firstLatLng, secondLatLng, 300);
+  AutoRingDetection.prototype.detectionSetup = async function (detectionHeight) {
+    // this.drawRect(detectionHeight)
+    let imageData = await Lt.baseLayer['GL Layer'].getColorMatrix(this.firstLatLng, this.secondLatLng, detectionHeight);
+    let u = this.findDirectionVector();
 
     let winSize = 11;
     let extremaThreshold = 0.3;
     let columnThreshold = 0.75;
-    this.edgeDetection(firstLatLng, secondLatLng, imageData, winSize, extremaThreshold, columnThreshold);
+    let transitions = this.findTransitions(imageData, winSize, extremaThreshold);
+    this.placePoints(u, imageData, transitions, columnThreshold);
 
     //Update based on sliders
     $("#auto-ring-detection-window-size").on("change", () => {
@@ -4726,7 +4739,8 @@ function AutoRingDetection(Lt) {
       extremaThreshold = parseFloat($("#auto-ring-detection-extrema-threshold").val());
       columnThreshold = parseFloat($("#auto-ring-detection-column-threshold").val());
 
-      this.edgeDetection(firstLatLng, secondLatLng, imageData, winSize, extremaThreshold, columnThreshold);
+      transitions = this.findTransitions(imageData, winSize, extremaThreshold);
+      this.placePoints(u, imageData, transitions, columnThreshold)
     });
 
     $("#auto-ring-detection-extrema-threshold").on("change", () => {
@@ -4735,25 +4749,22 @@ function AutoRingDetection(Lt) {
       extremaThreshold = parseFloat($("#auto-ring-detection-extrema-threshold").val());
       columnThreshold = parseFloat($("#auto-ring-detection-column-threshold").val());
 
-      this.edgeDetection(firstLatLng, secondLatLng, imageData, winSize, extremaThreshold, columnThreshold);
+      transitions = this.findTransitions(imageData, winSize, extremaThreshold);
+      this.placePoints(u, imageData, transitions, columnThreshold)
     });
 
     $("#auto-ring-detection-column-threshold").on("change", () => {
       $("#auto-ring-detection-column-threshold-text").html($("#auto-ring-detection-column-threshold").val());
-      winSize = parseInt($("#auto-ring-detection-window-size").val());
-      extremaThreshold = parseFloat($("#auto-ring-detection-extrema-threshold").val());
       columnThreshold = parseFloat($("#auto-ring-detection-column-threshold").val());
 
-      this.edgeDetection(firstLatLng, secondLatLng, imageData, winSize, extremaThreshold, columnThreshold);
+      this.placePoints(u, imageData, transitions, columnThreshold)
     })
   }
 
-  AutoRingDetection.prototype.edgeDetection =  function (firstLatLng, secondLatLng, imageData, winSize, T1, T2) {
+  AutoRingDetection.prototype.findTransitions =  function (imageData, winSize, extremaThreshold) {
     for (pointMarker of this.markers) { pointMarker.remove() };
     this.markers = [];
 
-    let u = this.findDirectionVector(firstLatLng, secondLatLng);
-    let nextTransitionDark = null;
 
     let firstDerivSggOptions = {
       windowSize: winSize,
@@ -4785,8 +4796,8 @@ function AutoRingDetection(Lt) {
       let firstDeriv = sgg(rowData, 1, firstDerivSggOptions);
       let secondDeriv = sgg(rowData, 1, secondDerivSggOptions);
 
-      let minThreshold = Math.min(...firstDeriv)*T1;
-      let maxThreshold = Math.max(...firstDeriv)*T1; 
+      let minThreshold = Math.min(...firstDeriv)*extremaThreshold;
+      let maxThreshold = Math.max(...firstDeriv)*extremaThreshold; 
 
 
       for (let j = 1; j < firstDeriv.length; j++) {
@@ -4797,6 +4808,14 @@ function AutoRingDetection(Lt) {
         }
       }
     }
+
+    return transitions;
+  }
+
+  AutoRingDetection.prototype.placePoints = function(u, imageData, transitions, columnThreshold) {
+    for (pointMarker of this.markers) { pointMarker.remove() };
+    this.markers = [];
+    let nextTransitionDark = null;
 
     let imgMap = [];
     for (let i = 0; i < imageData.length; i++) {
@@ -4830,421 +4849,86 @@ function AutoRingDetection(Lt) {
         }
       }
 
-      if (darkCount >= T2 * 300 && (nextTransitionDark || nextTransitionDark === null)) {
+
+      // Lt.data.newPoint(this.startPoint, latLng);
+      // Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, latLng);
+
+      let areaHeight = imgMap.length;
+      if (darkCount >= columnThreshold * areaHeight && (nextTransitionDark || nextTransitionDark === null)) {
         nextTransitionDark = false;
 
-        let lng = firstLatLng.lng + j*u.x;
-        let lat = firstLatLng.lat + j*u.y;
+        let lng = this.firstLatLng.lng + j*u.x;
+        let lat = this.firstLatLng.lat + j*u.y;
         let latLng = L.latLng(lat, lng);
         let pointMarker = L.circleMarker(latLng, {radius: 2, color: 'yellow'});
         this.markers.push(pointMarker)
         pointMarker.addTo(Lt.viewer)
+
+        // Lt.data.newPoint(false, latLng);
+        // Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, latLng);
       }
 
-      if (lightCount >= T2 * 300 && (!nextTransitionDark || nextTransitionDark === null)) {
+      if (lightCount >= columnThreshold * areaHeight && (!nextTransitionDark || nextTransitionDark === null)) {
         nextTransitionDark = true;
 
-        let lng = firstLatLng.lng + j*u.x;
-        let lat = firstLatLng.lat + j*u.y;
+        let lng = this.firstLatLng.lng + j*u.x;
+        let lat = this.firstLatLng.lat + j*u.y;
         let latLng = L.latLng(lat, lng);
         let pointMarker = L.circleMarker(latLng, {radius: 2, color: 'yellow'});
         this.markers.push(pointMarker)
         pointMarker.addTo(Lt.viewer)
+
+        // Lt.data.newPoint(false, latLng)
+        // Lt.visualAsset.newLatLng(Lt.data.points, Lt.data.index-1, latLng);
       }
     }
   }
 
-  //Testing Functions
-  AutoRingDetection.prototype.getStats = function (imageData) {
-    let oneDData = [];
-    let r, g, b;
 
-    for (let row of imageData) {
-      for (let pixel of row) {
-        r = pixel[0];
-        g = pixel[1];
-        b = pixel[2];
-
-        oneDData.push((r + g + b) / 3)
-      }
-    }
-
-    let mean = Lt.areaCaptureInterface.ellipseCSVDownload.mean(oneDData);
-    let median = Lt.areaCaptureInterface.ellipseCSVDownload.median(oneDData);
-    let sd = Lt.areaCaptureInterface.ellipseCSVDownload.standardDeviation(oneDData);
-    let uq = Lt.areaCaptureInterface.ellipseCSVDownload.upperQuartile(oneDData);
-    let lq = Lt.areaCaptureInterface.ellipseCSVDownload.lowerQuartile(oneDData);
-
-    console.log('mean:', mean)
-    console.log('median:', median)
-    console.log('sd:', sd)
-    console.log('upper q:', uq)
-    console.log('lower q:', lq)
-    return {
-      mean: mean,
-      median: median,
-      sd: sd,
-      uq: uq,
-      lq: lq
-    }
-  }
-  //Testing Functions
-
-  AutoRingDetection.prototype.averageOrthogonalPoints = function (imageDataMatrix) {
-    let matrixHeight = imageDataMatrix.length;
-    let matrixLength = imageDataMatrix[0].length;
-    let out = [];
-    let r,g,b
-
-    for (let col = 0; col < matrixLength; col++) {
-      let orthData = [];
-      // let sum = 0;
-      for (let row = 0; row < matrixHeight; row++) {
-        let pointRGB = imageDataMatrix[row][col]
-        r = pointRGB[0];
-        g = pointRGB[1];
-        b = pointRGB[2];
-
-        // sum += (r + g + b)/3
-        orthData.push((r + g + b)/3)
-      }
-      // out.push(sum/matrixHeight)
-      let mean = Lt.areaCaptureInterface.ellipseCSVDownload.mean(orthData)
-      out.push(mean)
-    }
-
-    return out
-  }
-
-  AutoRingDetection.prototype.findInflectionPoints = function(imageData) {
-    let winSize = parseInt($("#auto-ring-detection-sgg-window").val());
-    let firstDerivSggOptions = {
-      windowSize: winSize,
-      derivative: 1,
-      polynomial: 3,
-    };  
-
-    let secondDerivSggOptions = {
-      windowSize: winSize,
-      derivative: 2,
-      polynomial: 3,
-    };  
-
-    //Calculate points first and second derivatives of a smoothed curve
-    let firstDeriv = sgg(imageData, 1, firstDerivSggOptions)
-    let secondDeriv = sgg(imageData, 1, secondDerivSggOptions)
-
-    //Find mins and maxes of first derivative, given they are above/below a certain threshold
-    let minThreshold = Math.min(...firstDeriv)*0.2;
-    let maxThreshold = Math.max(...firstDeriv)*0.2; //mins and maxes tend to have different peaks
-
-    let extremaDict = {}
-
-    for (let i = 1; i < firstDeriv.length; i++) {
-      if (secondDeriv[i-1] < 0 && secondDeriv[i] > 0 || secondDeriv[i-1] > 0 && secondDeriv[i] < 0) {
-        if (firstDeriv[i] <= minThreshold || firstDeriv[i] >= maxThreshold) {
-          extremaDict[i] = firstDeriv[i]
-        }
-      }
-    }
-    console.log(extremaDict)
-    return extremaDict
-  }
-
-  AutoRingDetection.prototype.classifyPoints = function(imageDataMatrix) {
-    let matrixHeight = imageDataMatrix.length;
-    let matrixLength = imageDataMatrix[0].length;
-    let r,g,b;
-    let out = [];
-    let lightDarkThreshold = $("#auto-ring-detection-ld-pixel-threshold").val()
-    let lightDarkRatio = $("#auto-ring-detection-ld-ratio-threshold").val()
-
-
-    for (let col = 0; col < matrixLength; col++) {
-      let colData = [];
-      for (let row = 0; row < matrixHeight; row++) {
-        let pixelRGB = imageDataMatrix[row][col];
-        r= pixelRGB[0];
-        g = pixelRGB[1];
-        b = pixelRGB[2];
-
-        let brightness = (r + g + b) / 3;
-        if (brightness <= (lightDarkThreshold)) {
-          colData.push(0)
-        }
-        else {
-          colData.push(1)
-        }
-      }
-      if (Lt.areaCaptureInterface.ellipseCSVDownload.mean(colData) >= lightDarkRatio) {
-        out.push(255)
-      }
-      else{
-        out.push(0)
-      }
-    }
-    return out
-  }
-
-  AutoRingDetection.prototype.findTransitions = function(classifiedData) {
-    let possibleTransitions = [];
-    for (let point = 1; point < classifiedData.length; point++) {
-      if (classifiedData[point - 1] != classifiedData[point]) {
-        possibleTransitions.push(point)
-      }
-    }
-
-    let filteredT = [];
-    for (let transitionIndex = 1; transitionIndex < possibleTransitions.length; transitionIndex++) {
-      if (possibleTransitions[transitionIndex - 1] + 8 <= possibleTransitions[transitionIndex]) {
-        filteredT.push(possibleTransitions[transitionIndex - 1])
-      }
-    }
-    filteredT.push(possibleTransitions[possibleTransitions.length - 1])
-    // console.log(filteredT)
-    return filteredT
-  }
-
-  AutoRingDetection.prototype.findBoundaryPoints = function (inflectionPointsObject, classifiedTransitions) {
-    let boundaryPoints = [];
-    for (point of classifiedTransitions) {
-      boundaryPoints.push(this.findNearestPoint(point, inflectionPointsObject))
-    }
-
-    boundaryPoints = this.validateBoundaryPoints(boundaryPoints, inflectionPointsObject)
-    // console.log('ring locs:', boundaryPoints)
-    return boundaryPoints
-  }
-
-  AutoRingDetection.prototype.findNearestPoint = function (point, inflectionPointsObject) {
-    let smallestDifference = Infinity;
-    let nearestPoint;
-
-    for (let inflectionPoint of Object.keys(inflectionPointsObject)) {
-      inflectionPoint = parseInt(inflectionPoint)
-
-      let difference = Math.abs(point - inflectionPoint);
-      if (difference < smallestDifference) {
-        smallestDifference = difference;
-        nearestPoint = inflectionPoint;
-      }
-    }
-    return nearestPoint
-  }
-
-  AutoRingDetection.prototype.validateBoundaryPoints = function(boundaryPoints, inflectionPointsObject) {
-    let validatedBoundaryPoints = [boundaryPoints[0]];
-
-    for (let pointIndex = 1; pointIndex < boundaryPoints.length; pointIndex++) {
-      let point = boundaryPoints[pointIndex];
-      let previousPoint = validatedBoundaryPoints[validatedBoundaryPoints.length - 1]
-
-      if (inflectionPointsObject[point] * inflectionPointsObject[previousPoint] < 0) {
-        validatedBoundaryPoints.push(point)
-      }
-      else if (Math.abs(inflectionPointsObject[point]) > Math.abs(inflectionPointsObject[previousPoint])) {
-        validatedBoundaryPoints.pop();
-        validatedBoundaryPoints.push(point)
-      }
-    }
-    return validatedBoundaryPoints
-  }
-
-  AutoRingDetection.prototype.findDirectionVector = function(firstLatLng, secondLatLng) {
-    let firstPixelCoords = Lt.baseLayer["GL Layer"]._map.project(firstLatLng, Lt.getMaxNativeZoom()).floor();
-    let secondPixelCoords = Lt.baseLayer["GL Layer"]._map.project(secondLatLng, Lt.getMaxNativeZoom()).floor();
+  AutoRingDetection.prototype.findDirectionVector = function() {
+    let firstPixelCoords = Lt.baseLayer["GL Layer"]._map.project(this.firstLatLng, Lt.getMaxNativeZoom()).floor();
+    let secondPixelCoords = Lt.baseLayer["GL Layer"]._map.project(this.secondLatLng, Lt.getMaxNativeZoom()).floor();
 
     let deltaX = secondPixelCoords.x - firstPixelCoords.x;
     let deltaY = secondPixelCoords.y - firstPixelCoords.y;
     let numPixels = (deltaX**2 + deltaY**2)**(1/2);
-    let latLngPerPixel = (secondLatLng.lng - firstLatLng.lng) / deltaX
+    let latLngPerPixel = (this.secondLatLng.lng - this.firstLatLng.lng) / deltaX
 
     let dx = deltaX/numPixels * latLngPerPixel
     let dy = -(deltaY/numPixels * latLngPerPixel)
 
     return {x: dx, y: dy}
   }
-
-  AutoRingDetection.prototype.placePoints = function (startLatLng, incX, incY, boundaryPoints) {
-    for (pointMarker of this.markers) {
-      pointMarker.remove()
-    }
-
-    for (point of boundaryPoints) {
-      let lng = startLatLng.lng + point*incX;
-      let lat = startLatLng.lat + point*incY;
-      let latLng = L.latLng(lat, lng)
-
-      let pointMarker = L.circleMarker(latLng, {radius: 3, color: 'yellow'})
-
-      let pointStr = String(point)
-      pointMarker.bindPopup(pointStr)
-
-      this.markers.push(pointMarker)
-      pointMarker.addTo(Lt.viewer)
-    }
-  }
-
-  // AutoRingDetection.prototype.dataToString = function(imageData) {
-  //   let out = "";
-  //   for (point of imageData) {
-  //     out += String(point) + "\t"
-  //   }
-  //   console.log(out)
-  // }
-
-  // AutoRingDetection.prototype.findDirectionVector = function(firstLatLng, secondLatLng) {
-  //   let firstPixelCoords = Lt.baseLayer["GL Layer"]._map.project(firstLatLng, Lt.getMaxNativeZoom()).floor();
-  //   let secondPixelCoords = Lt.baseLayer["GL Layer"]._map.project(secondLatLng, Lt.getMaxNativeZoom()).floor();
-
-  //   let deltaX = secondPixelCoords.x - firstPixelCoords.x;
-  //   let deltaY = secondPixelCoords.y - firstPixelCoords.y;
-  //   let numPixels = (deltaX**2 + deltaY**2)**(1/2);
-  //   let latLngPerPixel = (secondLatLng.lng - firstLatLng.lng) / deltaX
-
-  //   let dx = deltaX/numPixels * latLngPerPixel
-  //   let dy = -(deltaY/numPixels * latLngPerPixel)
-
-  //   return {x: dx, y: dy}
-  // }
-
-  // AutoRingDetection.prototype.findPoints = function(imageData, winSize, LTDThresholdScalar, DTLThresholdScalar, polyDegree) {
-  //   let firstDerivSggOptions = {
-  //     windowSize: winSize,
-  //     derivative: 1,
-  //     polynomial: polyDegree,
-  //   };  
-
-  //   let secondDerivSggOptions = {
-  //     windowSize: winSize,
-  //     derivative: 2,
-  //     polynomial: polyDegree,
-  //   };  
-
-  //   //Calculate points first and second derivatives of a smoothed curve
-  //   let firstDeriv = sgg(imageData, 1, firstDerivSggOptions)
-  //   let secondDeriv = sgg(imageData, 1, secondDerivSggOptions)
-
-  //   //Find mins and maxes of first derivative, given they are above/below a certain threshold
-  //   let minThreshold = Math.min(...firstDeriv)*LTDThresholdScalar;
-  //   let maxThreshold = Math.max(...firstDeriv)*DTLThresholdScalar; //mins and maxes tend to have different peaks
-
-  //   let extremaDict = {}
-
-  //   let criticalPoints = [];
-  //   let pointsToAdd = [];
-  //   for (let i = 1; i < firstDeriv.length; i++) {
-  //     if (secondDeriv[i-1] < 0 && secondDeriv[i] > 0 || secondDeriv[i-1] > 0 && secondDeriv[i] < 0) {
-  //       criticalPoints.push(i)
-  //       if (firstDeriv[i] <= minThreshold || firstDeriv[i] >= maxThreshold) {
-  //         pointsToAdd.push(i)
-  //         extremaDict[i] = firstDeriv[i]
-  //       }
-  //     }
-  //   }
-  //   // console.log(extremaDict)
-  //   return pointsToAdd
-  //   // return extremaDict
-  // }
-
-  // AutoRingDetection.prototype.validatePoints = function(pointsToAdd, extremaDict) {
-  //   for (let i = 1; i < pointsToAdd.length; i++) {
-  //     let prevPoint = pointsToAdd[i-1];
-  //     let currentPoint = pointsToAdd[i]
-
-  //     if (extremaDict[prevPoint] * extremaDict[currentPoint] > 0) {
-  //       console.log('point:', currentPoint, 'index:', i)
-  //     }
-  //   }
-  // }
-
-  // AutoRingDetection.prototype.placePoints = function (imageData, startLatLng, incX, incY, pointsToAdd) {
-  //   for (point of pointsToAdd) {
-  //     let lng = startLatLng.lng + point*incX;
-  //     let lat = startLatLng.lat + point*incY;
-  //     let latLng = L.latLng(lat, lng)
-
-  //     let pointMarker = L.circleMarker(latLng, {radius: 3, color: 'yellow'})
-
-  //     let pointStr = String(point)
-  //     pointMarker.bindPopup(pointStr)
-
-  //     this.markers.push(pointMarker)
-  //     pointMarker.addTo(Lt.viewer)
-  //   }
-
-  //   // $("#auto-ring-detection-window-size-slider").on('input', () => {
-  //   //   this.updatePlacedPoints(imageData, startLatLng, incX, incY)
-  //   // })
-
-  //   // $("#auto-ring-detection-threshold-scalar-slider1").on('input', () => {
-  //   //   this.updatePlacedPoints(imageData, startLatLng, incX, incY)
-  //   // })
-
-  //   // $("#auto-ring-detection-threshold-scalar-slider2").on('input', () => {
-  //   //   this.updatePlacedPoints(imageData, startLatLng, incX, incY)
-  //   // })
-
-  //   // $("#auto-ring-detection-poly-degree-input").on("input", () => {
-  //   //   this.updatePlacedPoints(imageData, startLatLng, incX, incY)
-  //   // })
-  // }
-
-  AutoRingDetection.prototype.updatePlacedPoints = function (imageData, startLatLng, incX, incY) {
-    let winSize = parseInt($("#auto-ring-detection-window-size-slider").val())
-    let LTDThresholdScalar = parseFloat($("#auto-ring-detection-threshold-scalar-slider1").val())
-    let DTLThresholdScalar = parseFloat($("#auto-ring-detection-threshold-scalar-slider2").val())
-    let polyDegree = parseInt($("#auto-ring-detection-poly-degree-input").val())
-
-    for (pointMarker of this.markers) {
-      pointMarker.remove()
-    }
-    let newPoints = this.findInflectionPoints(imageData, winSize, LTDThresholdScalar, DTLThresholdScalar, polyDegree)
-    for (point of newPoints) {
-      let lng = startLatLng.lng + point*incX;
-      let lat = startLatLng.lat + point*incY;
-      let latLng = L.latLng(lat, lng)
-
-
-      
-      // L.circleMarker(latLng, {radius: 3, color: 'yellow'}).addTo(Lt.viewer)
-      let pointMarker = L.circleMarker(latLng, {radius: 3, color: 'yellow'})
-
-      let pointStr = String(point)
-      pointMarker.bindPopup(pointStr)
-
-      this.markers.push(pointMarker)
-      pointMarker.addTo(Lt.viewer)
-      }
-  }
   
-  AutoRingDetection.prototype.drawRect = function(firstLatLng, secondLatLng, areaHeight) {
-    let firstPixelCoords = Lt.baseLayer["GL Layer"]._map.project(firstLatLng, Lt.getMaxNativeZoom()).floor();
-    let secondPixelCoords = Lt.baseLayer["GL Layer"]._map.project(secondLatLng, Lt.getMaxNativeZoom()).floor();
+  AutoRingDetection.prototype.drawRect = function(areaHeight) {
+    let firstPixelCoords = Lt.baseLayer["GL Layer"]._map.project(this.firstLatLng, Lt.getMaxNativeZoom()).floor();
+    let secondPixelCoords = Lt.baseLayer["GL Layer"]._map.project(this.secondLatLng, Lt.getMaxNativeZoom()).floor();
 
     let deltaX = secondPixelCoords.x - firstPixelCoords.x;
     let deltaY = secondPixelCoords.y - firstPixelCoords.y;
 
-    let latLngPerPixel = (secondLatLng.lng - firstLatLng.lng) / deltaX;
+    let latLngPerPixel = (this.secondLatLng.lng - this.firstLatLng.lng) / deltaX;
     let angle = Math.atan(deltaY/deltaX);
 
-    let corner1Lat = firstLatLng.lat - (areaHeight / 2) * Math.sin((Math.PI / 2) - angle) * latLngPerPixel;
-    let corner1Lng = firstLatLng.lng - (areaHeight / 2) * Math.cos((Math.PI / 2) - angle) * latLngPerPixel;
+    let corner1Lat = this.firstLatLng.lat - (areaHeight / 2) * Math.sin((Math.PI / 2) - angle) * latLngPerPixel;
+    let corner1Lng = this.firstLatLng.lng - (areaHeight / 2) * Math.cos((Math.PI / 2) - angle) * latLngPerPixel;
     let corner1 = L.latLng(corner1Lat, corner1Lng);
 
-    let corner2Lat = firstLatLng.lat + (areaHeight / 2) * Math.sin((Math.PI / 2) - angle) * latLngPerPixel;
-    let corner2Lng = firstLatLng.lng + (areaHeight / 2) * Math.cos((Math.PI / 2) - angle) * latLngPerPixel;
+    let corner2Lat = this.firstLatLng.lat + (areaHeight / 2) * Math.sin((Math.PI / 2) - angle) * latLngPerPixel;
+    let corner2Lng = this.firstLatLng.lng + (areaHeight / 2) * Math.cos((Math.PI / 2) - angle) * latLngPerPixel;
     let corner2 = L.latLng(corner2Lat, corner2Lng);
     
-    let corner3Lat = secondLatLng.lat + (areaHeight / 2) * Math.sin((Math.PI / 2) - angle) * latLngPerPixel;
-    let corner3Lng = secondLatLng.lng + (areaHeight / 2) * Math.cos((Math.PI / 2) - angle) * latLngPerPixel;
+    let corner3Lat = this.secondLatLng.lat + (areaHeight / 2) * Math.sin((Math.PI / 2) - angle) * latLngPerPixel;
+    let corner3Lng = this.secondLatLng.lng + (areaHeight / 2) * Math.cos((Math.PI / 2) - angle) * latLngPerPixel;
     let corner3 = L.latLng(corner3Lat, corner3Lng);
 
-    let corner4Lat = secondLatLng.lat - (areaHeight / 2) * Math.sin((Math.PI / 2) - angle) * latLngPerPixel;
-    let corner4Lng = secondLatLng.lng - (areaHeight / 2) * Math.cos((Math.PI / 2) - angle) * latLngPerPixel;
+    let corner4Lat = this.secondLatLng.lat - (areaHeight / 2) * Math.sin((Math.PI / 2) - angle) * latLngPerPixel;
+    let corner4Lng = this.secondLatLng.lng - (areaHeight / 2) * Math.cos((Math.PI / 2) - angle) * latLngPerPixel;
     let corner4 = L.latLng(corner4Lat, corner4Lng);
 
-    L.polygon([corner1, corner2, corner3, corner4], {color: 'red', weight: 2}).addTo(Lt.viewer)
+    let rect = L.polygon([corner1, corner2, corner3, corner4], {color: 'red', weight: 2});
+    rect.addTo(Lt.viewer);
+    return rect;
   }
 }
 
