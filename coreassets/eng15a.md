@@ -7,7 +7,7 @@ layout: core_layout
 var width = 94494;
 var height = 4106;
 var maxNativeZoom = 17;
-var corePath = 'gr0402a/gr0402a-acsp-5x_02-27-2021_19-02-57-tiled.tiff';
+var corePath = 'ENG15A/ENG15A_20231221_SOAU_GCA-20241108-101342_tiled-iiif.tiff';
 var loadFunction = "iiifImageLoadFunction";
 var tilesize = 256;
 var overlap = 0;

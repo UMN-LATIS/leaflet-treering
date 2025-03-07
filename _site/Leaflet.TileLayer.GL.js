@@ -846,7 +846,10 @@ nextHighestPowerOfTwo: function(x) {
 		//Based on separating axis theorem
 
 		//Set up variables for later
-        let canvas = document.getElementById("ard-canvas1"); //Create canvas in future?
+        // let canvas = document.getElementById("ard-canvas1"); //Create canvas in future?
+		let canvas = document.createElement("canvas");
+		// canvas.style = "position: absolute; z-index: 9999"
+		// document.getElementById("imageMap").append(canvas)
         let ctx = canvas.getContext("2d");
 		let zoom = this.options.maxNativeZoom; //Make zoom an input later?
 		let tileSize = this.getTileSize();
@@ -882,13 +885,13 @@ nextHighestPowerOfTwo: function(x) {
 			if (corner.x <= Math.min(...xCoords) && corner.y >= Math.max(...yCoords)) {
 				bottomLeft = corners[i];
 			}
-			else if (corner.x <= Math.min(...xCoords) && corner.y <= Math.min(...yCoords)) {
+			if (corner.x <= Math.min(...xCoords) && corner.y <= Math.min(...yCoords)) {
 				topLeft = corners[i];
 			}
-			else if (corner.x >= Math.max(...xCoords) && corner.y <= Math.min(...yCoords)) {
+			if (corner.x >= Math.max(...xCoords) && corner.y <= Math.min(...yCoords)) {
 				topRight = corners[i];
 			}
-			else if (corner.x >= Math.max(...xCoords) && corner.y >= Math.max(...yCoords)) {
+			if (corner.x >= Math.max(...xCoords) && corner.y >= Math.max(...yCoords)) {
 				bottomRight = corners[i];
 			}
 		}
@@ -930,28 +933,39 @@ nextHighestPowerOfTwo: function(x) {
 		let startPoint = topLeft
 		let startTileCoords = startPoint.unscaleBy(tileSize).floor();
 		let offset = startPoint.subtract(startTileCoords.scaleBy(tileSize))
-		offset = L.point(offset.x + 255*(startTileCoords.x - imin), offset.y + 255*(startTileCoords.y - jmin))
+		offset = L.point(offset.x + tileSize.x*(startTileCoords.x - imin), offset.y + tileSize.y*(startTileCoords.y - jmin))
 
 		canvas.height = h + 500;
-		canvas.width = w + 1000;
+		canvas.width = w + 500;
 		
 		//Allow for any area in future; currently just return an error
 		let sizeError = true;
-		// let subAreaCount = 1;
-		while (sizeError) {
-			try {
-				// canvas.width = w / subAreaCount + 1000;
-				ctx.translate(0, -255*(startTileCoords.y - jmin)) //Shift start upward if collection area starts below jmin
-
-
-				!sizeError;
-				break;
-			} catch {
-				subAreaCount++;
-				return "too big"
-				// continue;
-			}
+		try {
+			ctx.translate(0, -tileSize.y*(startTileCoords.y - jmin)) //Shift start upward if collection area starts below jmin
+			sizeError = !sizeError
+		} catch {
+			return false
 		}
+
+		// if (sizeError == true) {
+		// 	return false
+		// }
+
+		// let subAreaCount = 1;
+		// while (sizeError) {
+		// 	try {
+		// 		// canvas.width = w / subAreaCount + 1000;
+		// 		ctx.translate(0, -tileSize.y*(startTileCoords.y - jmin)) //Shift start upward if collection area starts below jmin
+
+
+		// 		!sizeError;
+		// 		break;
+		// 	} catch {
+		// 		subAreaCount++;
+		// 		return false
+		// 		// continue;
+		// 	}
+		// }
 
 		//The built-in function to get image data is only over a non-rotated rectangle, so rotate tiles instead
 		ctx.translate(offset.x, offset.y)
@@ -978,17 +992,17 @@ nextHighestPowerOfTwo: function(x) {
 							let tile = tis._tiles[tis._tileCoordsToKey(coords)];
 
 							if (!tile || tile.loading) { //assume that all tiles in the AABB exist, infinite recursion if not
-								let pt = L.point(i * 255, j * 255);
+								let pt = L.point(i * tileSize.x, j * tileSize.y);
 								let ll = tis._map.unproject(pt, zoom)
 								tis._map.flyTo(ll, zoom, {animate: false})
 								pasteTilesToCanvas(i, j, tis, resolveCallback)
 								return
 							}
 							else {
-								ctx.drawImage(tile.el, (i-imin)*255,(j-jmin)*255)
+								ctx.drawImage(tile.el, (i-imin)*tileSize.x,(j-jmin)*tileSize.y)
 								//visualize tiles on canvas
 								// ctx.beginPath()
-								// ctx.rect((i-imin)*255, (j-jmin)*255,255, 255)
+								// ctx.rect((i-imin)*tileSize.x, (j-jmin)*tileSize.y,tileSize.x, tileSize.y)
 								// ctx.stroke()				
 								
 								//visualize tiles on map
@@ -1010,16 +1024,16 @@ nextHighestPowerOfTwo: function(x) {
 				// ctx.resetTransform();
 				// ctx.beginPath()
 				// ctx.strokeStyle = "blue"
-				// ctx.rect(offset.x, offset.y -255*(startTileCoords.y - jmin), w, h)
+				// ctx.rect(offset.x, offset.y -tileSize.x*(startTileCoords.y - jmin), w, h)
 				// ctx.stroke();
 
 				//getImageData doesn't use ctx transformations
-				resolveCallback(ctx.getImageData(offset.x, offset.y -255*(startTileCoords.y - jmin), w, h));
+				resolveCallback(ctx.getImageData(offset.x, offset.y -tileSize.y*(startTileCoords.y - jmin), w, h));
 			})
 		}
 
 		//Go to top left corner
-		let pt = L.point(imin * 255, jmin * 255);
+		let pt = L.point(imin * tileSize.x, jmin * tileSize.y);
 		let ll = this._map.unproject(pt, zoom);
 		this._map.flyTo(ll, zoom, {animate: false})
 

@@ -375,13 +375,13 @@ function MeasurementData (dataObject, Lt) {
   * Add a new point into the measurement data
   * @function newPoint
   */
-  MeasurementData.prototype.newPoint = function(start, latLng) {
+  MeasurementData.prototype.newPoint = function(start, latLng, auto = false) {
     let direction = directionCheck();
 
     if (start) {
-      this.points[this.index] = {'start': true, 'skip': false, 'break': false, 'latLng': latLng};
+      this.points[this.index] = {'start': true, 'skip': false, 'break': false, 'latLng': latLng, 'auto': auto};
     } else {
-      this.points[this.index] = {'start': false, 'skip': false, 'break': false, 'year': this.year, 'earlywood': this.earlywood, 'latLng': latLng};
+      this.points[this.index] = {'start': false, 'skip': false, 'break': false, 'year': this.year, 'earlywood': this.earlywood, 'latLng': latLng, 'auto': auto};
       // Change year value if lw point (forward) or ew point (backwards) or annual measurements.
       if ((measurementOptions.subAnnual && ((direction == forwardInTime && !this.earlywood) ||
                                             (direction == backwardInTime && this.earlywood))) ||
@@ -1080,6 +1080,16 @@ function MarkerIcon(color, imagePath) {
                      'size': [64, 64] },
     'empty'      : { 'path': imagePath + 'images/Empty.png',
                      'size': [0, 0] },
+    'AEW_decade' : { 'path': imagePath + 'images/AutoEarlywoodDecade.png',
+                     'size': [32, 32] },
+    'AEW_point'  : { 'path': imagePath + 'images/AutoEarlywoodPoint.png',
+                     'size': [32, 32] },
+    'ALW_decade' : { 'path': imagePath + 'images/AutoLatewoodDecade.png',
+                     'size': [32, 32] },
+    'ALW_point' : {  'path': imagePath + 'images/AutoLatewoodPoint.png',
+                     'size': [32, 32] },
+    'ASP'       : {  'path': imagePath + 'images/AutoStartPoint.png',
+                     'size': [32, 32] },
   };
 
   if (!colors[color]?.path) {
@@ -1451,7 +1461,12 @@ function VisualAsset (Lt) {
         if (pts[i - 1] && pts[i - 1].break) {
           color = 'break';
         } else {
-          color = 'start';
+          if (pts[i].auto) {
+            color = 'ASP'
+          }
+          else {
+            color = 'start';
+          }
         }
       } else if (backward) {
         if (pts[i - 1] && pts[i - 1].break) {
@@ -1459,9 +1474,19 @@ function VisualAsset (Lt) {
         // Start points and measurement points swap when measuring backwards.
         } else if (pts[i - 1]) {
           if (pts[i - 1].year % 10 == 0) {
-            color = (annual) ? 'dark_red' :
-                    (pts[i - 1].earlywood) ? 'light_red' : 'dark_red';
+            if (pts[i - 1].auto) {
+              color = (annual) ? 'ALW_decade' :
+              (pts[i - 1].earlywood) ? 'AEW_decade' : 'ALW_decade'
+            }
+            else {
+              color = (annual) ? 'dark_red' :
+                    (pts[i - 1].earlywood) ? 'light_red' : 'dark_red';              
+            }
           } else {
+            if (pts[i - 1].auto) {
+              color = (annual) ? 'AEW_point' :
+              (pts[i - 1].earlywood) ? 'AEW_point' : 'ALW_point'
+            }
             color = (annual) ? 'light_blue' :
                     (pts[i - 1].earlywood) ? 'light_blue' : 'dark_blue';
           }
@@ -1473,22 +1498,47 @@ function VisualAsset (Lt) {
     } else if (subAnnual) {
       if (pts[i].earlywood) {
         // Decades are colored red.
-        color = (pts[i].year % 10 == 0) ? 'light_red' : 'light_blue';
+        if (pts[i].auto) {
+          color = (pts[i].year % 10 == 0) ? 'AEW_decade' : 'AEW_point'
+        }
+        else {
+          color = (pts[i].year % 10 == 0) ? 'light_red' : 'light_blue';
+        }
       } else { // Otherwise, point is latewood.
-        color = (pts[i].year % 10 == 0) ? 'dark_red' : 'dark_blue';
+        if (pts[i].auto) {
+          color = (pts[i].year % 10 == 0) ? 'ALW_decade' : 'ALW_point'
+        }
+        else {
+          color = (pts[i].year % 10 == 0) ? 'dark_red' : 'dark_blue';
+        }
       }
 
       // Swap measurement path endings and start points.
       if (backward && pts[i + 1]?.start) {
-        color = 'start';
+        if (pts[i + 1].auto) {
+          color = "ASP"
+        }
+        else {
+          color = 'start';
+        }
       }
     // Annual icons:
     } else {
-      color = (pts[i].year % 10 == 0) ? 'dark_red' : 'light_blue';
+      if (pts[i].auto) {
+        color = (pts[i].year % 10 == 0) ? 'ALW_decade' : 'AEW_point'
+      }
+      else {
+        color = (pts[i].year % 10 == 0) ? 'dark_red' : 'light_blue';
+      }
 
       // Swap measurement path endings and start points.
       if (backward && pts[i + 1] && pts[i + 1].start) {
-        color = 'start';
+        if (pts[i + 1].auto) {
+          color = 'ASP';
+        }
+        else {
+          color = 'start';
+        }
       }
     };
 
@@ -1500,12 +1550,27 @@ function VisualAsset (Lt) {
         if (subAnnual) {
           if (nextMeasurePt.earlywood) {
             // Decades are colored red.
-            color = (nextMeasurePt.year % 10 == 0) ? 'dark_red' : 'dark_blue';
+            if (nextMeasurePt.auto) {
+              color = (nextMeasurePt.year % 10 == 0) ? 'ALW_decade' : 'ALW_point'
+            }
+            else {
+              color = (nextMeasurePt.year % 10 == 0) ? 'dark_red' : 'dark_blue';
+            }
           } else { // Otherwise, point is latewood.
-            color = (nextMeasurePt.year % 10 == 0) ? 'light_red' : 'light_blue';
+            if (nextMeasurePt.auto) {
+              color = (nextMeasurePt.year % 10 == 0) ? 'AEW_decade' : 'AEW_point'
+            }
+            else {
+              color = (nextMeasurePt.year % 10 == 0) ? 'light_red' : 'light_blue';
+            }
           }
         } else {
-          color = ((pts[i + 1].year + 1) % 10 == 0) ? 'dark_red' : 'light_blue';
+          if (pts[i + 1].auto) {
+            color = ((pts[i + 1].year + 1) % 10 == 0) ? 'ALW_decade' : 'ALW_point';
+          }
+          else {
+            color = ((pts[i + 1].year + 1) % 10 == 0) ? 'dark_red' : 'light_blue';
+          }
         }
 
         if ((forward && pts[i - 1] && pts[i].latLng.lat == pts[i - 1].latLng.lat && pts[i].latLng.lng == pts[i - 1].latLng.lng) ||
@@ -1513,11 +1578,21 @@ function VisualAsset (Lt) {
           color = 'zero';
         }
       } else {
-        color = (annual) ? 'light_blue' : 'dark_blue';
+        if (pts[i + 1].auto) {
+          color = (annual) ? 'AEW_point' : 'ALW_point'
+        }
+        else {
+          color = (annual) ? 'light_blue' : 'dark_blue';
+        }
       }
     // Only apply this when active measuring disabled.
     } else if (backward && i === pts.length - 1 && reload) {
+      if (pts[pts.length - 1].auto) {
+        color = 'ASP'
+      }
+      else {
         color = 'start';
+      }
     }
 
   if (!color) color = 'empty';
@@ -1568,10 +1643,29 @@ function VisualAsset (Lt) {
         else if (!this.markers[i].zero && this.markers[i + 1]?.zero) k = i + 1;
 
         if (subAnnual) {
-          if (pts[k].earlywood) color = (pts[k].year % 10 == 0) ? 'light_red' : 'light_blue';
-          else color = (pts[k].year % 10 == 0) ? 'dark_red' : 'dark_blue';
+          if (pts[k].earlywood) {
+            if (pts[k].auto) {
+              color = (pts[k].year % 10 == 0) ? 'AEW_decade' : 'AEW_point'
+            }
+            else {
+              color = (pts[k].year % 10 == 0) ? 'light_red' : 'light_blue';
+            }
+          } 
+          else {
+            if (pts[k].auto) {
+              color = (pts[k].year % 10 == 0) ? 'ALW_decade' : 'ALW_point'
+            }
+            else {
+              color = (pts[k].year % 10 == 0) ? 'dark_red' : 'dark_blue';
+            }
+          } 
         } else if (annual) {
-          color = (pts[k].year % 10 == 0) ? 'dark_red' : 'light_blue';
+          if (pts[k].auto) {
+            color = (pts[k].year % 10 == 0) ? 'ALW_decade' : 'AEW_point'
+          }
+          else {
+            color = (pts[k].year % 10 == 0) ? 'dark_red' : 'light_blue';
+          }
         }
 
         this.markers[k].setIcon(new MarkerIcon(color, "../"));

@@ -7,7 +7,7 @@ layout: core_layout
 var width = 329310;
 var height = 6142;
 var maxNativeZoom = 19;
-var corePath = 'chc01a';
+var corePath = 'chc01a/chc01a_5x_02-23-2021_12-17-46-tiled.tiff';
 var loadFunction = "iiifImageLoadFunction";
 var tilesize = 256;
 
