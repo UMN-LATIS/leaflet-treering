@@ -89,7 +89,12 @@ function AutoRingDetection(Inte) {
       $("#auto-ring-detection-page-turn-1").on("click", () => {
         Inte.treering.measurementOptions.forwardDirection = $('input[name="auto-ring-detection-measurement-direction"]:checked').val()
         Inte.treering.measurementOptions.subAnnual = $('input[name="auto-ring-detection-measurement-interval"]:checked').val()
-        Inte.treering.data.year = $("#auto-ring-detection-start-year-input").val()
+
+        if (!Inte.treering.measurementOptions.forwardDirection && !Inte.treering.measurementOptions.subAnnual) {
+          Inte.treering.data.year = parseInt($("#auto-ring-detection-start-year-input").val()) - 1;
+        } else {
+          Inte.treering.data.year = parseInt($("#auto-ring-detection-start-year-input").val());
+        }
         this.selectPoints(currentDialog)
       })
     }
@@ -101,10 +106,11 @@ function AutoRingDetection(Inte) {
         anchor = preferencesDialog.options.anchor;
         preferencesDialog.remove()
       }
-      currentDialog = this.displayDialog(2, [260, 200], anchor)
+      currentDialog = this.displayDialog(2, [260, 230], anchor)
 
       var clickCount = 0;
       let areaOutline = [L.polyline([])];
+      let zoom = Math.floor(Inte.treering.viewer.getZoom());
   
       // var clickCount = 0;
       $(Inte.treering.viewer.getContainer()).on("click", e => {
@@ -115,7 +121,7 @@ function AutoRingDetection(Inte) {
             this.firstLatLng = Inte.treering.viewer.mouseEventToLatLng(first);
             this.firstPointMarker = L.marker(this.firstLatLng, {
               icon: L.icon({
-                iconUrl: "../images/AutoEarlywoodPoint.png",
+                iconUrl: "../images/AutoStartPoint.png",
                 iconSize: [24, 24]
               }),
               draggable: true
@@ -139,7 +145,7 @@ function AutoRingDetection(Inte) {
             }).addTo(Inte.treering.viewer);
 
             this.detectionHeight = $("#auto-ring-detection-height-input").val()
-            let corners = this.getDetectionGeometry(this.detectionHeight).corners;
+            let corners = this.getDetectionGeometry(this.detectionHeight, zoom).corners;
             areaOutline = this.createOutline(corners)
   
             this.firstPointMarker.on("dragend", () => {
@@ -147,7 +153,7 @@ function AutoRingDetection(Inte) {
                 line.remove()
               }
               this.firstLatLng = this.firstPointMarker._latlng;
-              corners = this.getDetectionGeometry(this.detectionHeight).corners;
+              corners = this.getDetectionGeometry(this.detectionHeight, zoom).corners;
               areaOutline = this.createOutline(corners)
             });
 
@@ -156,7 +162,7 @@ function AutoRingDetection(Inte) {
                 line.remove()
               }
               this.secondLatLng = this.secondPointMarker._latlng;
-              corners = this.getDetectionGeometry(this.detectionHeight).corners;
+              corners = this.getDetectionGeometry(this.detectionHeight, zoom).corners;
               areaOutline = this.createOutline(corners)
             });
 
@@ -181,7 +187,7 @@ function AutoRingDetection(Inte) {
                 this.detectionHeight = val
               }
 
-              corners = this.getDetectionGeometry(this.detectionHeight).corners;
+              corners = this.getDetectionGeometry(this.detectionHeight, zoom).corners;
               areaOutline = this.createOutline(corners)
             })
             break;
@@ -207,11 +213,22 @@ function AutoRingDetection(Inte) {
         $("#auto-ring-detection-page-turn-2").prop("disabled", true);
         $("#auto-ring-detection-area-error").hide()
       })
+
+      $("#auto-ring-detection-zoom-input").prop('max', Inte.treering.getMaxNativeZoom())
+      $("#auto-ring-detection-zoom-input").prop('min', Inte.treering.viewer.getMinZoom())
+      $("#auto-ring-detection-zoom-input").prop('value', Inte.treering.viewer.getZoom())
+
+      $("#auto-ring-detection-zoom-input").on('change', () => {
+        zoom = $("#auto-ring-detection-zoom-input").val()
+        if ($("#auto-ring-detection-zoom-change-check").is(':checked')) {
+          Inte.treering.viewer.setZoom(zoom)
+        }
+      })
       
       $("#auto-ring-detection-page-turn-2").on("click", async () => {
-        let detectionGeometry = this.getDetectionGeometry(this.detectionHeight);
+        let detectionGeometry = this.getDetectionGeometry(this.detectionHeight, zoom);
         $("#auto-ring-detection-load-fix").show()
-        let data = await Inte.treering.baseLayer["GL Layer"].getImageData(detectionGeometry.corners, detectionGeometry.angle);
+        let data = await Inte.treering.baseLayer["GL Layer"].getImageData(detectionGeometry.corners, detectionGeometry.angle, zoom);
 
         if (!data) {//data returns false if area size too big
           $("#auto-ring-detection-area-error").show()
@@ -221,10 +238,7 @@ function AutoRingDetection(Inte) {
 
           this.firstPointMarker.remove();
           this.secondPointMarker.remove();
-          // for (let line of areaOutline) {
-          //   line.remove()
-          // }
-          this.automaticDetection(data, currentDialog, areaOutline)
+          this.automaticDetection(data, currentDialog, areaOutline, zoom)
         }
       });
     }
@@ -253,35 +267,16 @@ function AutoRingDetection(Inte) {
         this.displayDirections(pageNumber);
       }) 
     }
-  
-    AutoRingDetection.prototype.executeDirectionFunctions = function (pageNumber) {
-      switch (pageNumber) {
-        //Measurement Settings
-        case 1:
-          
-          break;
-        //Set Detection Path
-        case 2:
-          this.selectPoints()
-          break;
-        //Adjust auto placements
-        case 3:
-          this.algoSwitchTest()
-          break;
-        //Adj. individual points and confirm
-        case 4:
-          break;
-      }
-    }
 
-    AutoRingDetection.prototype.automaticDetection = function(data, selectionDialog, areaOutline) {
+
+    AutoRingDetection.prototype.automaticDetection = function(data, selectionDialog, areaOutline, zoom) {
       let anchor = selectionDialog.options.anchor;
       selectionDialog.remove()
       let currentDialog = this.displayDialog(3, [280, 320], anchor)
       //idea: put algo settings into object, then all functions take data and settings as params
       // let detectionGeometry = this.getDetectionGeometry(this.detectionHeight);
 
-      let u = this.getDirectionVector();
+      let u = this.getDirectionVector(zoom);
       let algoChoice = "pc";
       let algorithmSettings = {
         earlyWood: Inte.treering.data.earlyWood,
@@ -290,7 +285,7 @@ function AutoRingDetection(Inte) {
         edgeColPercentile: 0.75,
         classColPercentile: 0.75,
         boundaryBrightness: 50
-      }    
+      }
       let boundaryPlacements = this.classificationDetection(data, algorithmSettings);
       this.showAutomaticPlacements(u, boundaryPlacements)
 
@@ -386,9 +381,9 @@ function AutoRingDetection(Inte) {
 
     }
 
-    AutoRingDetection.prototype.getDetectionGeometry = function (detectionHeight) {
-      let firstPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.firstLatLng, Inte.treering.getMaxNativeZoom()).floor();
-      let secondPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.secondLatLng, Inte.treering.getMaxNativeZoom()).floor();
+    AutoRingDetection.prototype.getDetectionGeometry = function (detectionHeight, zoom) {
+      let firstPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.firstLatLng, zoom).floor();
+      let secondPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.secondLatLng, zoom).floor();
 
       let deltaX = secondPixelCoords.x - firstPixelCoords.x;
       let deltaY = secondPixelCoords.y - firstPixelCoords.y;
@@ -446,19 +441,19 @@ function AutoRingDetection(Inte) {
         imgMap.push(row);
       }
 
-      let raw = [];
-      let dist = [];
-      for (let t = 0; t <= 255; t++) {
-        for (n = 0; n < avgCounts[t]; n++) {
-          raw.push(avgCounts[t])
-        }
-        if (avgCounts[t]) {
-          dist.push(avgCounts[t]);
-        }
-        else {
-          dist.push(0)
-        }
-      }
+      // let raw = [];
+      // let dist = [];
+      // for (let t = 0; t <= 255; t++) {
+      //   for (n = 0; n < avgCounts[t]; n++) {
+      //     raw.push(avgCounts[t])
+      //   }
+      //   if (avgCounts[t]) {
+      //     dist.push(avgCounts[t]);
+      //   }
+      //   else {
+      //     dist.push(0)
+      //   }
+      // }
 
       // let med;
       // if (raw.length % 2 == 1) {
@@ -480,24 +475,37 @@ function AutoRingDetection(Inte) {
       //   return avgCounts[e] === Math.max(...dist.slice(medindex));
       // })
 
-      // let out = ""
+      // // let out = ""
+      // let colMap = [];
+      // for (let j = 0; j < l; j++) {
+      //   let colSum = 0;
+      //   for (let i = 0; i < h; i++) {
+      //     let avg = imgMap[i][j];
+      //     // let classification = Math.abs((avg - lowerMode)) > Math.abs((avg - upperMode)) ? 0 : 1;
+      //     let classification = avg >= boundaryBrightness ? 1 : 0;
+      //     colSum += classification;
+      //   }
+      //   let colClass = (colSum / h) > colPercentile ? 1 : 0;
+      //   colMap.push(colClass)
+      //   // out += colClass + "\t"
+      // }
+      // // console.log(out)
+
       let colMap = [];
       for (let j = 0; j < l; j++) {
         let colSum = 0;
         for (let i = 0; i < h; i++) {
           let avg = imgMap[i][j];
-          // let classification = Math.abs((avg - lowerMode)) > Math.abs((avg - upperMode)) ? 0 : 1;
-          let classification = avg >= boundaryBrightness ? 1 : 0;
+          let classification = (avg >= boundaryBrightness) ? 1 : 0;
           colSum += classification;
         }
         let colClass = (colSum / h) > colPercentile ? 1 : 0;
-        colMap.push(colClass)
-        // out += colClass + "\t"
+        colMap.push(colClass);
       }
-      // console.log(out)
+      
+
 
       let boundaryPlacements = [];
-      // let prevClass = colMap[0];
       for (let i = 1; i < l; i++) {
         if (algorithmSettings.earlyWood) {
           if (colMap[i] != colMap[i-1] && colMap[i] == 1) {
@@ -654,29 +662,42 @@ function AutoRingDetection(Inte) {
         }
       }
 
-      /**
-       *       for (let i = 1; i < l; i++) {
-        if (algorithmSettings.earlyWood) {
-          if (colMap[i] != colMap[i-1] && colMap[i] == 1) {
-            boundaries.push(i)
-          }
+      let newb = []
+      if (this.firstLatLng.lng > this.secondLatLng.lng) {
+        for (let point of boundaryPlacements) {
+          newb.push(Math.abs(point - l))
         }
-        else if (colMap[i] != colMap[i-1]) {
-          boundaries.push(i)
-        }
+      } else {
+        newb = boundaryPlacements
       }
-       */
-      return boundaryPlacements;
+
+      // return boundaryPlacements;
+      return newb
     }
 
     AutoRingDetection.prototype.showAutomaticPlacements = function(u, transitions) {
       // for (pointMarker of this.markers) { pointMarker.remove() };
       // this.markers = [];
 
+      // if (this.firstLatLng.lng > this.secondLatLng.lng && Inte.treering.measurementOptions.forwardDirection) {
+      //   console.log('1>2 & forwards: reversed')
+      //   transitions = transitions.reverse()
+      // } else if (this.firstLatLng.lng < this.secondLatLng.lng && !Inte.treering.measurementOptions.forwardDirection) {
+      //   console.log('2 > 1 & backwards: reversed')
+      //   transitions = transitions.reverse()
+      // }
+
+      let base;
+      if (this.firstLatLng.lng > this.secondLatLng.lng) {
+        base = this.secondLatLng
+      } else {
+        base = this.firstLatLng
+      }
+
       let lng, lat, latLng, pointMarker;
-      for (point of transitions) {
-        lng = this.firstLatLng.lng + point * u.x;
-        lat = this.firstLatLng.lat + point * u.y;
+      for (let point of transitions) {
+        lng = base.lng + point * u.x;
+        lat = base.lat + point * u.y;
         latLng = L.latLng(lat, lng);
         pointMarker = L.circleMarker(latLng, {radius: 2, color: 'yellow'});
         this.markers.push(pointMarker);
@@ -710,28 +731,57 @@ function AutoRingDetection(Inte) {
     }
 
     AutoRingDetection.prototype.placePoints = function(u, boundaryPlacements, autoPlacementDialog) {
-      console.log(boundaryPlacements)
       let anchor = autoPlacementDialog.options.anchor;
       autoPlacementDialog.remove()
       let currentDialog = this.displayDialog(4, [280, 320], anchor)
-      
+
+      // if (this.firstLatLng.lng > this.secondLatLng.lng && Inte.treering.measurementOptions.forwardDirection) {
+      //   boundaryPlacements = boundaryPlacements.reverse()
+      // } else if (this.firstLatLng.lng < this.secondLatLng.lng && !Inte.treering.measurementOptions.forwardDirection) {
+      //   boundaryPlacements = boundaryPlacements.reverse()
+      // }
+      if (!Inte.treering.measurementOptions.forwardDirection) {
+        boundaryPlacements = boundaryPlacements.reverse()
+      }
+
+      let base;
+      if (this.firstLatLng.lng > this.secondLatLng.lng) {
+        base = this.secondLatLng
+      } else {
+        base = this.firstLatLng
+      }
+
       let lng, lat, latLng;
-      let start = true;
+      let i = 0;
       for (let point of boundaryPlacements) {
-        lng = this.firstLatLng.lng + point * u.x;
-        lat = this.firstLatLng.lat + point * u.y;
+        lng = base.lng + point * u.x;
+        lat = base.lat + point * u.y;
         latLng = L.latLng(lat, lng);
 
-        if (start) {
-          Inte.treering.data.newPoint(start, latLng, true)
-          start = false;
-        }
-        else {
-          Inte.treering.data.newPoint(start, latLng, true)
-          Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index-1, latLng);     
-        }
+        let start = (i == 0) ? true : false;
+        Inte.treering.data.newPoint(start, latLng, true);
+        Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index-1, latLng)
+        i++;
       }
       Inte.treering.visualAsset.reload()
+
+
+      // let i = 0, forward = Inte.treering.measurementOptions.forwardDirection;
+      // for (let point of boundaryPlacements) {
+      //   lng = this.firstLatLng.lng + point * u.x;
+      //   lat = this.firstLatLng.lat + point * u.y;
+      //   latLng = L.latLng(lat, lng);
+
+      //   if ((i == 0 && forward) || (i == boundaryPlacements.length - 1 && !forward)) {
+      //     Inte.treering.data.newPoint(true, latLng, true)
+      //     Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index-1, latLng);     
+      //   }
+      //   else {
+      //     Inte.treering.data.newPoint(false, latLng, true)
+      //     Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index-1, latLng);     
+      //   }
+      // }
+      // Inte.treering.visualAsset.reload()
 
 
 
@@ -850,22 +900,18 @@ function AutoRingDetection(Inte) {
 
     }
   
-    AutoRingDetection.prototype.getDirectionVector = function() {
-      let firstPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.firstLatLng, Inte.treering.getMaxNativeZoom()).floor();
-      let secondPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.secondLatLng, Inte.treering.getMaxNativeZoom()).floor();
+    AutoRingDetection.prototype.getDirectionVector = function(zoom) {
+      let firstPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.firstLatLng, zoom).floor();
+      let secondPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.secondLatLng, zoom).floor();
   
       let deltaX = secondPixelCoords.x - firstPixelCoords.x;
       let deltaY = secondPixelCoords.y - firstPixelCoords.y;
       let numPixels = (deltaX**2 + deltaY**2)**(1/2);
       let latLngPerPixel = (this.secondLatLng.lng - this.firstLatLng.lng) / deltaX
   
-      let dx = deltaX/numPixels * latLngPerPixel
-      let dy = -(deltaY/numPixels * latLngPerPixel)
+      let dx = (firstPixelCoords < secondPixelCoords) ? deltaX/numPixels * latLngPerPixel : -(deltaX/numPixels * latLngPerPixel)
+      let dy = (firstPixelCoords < secondPixelCoords) ? -(deltaY/numPixels * latLngPerPixel) : deltaY/numPixels * latLngPerPixel
   
       return {x: dx, y: dy}
     }
-
-    // AutoRingDetection.prototype.testCanvasSize = function() {
-
-    // }
   }

@@ -1483,12 +1483,13 @@ function VisualAsset (Lt) {
                     (pts[i - 1].earlywood) ? 'light_red' : 'dark_red';              
             }
           } else {
-            if (pts[i - 1].auto) {
+            if (pts[i].auto) {
               color = (annual) ? 'AEW_point' :
-              (pts[i - 1].earlywood) ? 'AEW_point' : 'ALW_point'
+              (pts[i].earlywood) ? 'AEW_point' : 'ALW_point'
+            } else {
+              color = (annual) ? 'light_blue' :
+                      (pts[i - 1].earlywood) ? 'light_blue' : 'dark_blue';
             }
-            color = (annual) ? 'light_blue' :
-                    (pts[i - 1].earlywood) ? 'light_blue' : 'dark_blue';
           }
         }
       }
@@ -1515,7 +1516,7 @@ function VisualAsset (Lt) {
 
       // Swap measurement path endings and start points.
       if (backward && pts[i + 1]?.start) {
-        if (pts[i + 1].auto) {
+        if (pts[i].auto) {
           color = "ASP"
         }
         else {
@@ -1582,6 +1583,7 @@ function VisualAsset (Lt) {
           color = (annual) ? 'AEW_point' : 'ALW_point'
         }
         else {
+          console.log('check 4', i)
           color = (annual) ? 'light_blue' : 'dark_blue';
         }
       }

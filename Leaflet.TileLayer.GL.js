@@ -841,17 +841,15 @@ nextHighestPowerOfTwo: function(x) {
 
 	//Gets the rgb data over a given area, can be rotated by the given angle (make angle optional in future?)
 	//Input is an array with 4 latlngs, and the angle to rotate the area to be perpendicular
-	getImageData: async function(corners, angle) {
+	getImageData: async function(corners, angle, zoom) {
 		//Overall process is to find which tiles are included in the collection area, paste them to a canvas and collect the data
 		//Based on separating axis theorem
 
 		//Set up variables for later
         // let canvas = document.getElementById("ard-canvas1"); //Create canvas in future?
 		let canvas = document.createElement("canvas");
-		// canvas.style = "position: absolute; z-index: 9999"
-		// document.getElementById("imageMap").append(canvas)
         let ctx = canvas.getContext("2d");
-		let zoom = this.options.maxNativeZoom; //Make zoom an input later?
+		// let zoom = this.options.maxNativeZoom; //Make zoom an input later?
 		let tileSize = this.getTileSize();
 		this._map.setZoom(zoom, {animate: false}) //Zoom in to desired level so projections work properly
 
@@ -1066,6 +1064,7 @@ nextHighestPowerOfTwo: function(x) {
 			}
 		}
 
+		// document.getElementById("ard-canvas-div").append(canvas)
 		return colorMatrix
 	},
 

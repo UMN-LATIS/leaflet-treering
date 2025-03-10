@@ -59,6 +59,17 @@
 
 <script id="AutoRingDetection-page-2" type="text/x-handlebars-template">
     <p>Detection Path Options:</p>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <!-- <label for="auto-ring-detection-zoom-input">Zoom Level</label> -->
+        <p style="margin: 0 5 0 0;">Tile Zoom Level:</p>
+        <input type="range" id="auto-ring-detection-zoom-input" step=1>
+    </div>
+
+    <div style="display: flex; justify-content: left; align-items: center;">
+        <p style="margin: 0 5 0 0;">Zoom on change:</p>
+        <input type="checkbox" id="auto-ring-detection-zoom-change-check" checked>
+    </div> 
+
     <!-- <input type="checkbox" name="save-start-and-end-points" id="auto-ring-detection-start-end-option">
     <label for="auto-ring-detection-start-end-option">Save start/end points as ring boundaries?</label> -->
 
@@ -75,6 +86,8 @@
 
     <p id="auto-ring-detection-area-error" style="font-weight: bold;" hidden>*Data collection area too large, please adjust settings to reduce area</p>
     <p id="auto-ring-detection-load-fix" hidden>**If tiles not loading, try switching to tree layer then back to GL layer</p>
+
+    <div id="ard-canvas-div"></div>
 </script>
 
 <script id="AutoRingDetection-page-3" type="text/x-handlebars-template">
@@ -128,7 +141,7 @@
 
 
     <button id="auto-ring-detection-page-turn-3">Save Automatic Placements</button>
-    <div style="height: 10;"><canvas id="ard-canvas1" width="2550" height="2550"></canvas></div>
+    <!-- <div style="height: 10;"><canvas id="ard-canvas1" width="2550" height="2550"></canvas></div> -->
 </script>
 
 <script id="AutoRingDetection-page-4" type="text/x-handlebars-template">
