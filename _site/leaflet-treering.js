@@ -1579,7 +1579,7 @@ function VisualAsset (Lt) {
           color = 'zero';
         }
       } else {
-        if (pts[i + 1].auto) {
+        if (pts[i].auto) {
           color = (annual) ? 'AEW_point' : 'ALW_point'
         }
         else {

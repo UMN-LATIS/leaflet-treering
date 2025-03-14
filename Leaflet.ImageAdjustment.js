@@ -16,13 +16,14 @@ function ImageAdjustmentInterface(Lt) {
  * @param {object} Inte - ImageAdjustment Interface object. Allows access to all other tools.
  */
 function ImageAdjustment(Inte) {
+  this.active = false;
   this.open = false;
   this.eventListenersEnabled = false;
 
   this.btn = new Button(
     'brightness_6',
     'Adjust image appearance settings',
-    () => { Inte.treering.disableTools(); this.enable() },
+    () => { this.enable() },
     () => { this.disable() }
   );
 
@@ -97,18 +98,18 @@ function ImageAdjustment(Inte) {
       CSSFilter: false,
       GLName: "edgeDetect3"
     },
-    { 
-      filterType: "gaussianBlur",
-      defaultValue: "0",
-      inputID: "gaussianBlur-input",
-      sliderID: "gaussianBlur-slider",
-      min: "0",
-      max: "10",
-      step: "0.5",
-      label: "Gaussian Blur (0-1)",
-      CSSFilter: false,
-      GLName: "gaussianBlur"
-    },     
+    // { 
+    //   filterType: "gaussianBlur",
+    //   defaultValue: "0",
+    //   inputID: "gaussianBlur-input",
+    //   sliderID: "gaussianBlur-slider",
+    //   min: "0",
+    //   max: "10",
+    //   step: "0.5",
+    //   label: "Gaussian Blur (0-1)",
+    //   CSSFilter: false,
+    //   GLName: "gaussianBlur"
+    // },     
     // { 
     //   filterType: "sobelVertical",
     //   defaultValue: "0",
@@ -406,5 +407,19 @@ function ImageAdjustment(Inte) {
     }
 
     this.updateFilters();
+  }
+
+  ImageAdjustment.prototype.getCSSAdjustments = function () {
+    let invert = (this.invert) ? "1" : "0";
+    let cssString = "invert(" + invert + ") ";
+
+    for (let filter of filterList) {
+      let slider = $("#"+filter.sliderID);
+      if (filter.CSSFilter && slider.val() != filter.defaultValue) {
+        cssString += filter.filterType + "(" + slider.val()/100 + ") ";
+      }
+    }
+
+    return cssString
   }
   }

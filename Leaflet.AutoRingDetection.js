@@ -57,14 +57,17 @@ function AutoRingDetection(Inte) {
 
     AutoRingDetection.prototype.disable = function () {
       if (this.active) {
-        // if (this.dialog) {
-        //   this.dialog.unlock();
-        //   this.dialog.close();
-        // };
+        if (this.dialog) {
+          this.dialog.unlock();
+          this.dialog.close();
+        };
   
         this.active = false;
         this.btn.state('inactive');
         Inte.treering.viewer.getContainer().style.cursor = 'default';
+        if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
+          Inte.treering.imageAdjustmentInterface.imageAdjustment.disable()
+        }
   
         // this.tuneGLLayer(true);
       }
@@ -85,28 +88,38 @@ function AutoRingDetection(Inte) {
     };
 
     AutoRingDetection.prototype.setMeasurementPreferences = function () {
-      let currentDialog = this.displayDialog(1, [275, 275], [50, 50])
+      this.displayDialog(1, [275, 275], [50, 50])
       $("#auto-ring-detection-page-turn-1").on("click", () => {
-        Inte.treering.measurementOptions.forwardDirection = $('input[name="auto-ring-detection-measurement-direction"]:checked').val()
-        Inte.treering.measurementOptions.subAnnual = $('input[name="auto-ring-detection-measurement-interval"]:checked').val()
-
         if (!Inte.treering.measurementOptions.forwardDirection && !Inte.treering.measurementOptions.subAnnual) {
           Inte.treering.data.year = parseInt($("#auto-ring-detection-start-year-input").val()) - 1;
         } else {
           Inte.treering.data.year = parseInt($("#auto-ring-detection-start-year-input").val());
         }
-        this.selectPoints(currentDialog)
+
+        if ($('#auto-ring-detection-forward-radio').is(":checked")) {
+          Inte.treering.measurementOptions.forwardDirection = true;
+          Inte.treering.data.earlywood = true;
+        } else {
+          Inte.treering.measurementOptions.forwardDirection = false;
+          Inte.treering.data.earlywood = true;
+        }
+
+        if ($('#auto-ring-detection-subannual-radio').is(":checked")) {
+          Inte.treering.measurementOptions.subAnnual = true;
+        } else {
+          Inte.treering.measurementOptions.subAnnual = false;
+        }
+        Inte.treering.metaDataText.updateText();
+        this.selectPoints()
       })
     }
 
-    AutoRingDetection.prototype.selectPoints = async function(preferencesDialog) {
-      let currentDialog;
-      let anchor = [50, 50];
-      if (preferencesDialog) {
-        anchor = preferencesDialog.options.anchor;
-        preferencesDialog.remove()
+    AutoRingDetection.prototype.selectPoints = async function() {
+      if (this.dialog) {
+        this.dialog.remove()
       }
-      currentDialog = this.displayDialog(2, [260, 230], anchor)
+      this.displayDialog(2, [260, 230], [50, 300])
+      Inte.treering.imageAdjustmentInterface.imageAdjustment.enable()
 
       var clickCount = 0;
       let areaOutline = [L.polyline([])];
@@ -228,7 +241,9 @@ function AutoRingDetection(Inte) {
       $("#auto-ring-detection-page-turn-2").on("click", async () => {
         let detectionGeometry = this.getDetectionGeometry(this.detectionHeight, zoom);
         $("#auto-ring-detection-load-fix").show()
-        let data = await Inte.treering.baseLayer["GL Layer"].getImageData(detectionGeometry.corners, detectionGeometry.angle, zoom);
+
+        let cssFilters = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCSSAdjustments()
+        let data = await Inte.treering.baseLayer["GL Layer"].getImageData(detectionGeometry.corners, detectionGeometry.angle, zoom, cssFilters);
 
         if (!data) {//data returns false if area size too big
           $("#auto-ring-detection-area-error").show()
@@ -238,7 +253,7 @@ function AutoRingDetection(Inte) {
 
           this.firstPointMarker.remove();
           this.secondPointMarker.remove();
-          this.automaticDetection(data, currentDialog, areaOutline, zoom)
+          this.automaticDetection(data, areaOutline, zoom)
         }
       });
     }
@@ -259,32 +274,32 @@ function AutoRingDetection(Inte) {
   
   
     AutoRingDetection.prototype.displayDirections = function (pageNumber) {
-      let currentDialog = this.displayDialog(pageNumber);
-      this.executeDirectionFunctions(pageNumber)
+      this.displayDialog(pageNumber)
       $(".auto-ring-detection-page-turn").on("click", () => {
         pageNumber++;
-        currentDialog.remove(Inte.treering.viewer);
+        this.dialog.remove()
         this.displayDirections(pageNumber);
       }) 
     }
 
 
-    AutoRingDetection.prototype.automaticDetection = function(data, selectionDialog, areaOutline, zoom) {
-      let anchor = selectionDialog.options.anchor;
-      selectionDialog.remove()
-      let currentDialog = this.displayDialog(3, [280, 320], anchor)
-      //idea: put algo settings into object, then all functions take data and settings as params
+    AutoRingDetection.prototype.automaticDetection = function(data, areaOutline, zoom) {
+      let anchor = this.dialog.options.anchor;
+      this.dialog.remove()
+      this.displayDialog(3, [280, 320], anchor)
+
       // let detectionGeometry = this.getDetectionGeometry(this.detectionHeight);
+
 
       let u = this.getDirectionVector(zoom);
       let algoChoice = "pc";
       let algorithmSettings = {
-        earlyWood: Inte.treering.data.earlyWood,
-        winSize: 11,
-        extremaThreshold: 0.3,
+        subAnnual: Inte.treering.measurementOptions.subAnnual,
+        extremaThreshold: 0.25,
         edgeColPercentile: 0.75,
         classColPercentile: 0.75,
-        boundaryBrightness: 50
+        boundaryBrightness: 50,
+        alpha: 0.85,
       }
       let boundaryPlacements = this.classificationDetection(data, algorithmSettings);
       this.showAutomaticPlacements(u, boundaryPlacements)
@@ -300,7 +315,7 @@ function AutoRingDetection(Inte) {
         else if (algoChoice === "ed") {
           $("#edge-detection-settings").show()
           $("#classification-settings").hide()
-          let boundaryPlacements = this.sgEdgeDetection(data, algorithmSettings);
+          let boundaryPlacements = this.smoothingEdgeDetection(data, algorithmSettings, zoom);
           this.showAutomaticPlacements(u, boundaryPlacements)
         }
       })
@@ -323,15 +338,22 @@ function AutoRingDetection(Inte) {
           $("#edge-detection-settings").show()
           $("#classification-settings").hide()
 
-          algorithmSettings.winSize = parseInt($("#auto-ring-detection-window-size").val());
-          algorithmSettings.extremaThreshold = parseFloat($("#auto-ring-detection-extrema-threshold").val());
+          // algorithmSettings.winSize = parseInt($("#auto-ring-detection-window-size").val());
+          algorithmSettings.extremaThreshold = parseFloat($("#auto-ring-detection-edge-extrema-threshold").val());
           algorithmSettings.edgeColPercentile = parseFloat($("#auto-ring-detection-edge-col-percentile").val());
 
-          $("#auto-ring-detection-window-size-text").html($("#auto-ring-detection-window-size").val());
-          $("#auto-ring-detection-extrema-threshold-text").html($("#auto-ring-detection-extrema-threshold").val());
+          algorithmSettings.alpha = parseFloat($("#auto-ring-detection-edge-alpha").val());
+          // algorithmSettings.thresh = parseFloat($("#auto-ring-detection-edge-threshold").val());
+
+          $("#auto-ring-detection-edge-alpha-text").html($("#auto-ring-detection-edge-alpha").val())
+          // $("#auto-ring-detection-edge-threshold-text").html($("#auto-ring-detection-edge-threshold").val())
+
+          // $("#auto-ring-detection-window-size-text").html($("#auto-ring-detection-window-size").val());
+          $("#auto-ring-detection-edge-extrema-threshold-text").html($("#auto-ring-detection-edge-extrema-threshold").val());
           $("#auto-ring-detection-edge-col-percentile-text").html($("#auto-ring-detection-edge-col-percentile").val());
 
-          boundaryPlacements = this.sgEdgeDetection(data, algorithmSettings);
+          console.log(algorithmSettings)
+          boundaryPlacements = this.smoothingEdgeDetection(data, algorithmSettings);
           this.showAutomaticPlacements(u, boundaryPlacements)
         }
       })
@@ -345,7 +367,7 @@ function AutoRingDetection(Inte) {
           marker.remove()
         }
 
-        this.placePoints(u, boundaryPlacements, currentDialog)
+        this.placePoints(u, boundaryPlacements)
       })
     }
 
@@ -499,37 +521,191 @@ function AutoRingDetection(Inte) {
           let classification = (avg >= boundaryBrightness) ? 1 : 0;
           colSum += classification;
         }
-        let colClass = (colSum / h) > colPercentile ? 1 : 0;
+        // let colClass = (colSum / h) > colPercentile ? 1 : 0;
+        let colClass = colSum >= colPercentile * h ? 1 : 0;
         colMap.push(colClass);
       }
       
 
-
       let boundaryPlacements = [];
       for (let i = 1; i < l; i++) {
-        if (algorithmSettings.earlyWood) {
-          if (colMap[i] != colMap[i-1] && colMap[i] == 1) {
+        if (algorithmSettings.subAnnual) {
+          if (colMap[i] != colMap[i-1]) {
             boundaryPlacements.push(i)
+            i += 5
+          }
+        } else if (colMap[i] == 0 && colMap[i-1] != 0) {
+          i += 10
+          boundaryPlacements.push(i)
+        }
+      }
+
+      return boundaryPlacements
+    }
+
+    AutoRingDetection.prototype.smoothingEdgeDetection = function(imageData, algorithmSettings) {
+      let alpha = algorithmSettings.alpha
+
+      for (let pointMarker of this.markers) { pointMarker.remove()};
+      this.markers = [];
+      let l = imageData[0].length;
+      let h = imageData.length;
+
+      let r,g,b,avg
+      let transitions = [], t2 = {};
+      for (let i = 0; i < h; i ++) {
+        let row = imageData[i];
+
+        r = row[0][0];
+        g = row[0][1];
+        b = row[0][2];
+        avg = (r + g + b)/3
+        let f = [avg], d1 = [0], d2 = [0]
+        // let rowData = [(r + g + b)/3];
+        for (let j = 1; j < l; j++) {
+          r = row[j][0];
+          g = row[j][1];
+          b = row[j][2];
+          // rowData.push((r + b + g) / 3);
+          avg = (r + g + b)/3
+          f.push(avg)
+
+          let diff = avg - f[j-1];
+          let smoothDiff = alpha * diff + (1 - alpha) * d1[j-1];
+          d1.push(smoothDiff)
+
+          diff = smoothDiff - d1[j-1]
+          smoothDiff = alpha * diff + (1 - alpha) * d2[j - 1]
+          d2.push(smoothDiff)
+        }
+
+        let extremaThreshold = algorithmSettings.extremaThreshold;
+
+        let minT = Math.min(...d1)* extremaThreshold;
+        let maxT = Math.max(...d1)* extremaThreshold;
+        for (let j = 1; j < l; j++) {
+          if (d2[j-1] * d2[j] < 0) {
+            // transitions[[i, j]] = d1[j];
+            if (d1[j] <= minT || d1[j] >= maxT) {
+              transitions.push([this.detectionHeight/2 - i, j])
+              t2[[i, j]] = d1[j]
+            }
+            // transitions.push([this.detectionHeight/2 - i, j])
           }
         }
-        else if (colMap[i] != colMap[i-1]) {
-          boundaryPlacements.push(i)
+      }
+
+      let imgMap = [];
+      for (let i = 0; i < h; i++) {
+        let rowMap = [0];
+        for (let j = 1; j < l; j++) {
+          if (t2[[i, j]]) {
+            if (t2[[i, j]] > 0) {
+              rowMap.push(1)
+            } else {
+              rowMap.push(0)
+            }
+          } else {
+            rowMap.push(rowMap[j - 1])
+          }
+        }
+        imgMap.push(rowMap);
+      }
+
+      // let u = this.getDirectionVector(zoom);
+      // for (let point of transitions) {
+      //   let lat = this.firstLatLng.lat + point[1] * u.y + point[0] * u.x;
+      //   let lng = this.firstLatLng.lng + point[1] * u.x - point[0] * u.y;
+      //   let latLng = L.latLng(lat, lng);
+      //   let pointMarker = L.circleMarker(latLng, {radius: 0.5, color: "red"}).addTo(Inte.treering.viewer)
+      //   this.markers.push(pointMarker)
+      // }
+
+      let colPercentile = algorithmSettings.edgeColPercentile
+      console.log(colPercentile * h)
+      let colMap = [0];
+      for (let j = 1; j < l; j++) {
+        let lightCount = 0, darkCount = 0;
+        for (let i = 0; i < h; i++) {
+          if (imgMap[i][j] == 1) {
+            lightCount++;
+          } else {
+            darkCount++
+          }
+        }
+
+        console.log(lightCount, darkCount)
+        if (lightCount >= colPercentile * h) {
+          colMap.push(1)
+        } else if (darkCount >= colPercentile * h) {
+          colMap.push(0)
+        } else {
+          colMap.push(colMap[j - 1])
+        }
+      }
+
+      let boundaryPlacements = []
+      for (let c = 1; c < l; c++) {
+        if (colMap[c] != colMap[c - 1]) {
+          boundaryPlacements.push(c)
         }
       }
       return boundaryPlacements
 
+      /**
+       *  let colMap = [];
+      for (let j = 1; j < l; j++) {
+        // let lightCount = 0, darkCount = 0;
+        let lightCount = 0;
+        for (let i = 0; i < h; i++) {
+          let transitionKey = i + "," + j;
+          if (transitions[transitionKey] < 0) {
+            imgMap[i][j] = 0;
+          }
+          else if (transitions[transitionKey] > 0) {
+            imgMap[i][j] = 1;
+          }
+          else {
+            imgMap[i][j] = imgMap[i][j-1];
+          }
 
+          // if (imgMap[i][j] == 0) {
+          //   darkCount++;
+          // }
+          // else if (imgMap[i][j] == 1) {
+          //   lightCount++;
+          // }
+          if (imgMap[i][j] === 1) {
+            lightCount++;
+          }
+        }
 
-      // let u = this.getDirectionVector();
-      // let marker = L.circleMarker(L.latLng(0, 0)), lng, lat, latLng;
-      // $("#auto-ring-detection-placement-input").on("change", () => {
-      //   marker.remove();
-      //   let pt = parseInt($("#auto-ring-detection-placement-input").val());
-      //   lng = this.firstLatLng.lng + pt * u.x;
-      //   lat = this.firstLatLng.lat + pt * u.y;
-      //   latLng = L.latLng(lat, lng);
-      //   marker = L.circleMarker(latLng, {radius: 3, color: "red"}).addTo(Inte.treering.viewer)
-      // })
+        if (lightCount >= colPercentile * h) {
+          colMap.push(1)
+        }
+        else {
+          colMap.push(0)
+        }
+
+        // if (algorithmSettings.earlyWood) {
+        //   if (darkCount >= colPercentile * h && (nextTransitionDark || nextTransitionDark === null)) {
+        //     nextTransitionDark = false;
+        //     boundaryPlacements.push(j)
+        //   }
+
+        //   if (lightCount >= colPercentile * h && (!nextTransitionDark || nextTransitionDark === null)) {
+        //     nextTransitionDark = true;
+        //     boundaryPlacements.push(j);
+        //   }          
+        // }
+        // else {
+        //   if (lightCount >= colPercentile * h) {
+        //     boundaryPlacements.push(j);
+        //   }       
+        // }
+
+      }
+       */
     }
 
     AutoRingDetection.prototype.sgEdgeDetection =  function (imageData, algorithmSettings) {
@@ -652,12 +828,14 @@ function AutoRingDetection(Inte) {
 
       let boundaryPlacements = []
       for (let i = 1; i < l; i++) {
-        if (algorithmSettings.earlyWood) {
+        if (algorithmSettings.subAnnual) {
+          console.log('sub')
           if (colMap[i] != colMap[i-1]) {
             boundaryPlacements.push(i);
           }
         }
         else if (colMap[i] != colMap[i-1] && colMap[i] == 1) {
+          console.log('ann')
           boundaryPlacements.push(i)
         }
       }
@@ -671,22 +849,11 @@ function AutoRingDetection(Inte) {
         newb = boundaryPlacements
       }
 
-      // return boundaryPlacements;
-      return newb
+      return boundaryPlacements;
+      // return newb
     }
 
     AutoRingDetection.prototype.showAutomaticPlacements = function(u, transitions) {
-      // for (pointMarker of this.markers) { pointMarker.remove() };
-      // this.markers = [];
-
-      // if (this.firstLatLng.lng > this.secondLatLng.lng && Inte.treering.measurementOptions.forwardDirection) {
-      //   console.log('1>2 & forwards: reversed')
-      //   transitions = transitions.reverse()
-      // } else if (this.firstLatLng.lng < this.secondLatLng.lng && !Inte.treering.measurementOptions.forwardDirection) {
-      //   console.log('2 > 1 & backwards: reversed')
-      //   transitions = transitions.reverse()
-      // }
-
       let base;
       if (this.firstLatLng.lng > this.secondLatLng.lng) {
         base = this.secondLatLng
@@ -698,51 +865,23 @@ function AutoRingDetection(Inte) {
       for (let point of transitions) {
         lng = base.lng + point * u.x;
         lat = base.lat + point * u.y;
+
         latLng = L.latLng(lat, lng);
         pointMarker = L.circleMarker(latLng, {radius: 2, color: 'yellow'});
         this.markers.push(pointMarker);
         pointMarker.addTo(Inte.treering.viewer)
       }
-
-      // let lng, lat, latLng;
-      // if (Inte.treering.measurementOptions.forwardDirection) {
-      //   transitions = transitions.reverse()
-      // }
-      // for (point of transitions) {
-      //   lng = this.firstLatLng.lng + point * u.x;
-      //   lat = this.firstLatLng.lat + point * u.y;
-      //   latLng = L.latLng(lat, lng);
-
-      //   // Inte.treering.data.newPoint(false, latLng)
-      //   pointMarker = L.circleMarker(latLng, {radius: 2, color: 'yellow'});
-      //   this.markers.push(pointMarker);
-      //   pointMarker.addTo(Inte.treering.viewer)
-
-
-      //   Inte.treering.data.points[Inte.treering.data.index] = {"start": false, 'skip': false, 'break': false, 'latLng': latLng, 'year': Inte.treering.data.year}
-      //   if (Inte.treering.measurementOptions.forwardDirection) {Inte.treering.data.year++}
-      //   else {Inte.treering.data.year--}
-      //   Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index, latLng);
-      //   Inte.treering.data.index++
-      //   // Inte.treering.data.newPoint(false, latLng)
-      //   Inte.treering.visualAsset.reload()
-      // }  
-      // console.log(Inte.treering.data)   
     }
 
-    AutoRingDetection.prototype.placePoints = function(u, boundaryPlacements, autoPlacementDialog) {
-      let anchor = autoPlacementDialog.options.anchor;
-      autoPlacementDialog.remove()
-      let currentDialog = this.displayDialog(4, [280, 320], anchor)
+    AutoRingDetection.prototype.placePoints = function(u, boundaryPlacements) {
+      let anchor = this.dialog.options.anchor;
+      this.dialog.remove();
+      this.displayDialog(4, [280, 320], anchor)
 
-      // if (this.firstLatLng.lng > this.secondLatLng.lng && Inte.treering.measurementOptions.forwardDirection) {
-      //   boundaryPlacements = boundaryPlacements.reverse()
-      // } else if (this.firstLatLng.lng < this.secondLatLng.lng && !Inte.treering.measurementOptions.forwardDirection) {
-      //   boundaryPlacements = boundaryPlacements.reverse()
-      // }
       if (!Inte.treering.measurementOptions.forwardDirection) {
         boundaryPlacements = boundaryPlacements.reverse()
       }
+
 
       let base;
       if (this.firstLatLng.lng > this.secondLatLng.lng) {
@@ -754,7 +893,7 @@ function AutoRingDetection(Inte) {
       let lng, lat, latLng;
       let i = 0;
       for (let point of boundaryPlacements) {
-        lng = base.lng + point * u.x;
+        lng = base.lng + point *u.x;
         lat = base.lat + point * u.y;
         latLng = L.latLng(lat, lng);
 
@@ -764,50 +903,6 @@ function AutoRingDetection(Inte) {
         i++;
       }
       Inte.treering.visualAsset.reload()
-
-
-      // let i = 0, forward = Inte.treering.measurementOptions.forwardDirection;
-      // for (let point of boundaryPlacements) {
-      //   lng = this.firstLatLng.lng + point * u.x;
-      //   lat = this.firstLatLng.lat + point * u.y;
-      //   latLng = L.latLng(lat, lng);
-
-      //   if ((i == 0 && forward) || (i == boundaryPlacements.length - 1 && !forward)) {
-      //     Inte.treering.data.newPoint(true, latLng, true)
-      //     Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index-1, latLng);     
-      //   }
-      //   else {
-      //     Inte.treering.data.newPoint(false, latLng, true)
-      //     Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index-1, latLng);     
-      //   }
-      // }
-      // Inte.treering.visualAsset.reload()
-
-
-
-      // if (Inte.treering.measurementOptions.forwardDirection) {
-      //   boundaryPlacements = boundaryPlacements.reverse()
-      // }
-      // if ((this.firstLatLng.lng < this.secondLatLng.lng) && !Inte.treering.measurementOptions.forwardDirection) {
-      //   boundaryPlacements = boundaryPlacements.reverse();
-      // }
-
-      // // console.log(boundaryPlacements)
-      // let start = true
-      // for (point of boundaryPlacements) {
-      //   lng = this.firstLatLng.lng + point * u.x;
-      //   lat = this.firstLatLng.lat + point * u.y;
-      //   latLng = L.latLng(lat, lng);
-
-      //   Inte.treering.data.points[Inte.treering.data.index] = {"start": start, 'skip': false, 'break': false, 'latLng': latLng, 'auto': true}
-      //   // if (Inte.treering.measurementOptions.forwardDirection) {Inte.treering.data.year++}
-      //   // else {Inte.treering.data.year--}
-      //   Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index, latLng);
-      //   Inte.treering.data.index++
-      //   // Inte.treering.data.newPoint(false, latLng)
-      //   Inte.treering.visualAsset.reload()
-      //   start = false;
-      // }  
     }
 
     AutoRingDetection.prototype.rowAnalysis = function(data) {
