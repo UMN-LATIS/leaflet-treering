@@ -16,12 +16,13 @@ function AutoRingDetectionInterface(Lt) {
  */
 function AutoRingDetection(Inte) {
     this.active = false;
+    this.userImageSettings = {};
   
     this.markers = [];
     this.firstLatLng = null;
     this.secondLatLng = null;
     this.detectionHeight = 0;
-    // this.detectionAreaOutline = L.polyline([]);
+    this.detectionAreaOutline = [L.polyline([])];
   
     this.btn = new Button(
       'search',
@@ -29,13 +30,12 @@ function AutoRingDetection(Inte) {
       () => { Inte.treering.disableTools(); this.enable() },
       () => { this.disable() }
     );
-    // this.currentImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON();
   
     AutoRingDetection.prototype.enable = function () {
       this.active = true;
+      this.userImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON()
       this.btn.state('active');
       Inte.treering.viewer.getContainer().style.cursor = 'pointer';
-      console.log(Inte.treering.data)   
 
       $(document).on('keyup', e => {
         var key = e.which || e.key;
@@ -46,13 +46,10 @@ function AutoRingDetection(Inte) {
   
       if (Inte.treering.data.points.length == 0) {
         this.setMeasurementPreferences();
-        // this.displayDirections(1)
       } 
       else {
         this.selectPoints(false)
-        // this.displayDirections(2)
       }
-      // this.selectPoints();
     }
 
     AutoRingDetection.prototype.disable = function () {
@@ -68,8 +65,16 @@ function AutoRingDetection(Inte) {
         if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
           Inte.treering.imageAdjustmentInterface.imageAdjustment.disable()
         }
+
+        // Inte.treering.viewer.getContainer().removeEventListener("click", autoDetectPlacment)
+        for (let line of this.detectionAreaOutline) {
+          line.remove()
+        }
+        if (this.firstPointMarker) {this.firstPointMarker.remove()}
+        if (this.secondPointMarker) {this.secondPointMarker.remove()}
+        for (let pointMarker of this.markers) { pointMarker.remove()};
   
-        // this.tuneGLLayer(true);
+        this.tuneGLLayer(true);
       }
     }
 
@@ -86,6 +91,23 @@ function AutoRingDetection(Inte) {
        }).setContent(content).addTo(Inte.treering.viewer);
       return this.dialog;
     };
+
+    AutoRingDetection.prototype.tuneGLLayer = function (reset) {
+      if (reset) {
+        Inte.treering.imageAdjustmentInterface.imageAdjustment.loadImageSettings(this.userImageSettings);
+      } else {
+        Inte.treering.imageAdjustmentInterface.imageAdjustment.setDetectionSettings();
+      }
+    };
+
+    AutoRingDetection.prototype.displayDirections = function (pageNumber) {
+      this.displayDialog(pageNumber)
+      $(".auto-ring-detection-page-turn").on("click", () => {
+        pageNumber++;
+        this.dialog.remove()
+        this.displayDirections(pageNumber);
+      }) 
+    }
 
     AutoRingDetection.prototype.setMeasurementPreferences = function () {
       this.displayDialog(1, [275, 275], [50, 50])
@@ -120,9 +142,12 @@ function AutoRingDetection(Inte) {
       }
       this.displayDialog(2, [260, 230], [50, 300])
       Inte.treering.imageAdjustmentInterface.imageAdjustment.enable()
+      this.tuneGLLayer(false);
+
+      this.firstLatLng = null;
+      this.secondLatLng = null;
 
       var clickCount = 0;
-      let areaOutline = [L.polyline([])];
       let zoom = Math.floor(Inte.treering.viewer.getZoom());
   
       // var clickCount = 0;
@@ -143,8 +168,8 @@ function AutoRingDetection(Inte) {
             break;
           }
           case 2: {
-            $("#auto-ring-detection-path-step-1").css('font-weight', 'normal')
-            $("#auto-ring-detection-path-step-2").css('font-weight', 'bold')
+            // $("#auto-ring-detection-path-step-1").css('font-weight', 'normal')
+            // $("#auto-ring-detection-path-step-2").css('font-weight', 'bold')
             $("#auto-ring-detection-page-turn-2").prop("disabled", false);
 
             second = e;
@@ -159,28 +184,28 @@ function AutoRingDetection(Inte) {
 
             this.detectionHeight = $("#auto-ring-detection-height-input").val()
             let corners = this.getDetectionGeometry(this.detectionHeight, zoom).corners;
-            areaOutline = this.createOutline(corners)
+            this.detectionAreaOutline = this.createOutline(corners);
   
             this.firstPointMarker.on("dragend", () => {
-              for (let line of areaOutline) {
+              for (let line of this.detectionAreaOutline) {
                 line.remove()
               }
               this.firstLatLng = this.firstPointMarker._latlng;
               corners = this.getDetectionGeometry(this.detectionHeight, zoom).corners;
-              areaOutline = this.createOutline(corners)
+              this.detectionAreaOutline = this.createOutline(corners);
             });
 
             this.secondPointMarker.on("dragend", () => {
-              for (let line of areaOutline) {
+              for (let line of this.detectionAreaOutline) {
                 line.remove()
               }
               this.secondLatLng = this.secondPointMarker._latlng;
               corners = this.getDetectionGeometry(this.detectionHeight, zoom).corners;
-              areaOutline = this.createOutline(corners)
+              this.detectionAreaOutline = this.createOutline(corners);
             });
 
             $("#auto-ring-detection-height-input").on("change", () => {
-              for (let line of areaOutline) {
+              for (let line of this.detectionAreaOutline) {
                 line.remove()
               }
 
@@ -201,7 +226,7 @@ function AutoRingDetection(Inte) {
               }
 
               corners = this.getDetectionGeometry(this.detectionHeight, zoom).corners;
-              areaOutline = this.createOutline(corners)
+              this.detectionAreaOutline = this.createOutline(corners);
             })
             break;
           }
@@ -216,13 +241,13 @@ function AutoRingDetection(Inte) {
         if (this.firstPointMarker) {this.firstPointMarker.remove()};
         if (this.secondPointMarker) {this.secondPointMarker.remove()};
         
-        for (let line of areaOutline) {
+        for (let line of this.detectionAreaOutline) {
           line.remove()
         }
         clickCount = 0;
 
-        $("#auto-ring-detection-path-step-1").css('font-weight', 'bold')
-        $("#auto-ring-detection-path-step-2").css('font-weight', 'normal')
+        // $("#auto-ring-detection-path-step-1").css('font-weight', 'bold')
+        // $("#auto-ring-detection-path-step-2").css('font-weight', 'normal')
         $("#auto-ring-detection-page-turn-2").prop("disabled", true);
         $("#auto-ring-detection-area-error").hide()
       })
@@ -235,6 +260,15 @@ function AutoRingDetection(Inte) {
         zoom = $("#auto-ring-detection-zoom-input").val()
         if ($("#auto-ring-detection-zoom-change-check").is(':checked')) {
           Inte.treering.viewer.setZoom(zoom)
+        }
+
+        for (let line of this.detectionAreaOutline) {
+          line.remove()
+        }
+
+        if (this.firstLatLng && this.secondLatLng) {
+          corners = this.getDetectionGeometry(this.detectionHeight, zoom).corners;
+          this.detectionAreaOutline = this.createOutline(corners);          
         }
       })
       
@@ -250,45 +284,26 @@ function AutoRingDetection(Inte) {
           $("auto-ring-detection-load-fix").hide()
         }
         else {
-
+          this.tuneGLLayer(true);
           this.firstPointMarker.remove();
           this.secondPointMarker.remove();
-          this.automaticDetection(data, areaOutline, zoom)
+
+          if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
+            Inte.treering.imageAdjustmentInterface.imageAdjustment.disable()
+          }
+
+          Inte.treering.viewer.getContainer().style.cursor = 'default';
+          this.automaticDetection(data, zoom)
         }
       });
     }
 
-    AutoRingDetection.prototype.tuneGLLayer = function (reset) {
-      if (this.active) {
-        this.currentImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON()
-      }
-  
-      if (reset && this.currentImageSettings != {}) {
-        Inte.treering.imageAdjustmentInterface.imageAdjustment.loadCurrentViewJSON(this.currentImageSettings)
-      }
-      else if (!reset) {
-        Inte.treering.imageAdjustmentInterface.imageAdjustment.setDetectionSettings()
-      }
-    };
-  
-  
-  
-    AutoRingDetection.prototype.displayDirections = function (pageNumber) {
-      this.displayDialog(pageNumber)
-      $(".auto-ring-detection-page-turn").on("click", () => {
-        pageNumber++;
-        this.dialog.remove()
-        this.displayDirections(pageNumber);
-      }) 
-    }
-
-
-    AutoRingDetection.prototype.automaticDetection = function(data, areaOutline, zoom) {
-      let anchor = this.dialog.options.anchor;
+    AutoRingDetection.prototype.automaticDetection = function(data, zoom) {
+      // let anchor = this.dialog.options.anchor;
       this.dialog.remove()
-      this.displayDialog(3, [280, 320], anchor)
+      this.displayDialog(3, [280, 320], [50, 50])
 
-      // let detectionGeometry = this.getDetectionGeometry(this.detectionHeight);
+      let detectionGeometry = this.getDetectionGeometry(this.detectionHeight);
 
 
       let u = this.getDirectionVector(zoom);
@@ -300,6 +315,7 @@ function AutoRingDetection(Inte) {
         classColPercentile: 0.75,
         boundaryBrightness: 50,
         alpha: 0.85,
+        zoom: zoom
       }
       let boundaryPlacements = this.classificationDetection(data, algorithmSettings);
       this.showAutomaticPlacements(u, boundaryPlacements)
@@ -352,14 +368,13 @@ function AutoRingDetection(Inte) {
           $("#auto-ring-detection-edge-extrema-threshold-text").html($("#auto-ring-detection-edge-extrema-threshold").val());
           $("#auto-ring-detection-edge-col-percentile-text").html($("#auto-ring-detection-edge-col-percentile").val());
 
-          console.log(algorithmSettings)
           boundaryPlacements = this.smoothingEdgeDetection(data, algorithmSettings);
           this.showAutomaticPlacements(u, boundaryPlacements)
         }
       })
 
       $("#auto-ring-detection-page-turn-3").on("click", () => {
-        for (let line of areaOutline) {
+        for (let line of this.detectionAreaOutline) {
           line.remove();
         }
         
@@ -441,7 +456,7 @@ function AutoRingDetection(Inte) {
       let l = data[0].length, h = data.length;
 
       let r,g,b, avg;
-      let avgCounts = {};
+      // let avgCounts = {};
       
       let imgMap = []
       for (let i = 0; i < h; i++) {
@@ -453,89 +468,58 @@ function AutoRingDetection(Inte) {
           avg = Math.round((r + g + b)/3);
           row.push(avg)
 
-          if (!avgCounts[avg]) {
-            avgCounts[avg] = 1;
-          }
-          else {
-            avgCounts[avg] += 1;
-          }
+          // if (!avgCounts[avg]) {
+          //   avgCounts[avg] = 1;
+          // }
+          // else {
+          //   avgCounts[avg] += 1;
+          // }
         }
         imgMap.push(row);
       }
 
-      // let raw = [];
-      // let dist = [];
-      // for (let t = 0; t <= 255; t++) {
-      //   for (n = 0; n < avgCounts[t]; n++) {
-      //     raw.push(avgCounts[t])
-      //   }
-      //   if (avgCounts[t]) {
-      //     dist.push(avgCounts[t]);
-      //   }
-      //   else {
-      //     dist.push(0)
-      //   }
-      // }
-
-      // let med;
-      // if (raw.length % 2 == 1) {
-      //   med = raw[(raw.length - 1)/2]
-      // }
-      // else {
-      //   med = (raw[raw.length/2 - 1] + raw[raw.length/2])/2;
-      // }
-      // let medindex = Object.keys(avgCounts).find(e => {
-      //   return avgCounts[e] === med
-      // })
-
-      // // let lowerMode = Math.max(...dist.slice(0, medindex));
-      // let lowerMode = Object.keys(avgCounts).find(e => {
-      //   return avgCounts[e] === Math.max(...dist.slice(0, medindex));
-      // })
-
-      // let upperMode = Object.keys(avgCounts).find(e => {
-      //   return avgCounts[e] === Math.max(...dist.slice(medindex));
-      // })
-
-      // // let out = ""
-      // let colMap = [];
-      // for (let j = 0; j < l; j++) {
-      //   let colSum = 0;
-      //   for (let i = 0; i < h; i++) {
-      //     let avg = imgMap[i][j];
-      //     // let classification = Math.abs((avg - lowerMode)) > Math.abs((avg - upperMode)) ? 0 : 1;
-      //     let classification = avg >= boundaryBrightness ? 1 : 0;
-      //     colSum += classification;
-      //   }
-      //   let colClass = (colSum / h) > colPercentile ? 1 : 0;
-      //   colMap.push(colClass)
-      //   // out += colClass + "\t"
-      // }
-      // // console.log(out)
-
       let colMap = [];
-      for (let j = 0; j < l; j++) {
+     for (let j = 0; j < l; j++) {
         let colSum = 0;
         for (let i = 0; i < h; i++) {
           let avg = imgMap[i][j];
-          let classification = (avg >= boundaryBrightness) ? 1 : 0;
+          // let classification = (avg >= boundaryBrightness) ? 1 : 0;
+          let classification;
+          if (avg >= boundaryBrightness + 10) {
+            classification = 1;
+          } else if (avg <= boundaryBrightness - 10) {
+            classification = 0
+          } else {
+            classification = 0.5
+          }
           colSum += classification;
         }
-        // let colClass = (colSum / h) > colPercentile ? 1 : 0;
         let colClass = colSum >= colPercentile * h ? 1 : 0;
         colMap.push(colClass);
       }
       
 
       let boundaryPlacements = [];
+      let nextTransitionDTL = null;
+      let lastTransitionIndex = 1;
       for (let i = 1; i < l; i++) {
         if (algorithmSettings.subAnnual) {
           if (colMap[i] != colMap[i-1]) {
-            boundaryPlacements.push(i)
-            i += 5
+            if (i - lastTransitionIndex > 10) {
+              lastTransitionIndex = i;
+              if (colMap[i] == 1 && (nextTransitionDTL || nextTransitionDTL == null)) {
+                boundaryPlacements.push(i)
+                nextTransitionDTL = false;
+              } else if (colMap[i] == 0 && (!nextTransitionDTL || nextTransitionDTL == null)) {
+                boundaryPlacements.push(i)
+                nextTransitionDTL = true;
+              }              
+            } else {
+              lastTransitionIndex = i;
+            }
           }
         } else if (colMap[i] == 0 && colMap[i-1] != 0) {
-          i += 10
+          i += 20 - 2 * (Inte.treering.getMaxNativeZoom() - algorithmSettings.zoom);
           boundaryPlacements.push(i)
         }
       }
@@ -552,7 +536,7 @@ function AutoRingDetection(Inte) {
       let h = imageData.length;
 
       let r,g,b,avg
-      let transitions = [], t2 = {};
+      transitionExtremaPairs = {};
       for (let i = 0; i < h; i ++) {
         let row = imageData[i];
 
@@ -561,12 +545,10 @@ function AutoRingDetection(Inte) {
         b = row[0][2];
         avg = (r + g + b)/3
         let f = [avg], d1 = [0], d2 = [0]
-        // let rowData = [(r + g + b)/3];
         for (let j = 1; j < l; j++) {
           r = row[j][0];
           g = row[j][1];
           b = row[j][2];
-          // rowData.push((r + b + g) / 3);
           avg = (r + g + b)/3
           f.push(avg)
 
@@ -585,22 +567,20 @@ function AutoRingDetection(Inte) {
         let maxT = Math.max(...d1)* extremaThreshold;
         for (let j = 1; j < l; j++) {
           if (d2[j-1] * d2[j] < 0) {
-            // transitions[[i, j]] = d1[j];
             if (d1[j] <= minT || d1[j] >= maxT) {
-              transitions.push([this.detectionHeight/2 - i, j])
-              t2[[i, j]] = d1[j]
+              // transitions.push([this.detectionHeight/2 - i, j])
+              transitionExtremaPairs[[i, j]] = d1[j]
             }
-            // transitions.push([this.detectionHeight/2 - i, j])
           }
         }
       }
 
       let imgMap = [];
       for (let i = 0; i < h; i++) {
-        let rowMap = [0];
+        let rowMap = [null];
         for (let j = 1; j < l; j++) {
-          if (t2[[i, j]]) {
-            if (t2[[i, j]] > 0) {
+          if (transitionExtremaPairs[[i, j]]) {
+            if (transitionExtremaPairs[[i, j]] > 0) {
               rowMap.push(1)
             } else {
               rowMap.push(0)
@@ -612,29 +592,18 @@ function AutoRingDetection(Inte) {
         imgMap.push(rowMap);
       }
 
-      // let u = this.getDirectionVector(zoom);
-      // for (let point of transitions) {
-      //   let lat = this.firstLatLng.lat + point[1] * u.y + point[0] * u.x;
-      //   let lng = this.firstLatLng.lng + point[1] * u.x - point[0] * u.y;
-      //   let latLng = L.latLng(lat, lng);
-      //   let pointMarker = L.circleMarker(latLng, {radius: 0.5, color: "red"}).addTo(Inte.treering.viewer)
-      //   this.markers.push(pointMarker)
-      // }
-
       let colPercentile = algorithmSettings.edgeColPercentile
-      console.log(colPercentile * h)
       let colMap = [0];
       for (let j = 1; j < l; j++) {
         let lightCount = 0, darkCount = 0;
         for (let i = 0; i < h; i++) {
           if (imgMap[i][j] == 1) {
             lightCount++;
-          } else {
+          } else if (imgMap[i][j] == 0) {
             darkCount++
           }
         }
 
-        console.log(lightCount, darkCount)
         if (lightCount >= colPercentile * h) {
           colMap.push(1)
         } else if (darkCount >= colPercentile * h) {
@@ -644,213 +613,19 @@ function AutoRingDetection(Inte) {
         }
       }
 
-      let boundaryPlacements = []
+      let boundaryPlacements = [];
+      let lastTransitionIndex = 1;
       for (let c = 1; c < l; c++) {
         if (colMap[c] != colMap[c - 1]) {
-          boundaryPlacements.push(c)
+          if (c - lastTransitionIndex > 10) {
+            lastTransitionIndex = c;
+            boundaryPlacements.push(c)
+          } else {
+            lastTransitionIndex = c;
+          }
         }
       }
       return boundaryPlacements
-
-      /**
-       *  let colMap = [];
-      for (let j = 1; j < l; j++) {
-        // let lightCount = 0, darkCount = 0;
-        let lightCount = 0;
-        for (let i = 0; i < h; i++) {
-          let transitionKey = i + "," + j;
-          if (transitions[transitionKey] < 0) {
-            imgMap[i][j] = 0;
-          }
-          else if (transitions[transitionKey] > 0) {
-            imgMap[i][j] = 1;
-          }
-          else {
-            imgMap[i][j] = imgMap[i][j-1];
-          }
-
-          // if (imgMap[i][j] == 0) {
-          //   darkCount++;
-          // }
-          // else if (imgMap[i][j] == 1) {
-          //   lightCount++;
-          // }
-          if (imgMap[i][j] === 1) {
-            lightCount++;
-          }
-        }
-
-        if (lightCount >= colPercentile * h) {
-          colMap.push(1)
-        }
-        else {
-          colMap.push(0)
-        }
-
-        // if (algorithmSettings.earlyWood) {
-        //   if (darkCount >= colPercentile * h && (nextTransitionDark || nextTransitionDark === null)) {
-        //     nextTransitionDark = false;
-        //     boundaryPlacements.push(j)
-        //   }
-
-        //   if (lightCount >= colPercentile * h && (!nextTransitionDark || nextTransitionDark === null)) {
-        //     nextTransitionDark = true;
-        //     boundaryPlacements.push(j);
-        //   }          
-        // }
-        // else {
-        //   if (lightCount >= colPercentile * h) {
-        //     boundaryPlacements.push(j);
-        //   }       
-        // }
-
-      }
-       */
-    }
-
-    AutoRingDetection.prototype.sgEdgeDetection =  function (imageData, algorithmSettings) {
-      let winSize = algorithmSettings.winSize;
-      let extremaThreshold = algorithmSettings.extremaThreshold;
-      let colPercentile = algorithmSettings.edgeColPercentile;
-
-      for (pointMarker of this.markers) { pointMarker.remove() };
-      this.markers = [];
-      let l = imageData[0].length;
-      let h = imageData.length;
-  
-  
-      let firstDerivSggOptions = {
-        windowSize: winSize,
-        derivative: 1,
-        polynomial: 3,
-      };  
-  
-      let secondDerivSggOptions = {
-        windowSize: winSize,
-        derivative: 2,
-        polynomial: 3,
-      };  
-  
-      
-      let r, g, b;
-      let transitions = {};
-  
-      //Horizontal Pass
-      for (let i = 0; i < h; i ++) {
-        let row = imageData[i];
-        let rowData = [];
-        for (let pixel of row) {
-          r = pixel[0];
-          g = pixel[1];
-          b = pixel[2];
-          rowData.push((r + b + g) / 3);
-        }
-  
-        let firstDeriv = sgg(rowData, 1, firstDerivSggOptions);
-        let secondDeriv = sgg(rowData, 1, secondDerivSggOptions);
-  
-        let minThreshold = Math.min(...firstDeriv)*extremaThreshold;
-        let maxThreshold = Math.max(...firstDeriv)*extremaThreshold; 
-  
-  
-        for (let j = 1; j < l; j++) {
-          if (secondDeriv[j-1] * secondDeriv[j] < 0) {
-            if (firstDeriv[j] <= minThreshold || firstDeriv[j] >= maxThreshold) {
-              transitions[[i,j]] = firstDeriv[j];
-            }
-          }
-        }
-      }
-
-      let nextTransitionDark = null;
-      let imgMap = [];
-      for (let i = 0; i < h; i++) {
-        let rowMap = [];
-        for (let j = 0; j < l; j++) {
-          rowMap.push(0);
-        }
-        imgMap.push(rowMap);
-      }
-
-      // let boundaryPlacements = [];
-      let colMap = [];
-      for (let j = 1; j < l; j++) {
-        // let lightCount = 0, darkCount = 0;
-        let lightCount = 0;
-        for (let i = 0; i < h; i++) {
-          let transitionKey = i + "," + j;
-          if (transitions[transitionKey] < 0) {
-            imgMap[i][j] = 0;
-          }
-          else if (transitions[transitionKey] > 0) {
-            imgMap[i][j] = 1;
-          }
-          else {
-            imgMap[i][j] = imgMap[i][j-1];
-          }
-
-          // if (imgMap[i][j] == 0) {
-          //   darkCount++;
-          // }
-          // else if (imgMap[i][j] == 1) {
-          //   lightCount++;
-          // }
-          if (imgMap[i][j] === 1) {
-            lightCount++;
-          }
-        }
-
-        if (lightCount >= colPercentile * h) {
-          colMap.push(1)
-        }
-        else {
-          colMap.push(0)
-        }
-
-        // if (algorithmSettings.earlyWood) {
-        //   if (darkCount >= colPercentile * h && (nextTransitionDark || nextTransitionDark === null)) {
-        //     nextTransitionDark = false;
-        //     boundaryPlacements.push(j)
-        //   }
-
-        //   if (lightCount >= colPercentile * h && (!nextTransitionDark || nextTransitionDark === null)) {
-        //     nextTransitionDark = true;
-        //     boundaryPlacements.push(j);
-        //   }          
-        // }
-        // else {
-        //   if (lightCount >= colPercentile * h) {
-        //     boundaryPlacements.push(j);
-        //   }       
-        // }
-
-      }
-
-      let boundaryPlacements = []
-      for (let i = 1; i < l; i++) {
-        if (algorithmSettings.subAnnual) {
-          console.log('sub')
-          if (colMap[i] != colMap[i-1]) {
-            boundaryPlacements.push(i);
-          }
-        }
-        else if (colMap[i] != colMap[i-1] && colMap[i] == 1) {
-          console.log('ann')
-          boundaryPlacements.push(i)
-        }
-      }
-
-      let newb = []
-      if (this.firstLatLng.lng > this.secondLatLng.lng) {
-        for (let point of boundaryPlacements) {
-          newb.push(Math.abs(point - l))
-        }
-      } else {
-        newb = boundaryPlacements
-      }
-
-      return boundaryPlacements;
-      // return newb
     }
 
     AutoRingDetection.prototype.showAutomaticPlacements = function(u, transitions) {
@@ -874,9 +649,10 @@ function AutoRingDetection(Inte) {
     }
 
     AutoRingDetection.prototype.placePoints = function(u, boundaryPlacements) {
-      let anchor = this.dialog.options.anchor;
+      // let anchor = this.dialog.options.anchor;
       this.dialog.remove();
-      this.displayDialog(4, [280, 320], anchor)
+      // this.displayDialog(4, [280, 320], anchor)
+      this.dialog = null;
 
       if (!Inte.treering.measurementOptions.forwardDirection) {
         boundaryPlacements = boundaryPlacements.reverse()
@@ -903,96 +679,8 @@ function AutoRingDetection(Inte) {
         i++;
       }
       Inte.treering.visualAsset.reload()
-    }
 
-    AutoRingDetection.prototype.rowAnalysis = function(data) {
-      let length = data[0].length;
-      let height = data.length;
-
-      let out = "point\tr\tg\tb\tavg\n"
-      let r,g,b
-      for (let i = 0; i < length; i++) {
-        let rColSum = 0;
-        let gColSum = 0;
-        let bColSum = 0;
-        let avgColSum = 0;
-
-        for (let j = 0; j < height; j++) {
-          r = data[j][i][0]
-          g = data[j][i][1]
-          b = data[j][i][2];
-
-          rColSum += r;
-          gColSum += g;
-          bColSum += b;
-          avgColSum += (r+g+b)/3;
-        }
-        out += i + "\t" + rColSum/height + "\t" + gColSum/height + "\t" + bColSum/height + "\t" + avgColSum/height + "\n";
-      }
-      console.log(out)
-    }
-
-    AutoRingDetection.prototype.rgbFrequencyCSV = function(data) {
-      let l = data[0].length, h = data.length;
-      let x = l * h;
-      let counts = {
-        "r": {},
-        "g": {},
-        "b": {},
-        "avg": {}
-      }
-
-      let r,g,b,avg
-      for (let row of data) {
-        for (let pt of row) {
-          r = pt[0];
-          g = pt[1];
-          b = pt[2];
-          avg = Math.round((r + g + b)/3)
-
-          if (!counts["avg"][avg]) {
-            counts["avg"][avg] = 1;
-          }
-          else {
-            counts["avg"][avg] += 1;
-          }
-
-          if (!counts["r"][r]) {
-            counts["r"][r] = 1;
-          }
-          else {
-            counts["r"][r] += 1;
-          }
-
-          if (!counts["g"][g]) {
-            counts["g"][g] = 1;
-          }
-          else {
-            counts["g"][g] += 1;
-          }
-
-          if (!counts["b"][b]) {
-            counts["b"][b] = 1;
-          }
-          else {
-            counts["b"][b] += 1;
-          }
-        }
-      }
-
-      // console.log(counts)
-      let out = "val\tr\tg\tb\tavg\n"
-      for (let c = 0; c <= 255; c++) {
-        let avgProp = counts["avg"][c] ? counts["avg"][c]/x : 0
-        let rProp = counts["r"][c] ? counts["r"][c]/x : 0
-        let gProp = counts["g"][c] ? counts["g"][c]/x : 0
-        let bProp = counts["b"][c] ? counts["b"][c]/x : 0
-
-
-        out += c + "\t" + rProp + "\t" + gProp + "\t" + bProp + "\t" + avgProp + "\n";
-      }
-      console.log(out)
-
+      this.disable();
     }
   
     AutoRingDetection.prototype.getDirectionVector = function(zoom) {

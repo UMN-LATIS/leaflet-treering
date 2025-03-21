@@ -1004,7 +1004,7 @@ nextHighestPowerOfTwo: function(x) {
 								return
 							}
 							else {
-								if (cssFilters != "") {
+								if (cssFilters && cssFilters != "") {
 									ctx.filter = cssFilters
 								}
 								ctx.drawImage(tile.el, (i-imin)*tileSize.x,(j-jmin)*tileSize.y)

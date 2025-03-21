@@ -259,7 +259,9 @@ function ImageAdjustment(Inte) {
   ImageAdjustment.prototype.createEventListeners = function() {
     //Close view if user clicks anywhere outside of slider window
     $(Inte.treering.viewer.getContainer()).on("click",() => {
-      this.disable();
+      if (!Inte.treering.autoRingDetectionInterface.autoRingDetection.active) {
+        this.disable();
+      }
     });
 
     //Inverts image
@@ -342,32 +344,30 @@ function ImageAdjustment(Inte) {
 
   /**
    * 
-   * @param {object} JSONdata - object containing current image settings
+   * @param {object} imageSettingsData - object containing current image settings
    */
-  ImageAdjustment.prototype.loadCurrentViewJSON = function(JSONdata) {
+  ImageAdjustment.prototype.loadImageSettings = function(imageSettingsData) {
     for (filter of filterList) {
       let sliderID = filter.filterType + "-slider";
       let inputID = filter.filterType + "-input";
       let slider = document.getElementById(sliderID);
       let input = document.getElementById(inputID);
 
-      slider.value = JSONdata[filter.filterType];
-      input.value = JSONdata[filter.filterType];
+      slider.value = imageSettingsData[filter.filterType];
+      input.value = imageSettingsData[filter.filterType];
     }
-    this.invert = JSONdata["invert"];
+    this.invert = imageSettingsData["invert"];
     this.updateFilters();
     }
 
   ImageAdjustment.prototype.setDetectionSettings = function() {
     let detectionSettings = {
-      brightness: 100,
-      contrast: 100,
+      brightness: 80,
+      contrast: 350,
       sharpness: 0,
       emboss: 0.0,
-      saturate: 100,
-      edgeDetect: 0,
-      gaussianBlur: 1.5,
-      // sobelVertical: 0.2
+      saturate: 0,
+      edgeDetect: 0.05,
     }
 
 
@@ -377,34 +377,10 @@ function ImageAdjustment(Inte) {
       let slider = document.getElementById(sliderID);
       let input = document.getElementById(inputID);
 
-      // slider.value = detectionSettings[filter.filterType] ? detectionSettings[filter.filterType] : filter.defaultValue;
       slider.value = detectionSettings[filter.filterType]
       input.value = slider.value;
-
-      // slider.value = detectionSettings[filter.filterType]
-      // input.value = slider.value
-
-      // if (filter.filterType === "sharpness") {
-      //   slider.value = 0.2;
-      //   input.value = slider.value;
-      // }
-      // else if (filter.filterType === "emboss") {
-      //   slider.value = 0.12;
-      //   input.value = slider.value;
-      // }
-      // else if (filter.filterType === "edge-detect") {
-      //   slider.value = 0.1;
-      //   input.value = slider.value
-      // }
-      // else if (filter.filterType === "gaussianBlur") {
-      //   slider.value = 3;
-      //   input.value = slider.value
-      // }
-      // else {
-      //   slider.value = slider.defaultValue;
-      //   input.value = slider.defaultValue;
-      // }
     }
+    this.invert = false
 
     this.updateFilters();
   }

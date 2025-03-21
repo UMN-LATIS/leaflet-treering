@@ -298,7 +298,7 @@ function JSONFileUpload(Inte) {
             Inte.treering.aData = new AnnotationData(newDataJSON.annotations);
             if (newDataJSON?.ellipses) Inte.treering.areaCaptureInterface.ellipseData.loadJSON(newDataJSON.ellipses); 
             else Inte.treering.areaCaptureInterface.ellipseData.clearJSON();
-            if (newDataJSON?.currentView) Inte.treering.imageAdjustmentInterface.imageAdjustment.loadCurrentViewJSON(newDataJSON.currentView);
+            if (newDataJSON?.currentView) Inte.treering.imageAdjustmentInterface.imageAdjustment.loadImageSettings(newDataJSON.currentView);
 
             // If the JSON has PPM data, use that instead of loaded data.
             if (newDataJSON.ppm) {
