@@ -23,6 +23,70 @@ function AutoRingDetection(Inte) {
     this.secondLatLng = null;
     this.detectionHeight = 0;
     this.detectionAreaOutline = [L.polyline([])];
+
+    this.detectionMethods = [
+      {
+        method: "classification",
+        divId: "auto-ring-detection-classification-settings",
+        functionCall: (data, algoSettings) => {return this.classificationDetection(data, algoSettings)},
+        options: [
+          {
+            name: 'boundaryBrightness',
+            label: "Boundary Brightness",
+            id: 'auto-ring-detection-boundary-brightness',
+            min: 0,
+            max: 255,
+            step: 1,
+            defaultValue: 50,
+          },
+          {
+            name: "classColPercentile",
+            label: "Column Percentile",
+            id: "auto-ring-detection-class-col-percentile",
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.25,
+          }
+        ],
+        radioLabel: "Pixel Classification"
+      },
+      {
+        method: "exponential-smoothing",
+        divId: "auto-ring-detection-edge-detection-settings",
+        functionCall: (data, algoSettings) => {return this.exponentialSmoothingDetection(data, algoSettings)},
+        options: [
+          {
+            name: "alpha",
+            label: "Smoothing Factor",
+            id: "auto-ring-detection-edge-alpha",
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.35,
+          },
+          {
+            name: "extremaThreshold",
+            label: "Brightness Change Threshold",
+            id: "auto-ring-detection-edge-extrema-threshold",
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.2,
+          },
+          {
+            name: "edgeColPercentile",
+            label: "Column Percentile",
+            id: "auto-ring-detection-edge-col-percentile",
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.30,
+          }
+        ],
+        radioLabel: "Exp Smoothing Edge Detection"
+      }
+    ]
   
     this.btn = new Button(
       'search',
@@ -81,6 +145,15 @@ function AutoRingDetection(Inte) {
     AutoRingDetection.prototype.displayDialog = function (pageNumber, size = [280, 320], anchor = [50, 50]) {
       let contentId = "AutoRingDetection-page-" + pageNumber;
       let content = document.getElementById(contentId).innerHTML;
+
+      let html;
+      if (pageNumber == 3) { //only need Handlebars for detection page
+        let template = Handlebars.compile(content);
+        html = template({detectionMethods: this.detectionMethods}) 
+      } else {
+        html = content
+      }
+
       this.dialog = L.control.dialog({
         'size': size,
          'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
@@ -88,7 +161,7 @@ function AutoRingDetection(Inte) {
          'initOpen': true,
          'position': 'topleft',
          'minSize': [0, 0]
-       }).setContent(content).addTo(Inte.treering.viewer);
+       }).setContent(html).addTo(Inte.treering.viewer);
       return this.dialog;
     };
 
@@ -148,7 +221,8 @@ function AutoRingDetection(Inte) {
       this.secondLatLng = null;
 
       var clickCount = 0;
-      let zoom = Math.floor(Inte.treering.viewer.getZoom());
+      // let zoom = Math.floor(Inte.treering.viewer.getZoom());
+      let zoom = Inte.treering.getMaxNativeZoom() - 1
   
       // var clickCount = 0;
       $(Inte.treering.viewer.getContainer()).on("click", e => {
@@ -254,7 +328,7 @@ function AutoRingDetection(Inte) {
 
       $("#auto-ring-detection-zoom-input").prop('max', Inte.treering.getMaxNativeZoom())
       $("#auto-ring-detection-zoom-input").prop('min', Inte.treering.viewer.getMinZoom())
-      $("#auto-ring-detection-zoom-input").prop('value', Inte.treering.viewer.getZoom())
+      $("#auto-ring-detection-zoom-input").prop('value', zoom)
 
       $("#auto-ring-detection-zoom-input").on('change', () => {
         zoom = $("#auto-ring-detection-zoom-input").val()
@@ -301,106 +375,72 @@ function AutoRingDetection(Inte) {
     AutoRingDetection.prototype.automaticDetection = function(data, zoom) {
       // let anchor = this.dialog.options.anchor;
       this.dialog.remove()
-      this.displayDialog(3, [280, 320], [50, 50])
-
-      let detectionGeometry = this.getDetectionGeometry(this.detectionHeight);
-
-
+      this.displayDialog(3, [280, 320], [50, 50]);
       let u = this.getDirectionVector(zoom);
-      let algoChoice = "pc";
-      let algorithmSettings = {
-        subAnnual: Inte.treering.measurementOptions.subAnnual,
-        extremaThreshold: 0.25,
-        edgeColPercentile: 0.75,
-        classColPercentile: 0.75,
-        boundaryBrightness: 50,
-        alpha: 0.85,
-        zoom: zoom
-      }
-      let boundaryPlacements = this.classificationDetection(data, algorithmSettings);
-      this.showAutomaticPlacements(u, boundaryPlacements)
+      let currentAlgo;
+      let boundaryPlacements;
 
-      $(".auto-ring-detection-algo-radio").on("change", (e) => {
-        algoChoice = e.currentTarget.value;
-        if (algoChoice === "pc") {
-          $("#edge-detection-settings").hide()
-          $("#classification-settings").show()
-          boundaryPlacements = this.classificationDetection(data, algorithmSettings);
-          this.showAutomaticPlacements(u, boundaryPlacements)
+      //Radio Event Listener
+      $(".auto-ring-detection-algo-radio").on("change", (algoRadioTarget) => {
+        for (pointMarker of this.markers) { pointMarker.remove() };
+        this.markers = [];
+
+        for (let method of this.detectionMethods) { //Find chosen detection method & show correct settings
+          if (method.method == algoRadioTarget.currentTarget.value) {
+            currentAlgo = method;
+            $("#"+method.divId).show()
+          } else {
+            $("#"+method.divId).hide()
+          }
         }
-        else if (algoChoice === "ed") {
-          $("#edge-detection-settings").show()
-          $("#classification-settings").hide()
-          let boundaryPlacements = this.smoothingEdgeDetection(data, algorithmSettings, zoom);
-          this.showAutomaticPlacements(u, boundaryPlacements)
+
+        let algoSettings = {subAnnual: Inte.treering.measurementOptions.subAnnual, zoom: zoom};
+        for (let option of currentAlgo.options) {
+          algoSettings[option.name] = $("#"+option.id).val()
+        }
+        boundaryPlacements = currentAlgo.functionCall(data, algoSettings);
+        this.showAutomaticPlacements(u, boundaryPlacements);
+
+        if (boundaryPlacements && boundaryPlacements.length > 0) {
+          $("#auto-ring-detection-page-turn-3").prop("disabled", false)
+        } else {
+          $("#auto-ring-detection-page-turn-3").prop("disabled", true)
         }
       })
 
+      //Settings event listeners
       $(".auto-ring-detection-algo-settings").on("change", () => {
-        if (algoChoice === "pc") {
-          $("#edge-detection-settings").hide()
-          $("#classification-settings").show()
+        for (pointMarker of this.markers) { pointMarker.remove() };
+        this.markers = [];
 
-          algorithmSettings.classColPercentile = parseFloat($("#auto-ring-detection-class-col-percentile").val());
-          algorithmSettings.boundaryBrightness = parseInt($("#auto-ring-detection-boundary-brightness").val());
-
-          $("#auto-ring-detection-boundary-brightness-text").html($("#auto-ring-detection-boundary-brightness").val());
-          $("#auto-ring-detection-class-col-percentile-text").html($("#auto-ring-detection-class-col-percentile").val());
-
-          boundaryPlacements = this.classificationDetection(data, algorithmSettings);
-          this.showAutomaticPlacements(u, boundaryPlacements)
+        let algoSettings = {
+          subAnnual: Inte.treering.measurementOptions.subAnnual,
+          zoom: zoom,
+        };
+        for (let option of currentAlgo.options) {
+          algoSettings[option.name] = $("#"+option.id).val();
+          $("#"+ option.id + "-text").html($("#" + option.id).val()); //Issue here
         }
-        else if (algoChoice === "ed") {
-          $("#edge-detection-settings").show()
-          $("#classification-settings").hide()
+        boundaryPlacements = currentAlgo.functionCall(data, algoSettings);
+        this.showAutomaticPlacements(u, boundaryPlacements);
 
-          // algorithmSettings.winSize = parseInt($("#auto-ring-detection-window-size").val());
-          algorithmSettings.extremaThreshold = parseFloat($("#auto-ring-detection-edge-extrema-threshold").val());
-          algorithmSettings.edgeColPercentile = parseFloat($("#auto-ring-detection-edge-col-percentile").val());
-
-          algorithmSettings.alpha = parseFloat($("#auto-ring-detection-edge-alpha").val());
-          // algorithmSettings.thresh = parseFloat($("#auto-ring-detection-edge-threshold").val());
-
-          $("#auto-ring-detection-edge-alpha-text").html($("#auto-ring-detection-edge-alpha").val())
-          // $("#auto-ring-detection-edge-threshold-text").html($("#auto-ring-detection-edge-threshold").val())
-
-          // $("#auto-ring-detection-window-size-text").html($("#auto-ring-detection-window-size").val());
-          $("#auto-ring-detection-edge-extrema-threshold-text").html($("#auto-ring-detection-edge-extrema-threshold").val());
-          $("#auto-ring-detection-edge-col-percentile-text").html($("#auto-ring-detection-edge-col-percentile").val());
-
-          boundaryPlacements = this.smoothingEdgeDetection(data, algorithmSettings);
-          this.showAutomaticPlacements(u, boundaryPlacements)
+        if (boundaryPlacements && boundaryPlacements.length > 0) {
+          $("#auto-ring-detection-page-turn-3").prop("disabled", false)
+        } else {
+          $("#auto-ring-detection-page-turn-3").prop("disabled", true)
         }
-      })
+      });
 
+      //Save placements button listener
       $("#auto-ring-detection-page-turn-3").on("click", () => {
         for (let line of this.detectionAreaOutline) {
           line.remove();
         }
-        
         for (let marker of this.markers) {
           marker.remove()
         }
-
         this.placePoints(u, boundaryPlacements)
-      })
-    }
-
-
-    AutoRingDetection.prototype.printData = function(data) {
-      let out = "point\tavg\n"
-      let r, g, b, avg;
-      let i = 0
-      for (let point of data[0]) {
-        r = point[0]
-        g = point[1]
-        b = point[2]
-        avg = (r + g + b) / 3;
-
-        out += i + "\t" + avg + "\n"
-        i++
-      }
-      console.log(out)
+      });
     }
 
     AutoRingDetection.prototype.createOutline = function(corners, rect = false) {
@@ -447,14 +487,12 @@ function AutoRingDetection(Inte) {
       return {corners: corners, angle: -angle}
     }
 
-    AutoRingDetection.prototype.classificationDetection = function(data, algorithmSettings) {
+    AutoRingDetection.prototype.classificationDetection = function(imageData, algorithmSettings) {
       let boundaryBrightness = algorithmSettings.boundaryBrightness;
       let colPercentile = algorithmSettings.classColPercentile;
 
-      for (pointMarker of this.markers) { pointMarker.remove() };
-      this.markers = [];
-      let l = data[0].length, h = data.length;
-
+      let l = imageData[0].length;
+      let h = imageData.length;
       let r,g,b, avg;
       // let avgCounts = {};
       
@@ -462,18 +500,11 @@ function AutoRingDetection(Inte) {
       for (let i = 0; i < h; i++) {
         let row = []
         for (let j = 0; j < l; j++) {
-          r = data[i][j][0];
-          g = data[i][j][1];
-          b = data[i][j][2];
+          r = imageData[i][j][0];
+          g = imageData[i][j][1];
+          b = imageData[i][j][2];
           avg = Math.round((r + g + b)/3);
           row.push(avg)
-
-          // if (!avgCounts[avg]) {
-          //   avgCounts[avg] = 1;
-          // }
-          // else {
-          //   avgCounts[avg] += 1;
-          // }
         }
         imgMap.push(row);
       }
@@ -483,7 +514,6 @@ function AutoRingDetection(Inte) {
         let colSum = 0;
         for (let i = 0; i < h; i++) {
           let avg = imgMap[i][j];
-          // let classification = (avg >= boundaryBrightness) ? 1 : 0;
           let classification;
           if (avg >= boundaryBrightness + 10) {
             classification = 1;
@@ -527,11 +557,9 @@ function AutoRingDetection(Inte) {
       return boundaryPlacements
     }
 
-    AutoRingDetection.prototype.smoothingEdgeDetection = function(imageData, algorithmSettings) {
+    AutoRingDetection.prototype.exponentialSmoothingDetection = function(imageData, algorithmSettings) {
       let alpha = algorithmSettings.alpha
 
-      for (let pointMarker of this.markers) { pointMarker.remove()};
-      this.markers = [];
       let l = imageData[0].length;
       let h = imageData.length;
 

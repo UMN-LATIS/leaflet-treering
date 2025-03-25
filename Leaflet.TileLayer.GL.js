@@ -846,17 +846,11 @@ nextHighestPowerOfTwo: function(x) {
 		//Based on separating axis theorem
 
 		//Set up variables for later
-        let canvas = document.getElementById("ard-canvas"); //Create canvas in future?
-		// let canvas = document.createElement("canvas");
+        // let canvas = document.getElementById("ard-canvas"); //For getting canvas visually
+		let canvas = document.createElement("canvas");
 
         let ctx = canvas.getContext("2d");
-		// ctx.filter = cssFilters
 		ctx.filter = "invert(100%)"
-		// if (cssFilters) {
-		// 	console.log('iffed successful')
-		// 	ctx.filter = cssFilters
-		// }
-		// let zoom = this.options.maxNativeZoom; //Make zoom an input later?
 		let tileSize = this.getTileSize();
 		this._map.setZoom(zoom, {animate: false}) //Zoom in to desired level so projections work properly
 
@@ -978,9 +972,9 @@ nextHighestPowerOfTwo: function(x) {
 		ctx.translate(-offset.x, -offset.y)
 
 		//Recursive function to grab and paste tiles onto canvas, then collect data
-		let pasteTilesToCanvas = function(i, j, tis, resolveCallback) {
-			tis.addEventListener("load", function placeholder() { //Placeholder to deal with async stuff (I don't know why its needed but it is)
-				tis.removeEventListener("load", placeholder);
+		let pasteTilesToCanvas = function(i, j, GLLayerObject, resolveCallback) {
+			GLLayerObject.addEventListener("load", function placeholder() { //Placeholder to deal with async stuff (I don't know why its needed but it is)
+				GLLayerObject.removeEventListener("load", placeholder);
 				for (i; i <= imax; i++) {
 					for (j; j <= jmax; j++) {
 						let tileCenter = L.point(tileSize.x * (i + 0.5), tileSize.y * (j + 0.5));
@@ -994,13 +988,13 @@ nextHighestPowerOfTwo: function(x) {
 						if ((tuMin <= rumax && rumin <= tuMax) && (tvMin <= rvmax && rvmin <= tvMax)) {
 							let coords = L.point(i, j);
 							coords.z = zoom;
-							let tile = tis._tiles[tis._tileCoordsToKey(coords)];
+							let tile = GLLayerObject._tiles[GLLayerObject._tileCoordsToKey(coords)];
 
 							if (!tile || tile.loading) { //assume that all tiles in the AABB exist, infinite recursion if not
 								let pt = L.point(i * tileSize.x, j * tileSize.y);
-								let ll = tis._map.unproject(pt, zoom)
-								tis._map.flyTo(ll, zoom, {animate: false})
-								pasteTilesToCanvas(i, j, tis, resolveCallback)
+								let ll = GLLayerObject._map.unproject(pt, zoom)
+								GLLayerObject._map.flyTo(ll, zoom, {animate: false})
+								pasteTilesToCanvas(i, j, GLLayerObject, resolveCallback)
 								return
 							}
 							else {
@@ -1014,9 +1008,9 @@ nextHighestPowerOfTwo: function(x) {
 								// ctx.stroke()				
 								
 								//visualize tiles on map
-								// let q = tis._map.unproject(L.point(i*tileSize.x, j*tileSize.y)), r = tis._map.unproject(L.point((i+1)*tileSize.x, (j+1)*tileSize.y));
+								// let q = GLLayerObject._map.unproject(L.point(i*tileSize.x, j*tileSize.y)), r = GLLayerObject._map.unproject(L.point((i+1)*tileSize.x, (j+1)*tileSize.y));
 								// let b = L.latLngBounds(q, r);
-								// L.rectangle(b, {color: "black"}).addTo(tis._map)
+								// L.rectangle(b, {color: "black"}).addTo(GLLayerObject._map)
 							}
 	
 						}			
@@ -1045,9 +1039,9 @@ nextHighestPowerOfTwo: function(x) {
 		let ll = this._map.unproject(pt, zoom);
 		this._map.flyTo(ll, zoom, {animate: false})
 
-		let collectData = function(t) {
+		let collectData = function(GLLayerObject) { //GLLayer Object is just 'this', need to input as parameter to get around scope/async issues
 			const promise = new Promise((resolve) => {
-				pasteTilesToCanvas(imin, jmin, t, (result) => {resolve(result)});
+				pasteTilesToCanvas(imin, jmin, GLLayerObject, (result) => {resolve(result)});
 			})
 			return promise;
 		}
@@ -1077,295 +1071,6 @@ nextHighestPowerOfTwo: function(x) {
 		// document.getElementById("ard-canvas-div").append(canvas)
 		return colorMatrix
 	},
-
-	//Returns a 2x2 matrix of RGB data of the area spanned between two specified lat lngs
-	//with a given height (collects half of height above and below coordinate)
-	getColorMatrix: async function(firstLatLng, secondLatLng, areaHeight) {
-		this.subAreaDataSets = []; //Array containing the raw data of sub areas (see comments about canvas dimensions below)
-		
-		// let canvas = document.createElement("canvas");
-		let canvas = document.getElementById("ard-canvas")
-		// if (areaHeight < 255) {
-		// 	canvas.height = 255;
-		// }
-		// else {
-		// 	canvas.height = 2*areaHeight
-		// }
-		canvas.height = 2*areaHeight + 255
-		let ctx = canvas.getContext('2d');
-
-		let size = this.getTileSize();
-
-		let firstPoint = this._map.project(firstLatLng, this.options.maxNativeZoom).floor();
-		let secondPoint = this._map.project(secondLatLng, this.options.maxNativeZoom).floor();
-
-		let deltaX = secondPoint.x - firstPoint.x; //Total x distance between points
-		let deltaY = secondPoint.y - firstPoint.y; //Total y distance between points
-		let distance = (deltaX**2 + deltaY**2)**(1/2); //Use distance formula to find total distance between points
-
-		let sizeError = true; //Assume canvas is too large
-		let subAreaScalar = 1; //Divides length of canvas by scalar until canvas is acceptable size
-		while (sizeError) {
-			try {
-				canvas.width = (distance / subAreaScalar) + 500; //Extra width probably unnecessary, helpful for visual testing
-				// ctx.translate(0,areaHeight/2) //Expects error here; cannot translate if canvas is too large
-				ctx.translate(0, areaHeight/2)
-
-				//Code that fires if there is no error
-				sizeError = false;
-				break;
-			} catch {
-				subAreaScalar += 1;
-				continue;
-			}
-		}
-		
-		//End rectangle will be broken up into n rectangles, where n = subAreaScalar
-
-		let firstTileCoords = firstPoint.unscaleBy(size).floor(); //Find center coordinates of tile that first latlng exists in
-		let tilesInPath = [firstTileCoords]; //Array containing the coordinates of tiles already found and pasted to the canvas
-		firstTileCoords.z = this.options.maxNativeZoom;
-
-		let angle = Math.atan(-deltaY/deltaX) //Find angle of main line with x-axis (y direction defined such that down is positive)
-		let offset = firstPoint.subtract(firstTileCoords.scaleBy(size)); // Difference in x & y of center of first tile and first point
-		
-		//Built in function to get a rectangle of rgb data can't be a rotated rectangle, therefore the tiles are rotated so rect can be parallel to canvas
-		ctx.translate(offset.x, offset.y); //Move canvas context to start point
-		ctx.rotate(angle); //Rotate about the start point
-		ctx.translate(-(offset.x), -(offset.y)); //Undo translation
-		
-		let dx = deltaX/distance; //distance to travel in x direction to move 1 point along main line
-		let dy = deltaY/distance;//distance to travel in y direction to move 1 point along main line
-
-		//Find start coordinate of line following bottom of collection area
-		let upperLineStartPoint = {
-			x: firstPoint.x - (areaHeight / 2) * Math.cos((Math.PI / 2) - angle),
-			y: firstPoint.y - (areaHeight / 2) * Math.sin((Math.PI / 2) - angle)
-		}
-
-		//Find start coordinate of line following bottom of collection area
-		let lowerLineStartPoint = {
-			x: firstPoint.x + (areaHeight / 2) * Math.cos((Math.PI / 2) - angle),
-			y: firstPoint.y + (areaHeight / 2) * Math.sin((Math.PI / 2) - angle)
-		}
-
-		//The algorithm relies on event listeners to detect when a leaflet tile loads
-		//Group necessary values into an object to use in a recursive function
-		//The function moves along the center, top, and bottom of collection area to find all necessary tiles
-		//Then uses built in canvas function to find RGB over an area
-		let collectionParametersObject = {
-			canvas: canvas, //html canvas element 
-			ctx: ctx, //canvas context
-			startScalar: 0, //see function below
-			endScalar: Math.floor( distance / subAreaScalar), //see function below
-			distance: distance, //Length of line between two specified latlngs
-			dx: dx, //Change in x to move a single point along the line
-			dy: dy, //Change in y to move a single point along the line
-			firstPoint: firstPoint, //Starting point
-			upperLineStartPoint: upperLineStartPoint, //Start point of upper line
-			lowerLineStartPoint: lowerLineStartPoint, //Start point of lower line
-			size: size, //Dimensions of an individual tile
-			tilesInPath: tilesInPath, //Array containing all tiles already pasted to canvas
-			firstTileCoords: firstTileCoords, //Coordinates of starting tile
-			offset: offset, //Difference between first point coordinates and first tile coordinates
-			angle: angle, //angle between line and horizontal
-			areaHeight: areaHeight, //Height of rectangular area in which RGB data will be collected
-			subAreaScalar: subAreaScalar, //Number of subdivisions of main collection area
-			subAreaIndex: 1 //Index of sub area currently being collected
-		}
-		// ctx.filter = "contrast(2.15)"
-		// ctx.filter = "brightness(1.1) contrast(1.05)"
-		this._map.setZoom(this.options.maxNativeZoom, {animate: false});
-		this._map.flyTo(firstLatLng, this.options.maxNativeZoom, {animate: false})
-
-
-		let placeTiles = function(t) {
-			const promise = new Promise((resolve) => {
-				t.collectColorData(collectionParametersObject, function (result) {resolve(result)})
-			})
-			return promise;
-		}
-
-		let colorMatrix = await placeTiles(this)
-		return colorMatrix
-	},
-
-	collectColorData: function(cpo, resolveCallback) { //collection parameters object
-		this.addEventListener("load", function doThing() {
-			this.removeEventListener("load", doThing);
-			//Based on vector formula of a line: L= <xo, yo> + t<vx, vy>
-			//t scales the vector following the line from the first latlng to the second
-			for (let t = cpo.startScalar; t < cpo.endScalar; t++) {
-				//Follow center line
-				let centerLineX = cpo.firstPoint.x + t*cpo.dx;
-				let centerLineY = cpo.firstPoint.y + t*cpo.dy;
-
-				let point = L.point(centerLineX, centerLineY);
-				let coords = point.unscaleBy(cpo.size).floor();
-				if (!cpo.tilesInPath.includes(coords)) {
-					cpo.tilesInPath.push(coords);
-					coords.z = this.options.maxNativeZoom;
-					let tile = this._tiles[this._tileCoordsToKey(coords)];
-
-					if (!tile || tile.loading) {
-						// this.removeEventListener("load", doThing);
-						let latLng = this._map.unproject(point, this.options.maxNativeZoom);
-						this._map.flyTo(latLng, this.options.maxNativeZoom, {animate: false});
-
-						cpo.startScalar = t;
-						this.collectColorData(cpo, resolveCallback);
-						return;
-					}
-					
-					let tileX = (coords.x - cpo.firstTileCoords.x) * 255;
-					let tileY = (coords.y - cpo.firstTileCoords.y) * 255;
-					cpo.ctx.drawImage(tile.el, tileX, tileY)
-				}
-
-				//Follow top line
-				let upperLineX = cpo.upperLineStartPoint.x + t*cpo.dx;
-				let upperLineY = cpo.upperLineStartPoint.y + t*cpo.dy;
-
-				point = L.point(upperLineX, upperLineY);
-				coords = point.unscaleBy(cpo.size).floor();
-				if (!cpo.tilesInPath.includes(coords)) {
-					cpo.tilesInPath.push(coords);
-					coords.z = this.options.maxNativeZoom;
-					let tile = this._tiles[this._tileCoordsToKey(coords)];
-
-					if (!tile || tile.loading) {
-						// this.removeEventListener("load");
-						let latLng = this._map.unproject(point, this.options.maxNativeZoom);
-						this._map.flyTo(latLng, this.options.maxNativeZoom, {animate: false});
-
-						cpo.startScalar = t;
-						this.collectColorData(cpo, resolveCallback);
-						return;
-					}
-					
-					let tileX = (coords.x - cpo.firstTileCoords.x) * 255;
-					let tileY = (coords.y - cpo.firstTileCoords.y) * 255;
-					cpo.ctx.drawImage(tile.el, tileX, tileY)
-				}
-
-				//Follow bottom line
-				let lowerLineX = cpo.lowerLineStartPoint.x + t*cpo.dx;
-				let lowerLineY = cpo.lowerLineStartPoint.y + t*cpo.dy;
-
-				point = L.point(lowerLineX, lowerLineY);
-				coords = point.unscaleBy(cpo.size).floor();
-				if (!cpo.tilesInPath.includes(coords)) {
-					cpo.tilesInPath.push(coords);
-					coords.z = this.options.maxNativeZoom;
-					let tile = this._tiles[this._tileCoordsToKey(coords)];
-
-					if (!tile || tile.loading) {
-						// this.removeEventListener("load");
-						let latLng = this._map.unproject(point, this.options.maxNativeZoom);
-						this._map.flyTo(latLng, this.options.maxNativeZoom, {animate: false});
-
-						cpo.startScalar = t;
-						this.collectColorData(cpo, resolveCallback);
-						return;
-					}
-					
-					let tileX = (coords.x - cpo.firstTileCoords.x) * 255;
-					let tileY = (coords.y - cpo.firstTileCoords.y) * 255;
-					cpo.ctx.drawImage(tile.el, tileX, tileY)
-				}
-			}
-			//For loop finishes, sub area is on canvas
-			this.removeEventListener("load");
-			//Undo rotate so image data rectangle is parallel to canvas (screen)
-			cpo.ctx.translate(cpo.offset.x, cpo.offset.y);
-			cpo.ctx.rotate(-cpo.angle);
-			cpo.ctx.translate(-cpo.offset.x, -cpo.offset.y);
-
-			//Take image data over area 1/2 height above and below starting point, length of distance between points
-			//length is smaller if area broken up into smaller parts
-			let subAreaImageData = cpo.ctx.getImageData(cpo.offset.x, cpo.offset.y, cpo.endScalar, cpo.areaHeight);
-			this.subAreaDataSets.push(subAreaImageData)
-
-			cpo.ctx.beginPath();
-			cpo.ctx.rect(cpo.offset.x, cpo.offset.y - (cpo.areaHeight / 2), cpo.endScalar, cpo.areaHeight)
-			cpo.ctx.stroke()
-
-			//Check if there are more sub areas to collect data from
-			if (cpo.subAreaIndex < cpo.subAreaScalar) {
-				//find new starting point (1 point after prev area ended)
-				let firstPoint = L.point(cpo.firstPoint.x + cpo.endScalar * cpo.dx, cpo.firstPoint.y + cpo.endScalar * cpo.dy);
-				let firstTileCoords = firstPoint.unscaleBy(cpo.size).floor();
-				firstTileCoords.z = this.options.maxNativeZoom;
-
-				let offset = firstPoint.subtract(firstTileCoords.scaleBy(cpo.size));
-				cpo.ctx.translate(cpo.offset.x, cpo.offset.y);
-				cpo.ctx.rotate(cpo.angle);
-				cpo.ctx.translate(-cpo.offset.x, -cpo.offset.y);
-
-				let upperLineStartPoint = {
-					x: firstPoint.x - (cpo.areaHeight / 2) * Math.cos((Math.PI / 2) - cpo.angle),
-					y: firstPoint.y - (cpo.areaHeight / 2) * Math.sin((Math.PI / 2) - cpo.angle)
-				}
-
-				
-				let lowerLineStartPoint = {
-					x: firstPoint.x + (cpo.areaHeight / 2) * Math.cos((Math.PI / 2) - cpo.angle),
-					y: firstPoint.y + (cpo.areaHeight / 2) * Math.sin((Math.PI / 2) - cpo.angle)
-				}
-
-				let collectionParametersObject = {
-					canvas: cpo.canvas,
-					ctx: cpo.ctx,
-					startScalar: 0,
-					endScalar: Math.floor(cpo.distance / cpo.subAreaScalar),
-					distance: cpo.distance,
-					dx: cpo.dx,
-					dy: cpo.dy,
-					firstPoint: firstPoint,
-					upperLineStartPoint: upperLineStartPoint,
-					lowerLineStartPoint: lowerLineStartPoint,
-					size: cpo.size,
-					tilesInPath: [],
-					firstTileCoords: firstTileCoords,
-					offset: offset,
-					angle: cpo.angle,
-					areaHeight: cpo.areaHeight,
-					subAreaScalar: cpo.subAreaScalar,
-					subAreaIndex: cpo.subAreaIndex + 1
-				}
-				this.collectColorData(collectionParametersObject, resolveCallback);
-			}
-			//After all data is collected, transform raw data into a 2 dimenstional matrix
-			// else { this.organizeIntoMatrix() }
-			else { 
-				let result = this.organizeIntoMatrix()
-				resolveCallback(result)
-			}
-		})
-	},
-
-	organizeIntoMatrix: function() {
-		let r,g,b;
-		let width = this.subAreaDataSets[0].width;
-		let height = this.subAreaDataSets[0].height;
-		let out = [];
-
-		for (subAreaData of this.subAreaDataSets) {
-			let index = 0;
-			let data = subAreaData.data;
-			for (let row = 0; row < height; row++) {
-				if (!out[row]) { out[row] = []};
-				for (let col = 0; col < width; col++) {
-					r = data[index];
-					g = data[index + 1];
-					b = data[index + 2];
-					index += 4;
-					out[row].push([r,b,g])
-				}
-			}
-		}
-		return out
-	}
 });
 
 L.tileLayer.gl = function(opts) {

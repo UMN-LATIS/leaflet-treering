@@ -88,78 +88,34 @@
     <p id="auto-ring-detection-load-fix" hidden>**If tiles not loading, try switching to tree layer then back to GL layer</p>
 
     <!-- <div id="ard-canvas-div"></div> -->
-     <canvas id="ard-canvas"></canvas>
+     <!-- <canvas id="ard-canvas"></canvas> -->
 </script>
 
 <script id="AutoRingDetection-page-3" type="text/x-handlebars-template">
     <p>Choose/adjust algorithm</p>
 
+    {{#each detectionMethods}}
     <div style="display: flex; justify-content: left; align-items: center;">
-        <input type="radio" name="ard-algorithm" id="auto-ring-detectoin-edge-radio" class="auto-ring-detection-algo-radio" value="ed">
-        <label for="auto-ring-detection-edge-radio" style="margin: 0px 0px 0px 5px; font-size: 14px;">Edge Detection</label>
+        <input type="radio" name="ard-algorithm" class="auto-ring-detection-algo-radio" value={{this.method}}>
+        <label style="margin: 0px 0px 0px 5px; font-size: 14px;">{{this.radioLabel}}</label>
     </div>
-
-    <div style="display: flex; justify-content: left; align-items: center;">
-        <input type="radio" name="ard-algorithm" id="auto-ring-detectoin-class-radio" class="auto-ring-detection-algo-radio" value="pc" checked>
-        <label for="auto-ring-detection-class-radio" style="margin: 0px 0px 0px 5px; font-size: 14px;">Pixel Classification</label>
-    </div>
+    {{/each}}
 
     <hr style="border-top: 2px solid black; margin: 10 0 10 0">
 
-    <div id="edge-detection-settings" hidden>
-        <!-- <label for="auto-ring-detection-window-size" style="margin: 0;">Window Size</label>
+    {{#each detectionMethods}}
+    <div id={{this.divId}} hidden>
+        {{#each this.options}}
+        <label for="{{this.id}}">{{this.label}}</label>
         <div style="display: flex; justify-content: space-between; align-items: center;">
-            <input type="range" id="auto-ring-detection-window-size" class="auto-ring-detection-algo-settings" min="7" max="51" step="2" value="11" style="width: 90%;">
-            <p id="auto-ring-detection-window-size-text">11</p>
+            <input type="range" class="auto-ring-detection-algo-settings" id={{this.id}} min={{this.min}} max={{this.max}} step={{this.step}} value={{this.defaultValue}}>
+            <p id ={{this.id}}-text> {{this.defaultValue}}</p>
         </div>
-    
-        <label for="auto-ring-detection-extrema-threshold" style="margin: 0;">Extrema Threshold</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <input type="range" id="auto-ring-detection-extrema-threshold" class="auto-ring-detection-algo-settings" min="0" max="1" step="0.01" value="0.3" style="width: 90%;">
-            <p id="auto-ring-detection-extrema-threshold-text">0.3</p>
-        </div>
-
-        <label for="auto-ring-detection-edge-col-percentile" style="margin: 0;">Column percentile</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <input type="range" id="auto-ring-detection-edge-col-percentile" class="auto-ring-detection-algo-settings" min="0" max="1" step="0.01" value="0.75" style="width: 90%;">
-            <p id="auto-ring-detection-edge-col-percentile-text">0.75</p>
-        </div> -->
-
-        <label for="auto-ring-detection-edge-alpha" style="margin: 0;">Smoothing Factor</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <input type="range" id="auto-ring-detection-edge-alpha" class="auto-ring-detection-algo-settings" min="0" max="1" step="0.005" value="0.85" style="width: 90%;">
-            <p id="auto-ring-detection-edge-alpha-text">0.85</p>
-        </div>
-
-        <label for="auto-ring-detection-edge-extrema-threshold" style="margin: 0;">Extrema Threshold</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <input type="range" id="auto-ring-detection-edge-extrema-threshold" class="auto-ring-detection-algo-settings" min="0" max="1" step="0.01" value="0.25" style="width: 90%;">
-            <p id="auto-ring-detection-edge-extrema-threshold-text">0.25</p>
-        </div>
-
-        <label for="auto-ring-detection-edge-col-percentile" style="margin: 0;">Column percentile</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <input type="range" id="auto-ring-detection-edge-col-percentile" class="auto-ring-detection-algo-settings" min="0" max="1" step="0.01" value="0.20" style="width: 90%;">
-            <p id="auto-ring-detection-edge-col-percentile-text">0.20</p>
-        </div>
+        {{/each}}
     </div>
+    {{/each}}
 
-    <div id="classification-settings">
-        <label for="auto-ring-detection-boundary-brightness" style="margin: 0">Boundary Brightness</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <input type="range" id="auto-ring-detection-boundary-brightness" class="auto-ring-detection-algo-settings" min="0" max="255" step="1" value="50" style="width: 90%;">
-            <p id="auto-ring-detection-boundary-brightness-text">50</p>
-        </div>
-
-        <label for="auto-ring-detection-class-col-percentile" style="margin: 0;">Column percentile</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <input type="range" id="auto-ring-detection-class-col-percentile" class="auto-ring-detection-algo-settings" min="0" max="1" step="0.01" value="0.20" style="width: 90%;">
-            <p id="auto-ring-detection-class-col-percentile-text">0.20</p>
-        </div>
-    </div>
-
-
-    <button id="auto-ring-detection-page-turn-3">Save Automatic Placements</button>
+    <button id="auto-ring-detection-page-turn-3" disabled>Save Automatic Placements</button>
     <!-- <div style="height: 10;"><canvas id="ard-canvas1" width="2550" height="2550"></canvas></div> -->
 </script>
 
