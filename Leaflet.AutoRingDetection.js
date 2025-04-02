@@ -53,7 +53,7 @@ function AutoRingDetection(Inte) {
       },
       {
         method: "exponential-smoothing",
-        divId: "auto-ring-detection-edge-detection-settings",
+        divId: "auto-ring-detection-exp-detection-settings",
         functionCall: (data, algoSettings) => {return this.exponentialSmoothingDetection(data, algoSettings)},
         options: [
           {
@@ -66,18 +66,18 @@ function AutoRingDetection(Inte) {
             defaultValue: 0.35,
           },
           {
-            name: "extremaThreshold",
+            name: "expExtremaThresh",
             label: "Brightness Change Threshold",
-            id: "auto-ring-detection-edge-extrema-threshold",
+            id: "auto-ring-detection-exp-extrema-threshold",
             min: 0,
             max: 1,
             step: 0.01,
             defaultValue: 0.2,
           },
           {
-            name: "edgeColPercentile",
+            name: "expColPercentile",
             label: "Column Percentile",
-            id: "auto-ring-detection-edge-col-percentile",
+            id: "auto-ring-detection-exp-col-percentile",
             min: 0,
             max: 1,
             step: 0.01,
@@ -85,6 +85,50 @@ function AutoRingDetection(Inte) {
           }
         ],
         radioLabel: "Exp Smoothing Edge Detection"
+      },
+      {
+        method: "gaussian-smoothing",
+        divId: "auto-ring-detection-gauss-detection-settings",
+        radioLabel: "Gaussian Edge Detection",
+        functionCall: (data, algoSettings) => {return this.gaussSmoothingDetection(data, algoSettings)},
+        options: [
+          {
+            name: "gaussKernelSize",
+            label: "1D Kernel Size",
+            id: "auto-ring-detection-gauss-kernel-size",
+            min: 3,
+            max: 30,
+            step: 1,
+            defaultValue: 5
+          },
+          {
+            name: "sigma",
+            label: "Blue Standard Deviation",
+            id: "auto-ring-detection-gauss-sigma",
+            min: 1,
+            max: 10,
+            step: 1,
+            defaultValue: 3
+          },
+          {
+            name: "gaussExtremaThresh",
+            label: "Brightness Change Threshold",
+            id: "auto-ring-detection-gauss-extrema-threshold",
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.2,
+          },
+          {
+            name: "gaussColPercentile",
+            label: "Column Percentile",
+            id: "auto-ring-detection-gauss-col-percentile",
+            min: 0,
+            max: 1,
+            step: 0.01,
+            defaultValue: 0.30,
+          }
+        ]
       }
     ]
   
@@ -96,6 +140,8 @@ function AutoRingDetection(Inte) {
     );
   
     AutoRingDetection.prototype.enable = function () {
+      // let kernel = this.gaussianKernel(7, 1);
+      // console.log(kernel, kernel[0])
       this.active = true;
       this.userImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON()
       this.btn.state('active');
@@ -119,8 +165,9 @@ function AutoRingDetection(Inte) {
     AutoRingDetection.prototype.disable = function () {
       if (this.active) {
         if (this.dialog) {
-          this.dialog.unlock();
-          this.dialog.close();
+          // this.dialog.unlock();
+          // this.dialog.close();
+          this.dialog.remove();
         };
   
         this.active = false;
@@ -210,6 +257,8 @@ function AutoRingDetection(Inte) {
     }
 
     AutoRingDetection.prototype.selectPoints = async function() {
+      // console.log(this.gaussianKernel(7, 1))
+
       if (this.dialog) {
         this.dialog.remove()
       }
@@ -557,6 +606,155 @@ function AutoRingDetection(Inte) {
       return boundaryPlacements
     }
 
+    AutoRingDetection.prototype.gaussSmoothingDetection = function(imageData, algorithmSettings) {
+      let size = algorithmSettings.gaussKernelSize;
+      let sigma = algorithmSettings.sigma;
+
+      //Get kernel given size and SD
+      let width = size % 2 == 0 ? size / 2 : Math.floor(size / 2)
+      let kernel = new Array(width * 2 + 1)
+      let sum = 0;
+      let x;
+
+      for (x = -width; x <= width; x++) {
+        kernel[width + x] = (1 / (Math.sqrt(2*Math.PI) * sigma)) * Math.exp(-1 * x**2 / (2 * sigma**2))
+        sum += kernel[width + x]
+      }
+
+      for (x = 0; x < kernel.length; x++) {
+        kernel[x] /= sum
+      }
+
+      let l = imageData[0].length;
+      let h = imageData.length;
+
+      //Horizontal blur
+      let r,g,b;
+      let smoothedVal = 0;
+      let hBlurData = []
+      for (let i = 0; i < h; i ++) {
+        let row = imageData[i];
+
+        let rawRow = [];
+        let blurRow = [];
+        for (let j = 0; j < l; j++) {
+          r = row[j][0];
+          g = row[j][1];
+          b = row[j][2];
+          rawRow.push((r + g + b) / 3)
+        }
+
+        for (let j = width; j < l - width; j++) {
+          smoothedVal = 0;
+          for (x = -width; x <= width; x++) {
+            smoothedVal += rawRow[j + x] * kernel[width + x];
+          }
+          blurRow.push(smoothedVal)
+        }
+        hBlurData.push(blurRow)
+      }
+
+      //Vertical blur
+      let fullBlurData = [];
+      for (let j = 0; j < l - 2 * width; j++) {
+        for (let i = width; i < h - width; i++) {
+          smoothedVal = 0;
+          for (x = -width; x <= width; x++) {
+            smoothedVal += hBlurData[i + x][j] * kernel[width + x];
+          }
+          if (fullBlurData[i - width]) {
+            fullBlurData[i - width].push(smoothedVal)
+          } else {
+            fullBlurData[i - width] = [smoothedVal]
+          }
+        }
+      }
+
+      let transitionExtremaPairs = {};
+      for (let i = 0; i < fullBlurData.length; i++) {
+        let d1 = [0];
+        let d2 = [0];
+        for (let j = 1; j < fullBlurData[0].length; j++) {
+          let diff = fullBlurData[i][j] - fullBlurData[i][j-1];
+          d1.push(diff);
+          d2.push(diff - d1[j-1]);
+        }
+        let extremaThreshold = algorithmSettings.gaussExtremaThresh;
+
+        let minT = Math.min(...d1) * extremaThreshold;
+        let maxT = Math.max(...d1) * extremaThreshold;
+        for (let j = 1; j < d1.length; j++) {
+          if (d2[j-1] * d2[j] < 0) {
+            if (d1[j] <= minT || d1[j] >= maxT) {
+              transitionExtremaPairs[[i, j]] = d1[j]
+            }
+          }
+        }
+      }
+
+      let imgMap = [];
+      for (let i = 0; i < fullBlurData.length; i++) {
+        let rowMap = [null];
+        for (let j = 1; j < fullBlurData[0].length; j++) {
+          if (transitionExtremaPairs[[i, j]]) {
+            if (transitionExtremaPairs[[i, j]] > 0) {
+              rowMap.push(1)
+            } else {
+              rowMap.push(0)
+            }
+          } else {
+            rowMap.push(rowMap[j - 1])
+          }
+        }
+        imgMap.push(rowMap);
+      }
+
+      let colPercentile = algorithmSettings.gaussColPercentile
+      let colMap = [0];
+      for (let j = 1; j < fullBlurData[0].length; j++) {
+        let lightCount = 0, darkCount = 0;
+        for (let i = 0; i < fullBlurData.length; i++) {
+          if (imgMap[i][j] == 1) {
+            lightCount++;
+          } else if (imgMap[i][j] == 0) {
+            darkCount++
+          }
+        }
+
+        if (lightCount >= colPercentile * h) {
+          colMap.push(1)
+        } else if (darkCount >= colPercentile * h) {
+          colMap.push(0)
+        } else {
+          colMap.push(colMap[j - 1]);
+        }
+      }
+      console.log(colMap)
+
+      let boundaryPlacements = [];
+      let lastTransitionIndex = 1;
+      for (let c = 1; c < colMap.length; c++) {
+        if (colMap[c] != colMap[c - 1]) {
+          if (algorithmSettings.subAnnual) {
+            if (c - lastTransitionIndex > 10) {
+              lastTransitionIndex = c;
+              boundaryPlacements.push(c + width)
+            } else {
+              lastTransitionIndex = c;
+            }            
+          } else if (colMap[c] == 1) {
+            if (c - lastTransitionIndex > 10) {
+              lastTransitionIndex = c;
+              boundaryPlacements.push(c + width)
+            } else {
+              lastTransitionIndex = c;
+            }
+          }
+        }
+      }
+      return boundaryPlacements
+    }
+
     AutoRingDetection.prototype.exponentialSmoothingDetection = function(imageData, algorithmSettings) {
       let alpha = algorithmSettings.alpha
 
@@ -589,10 +787,10 @@ function AutoRingDetection(Inte) {
           d2.push(smoothDiff)
         }
 
-        let extremaThreshold = algorithmSettings.extremaThreshold;
+        let expExtremaThresh = algorithmSettings.expExtremaThresh;
 
-        let minT = Math.min(...d1)* extremaThreshold;
-        let maxT = Math.max(...d1)* extremaThreshold;
+        let minT = Math.min(...d1)* expExtremaThresh;
+        let maxT = Math.max(...d1)* expExtremaThresh;
         for (let j = 1; j < l; j++) {
           if (d2[j-1] * d2[j] < 0) {
             if (d1[j] <= minT || d1[j] >= maxT) {
@@ -620,7 +818,7 @@ function AutoRingDetection(Inte) {
         imgMap.push(rowMap);
       }
 
-      let colPercentile = algorithmSettings.edgeColPercentile
+      let colPercentile = algorithmSettings.expColPercentile
       let colMap = [0];
       for (let j = 1; j < l; j++) {
         let lightCount = 0, darkCount = 0;
