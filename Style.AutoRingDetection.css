@@ -1,0 +1,14 @@
+label {
+    margin: 0;
+}
+
+.radio-label {
+    margin: 0px 0px 0px 5px;
+    font-size: 14px;
+}
+
+.auto-ring-detection-input-div {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}

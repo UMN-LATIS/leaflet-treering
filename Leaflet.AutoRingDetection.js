@@ -38,6 +38,7 @@ function AutoRingDetection(Inte) {
             max: 255,
             step: 1,
             defaultValue: 50,
+            description: "An estimate for the average RGB of a boundary or latewood segment."
           },
           {
             name: "classColPercentile",
@@ -47,6 +48,7 @@ function AutoRingDetection(Inte) {
             max: 1,
             step: 0.01,
             defaultValue: 0.25,
+            description: "The number of edges that indicate a change in brightness, based on the area height. Typically works best form 0.10-0.25 and 0.75 to 0.90.",
           }
         ],
         radioLabel: "Pixel Classification"
@@ -64,6 +66,7 @@ function AutoRingDetection(Inte) {
             max: 1,
             step: 0.01,
             defaultValue: 0.35,
+            description: "A coefficient to determine the 'smoothness' of each 1D line. Values closer to 0 create smoother data."
           },
           {
             name: "expExtremaThresh",
@@ -73,6 +76,7 @@ function AutoRingDetection(Inte) {
             max: 1,
             step: 0.01,
             defaultValue: 0.2,
+            description: "A threshold to determine the magnitude of a change in brightness to detect an edge."
           },
           {
             name: "expColPercentile",
@@ -82,6 +86,7 @@ function AutoRingDetection(Inte) {
             max: 1,
             step: 0.01,
             defaultValue: 0.30,
+            description: "The number of edges that indicate a change in brightness, based on the area height. Typically works best form 0.10-0.25 and 0.75 to 0.90.",
           }
         ],
         radioLabel: "Exp Smoothing Edge Detection"
@@ -94,21 +99,23 @@ function AutoRingDetection(Inte) {
         options: [
           {
             name: "gaussKernelSize",
-            label: "1D Kernel Size",
+            label: "Kernel Size",
             id: "auto-ring-detection-gauss-kernel-size",
             min: 3,
-            max: 30,
+            max: 20,
             step: 1,
-            defaultValue: 5
+            defaultValue: 5,
+            description: "The size of the kernel used for gaussian bluring."
           },
           {
             name: "sigma",
             label: "Blue Standard Deviation",
             id: "auto-ring-detection-gauss-sigma",
             min: 1,
-            max: 10,
+            max: 30,
             step: 1,
-            defaultValue: 3
+            defaultValue: 5,
+            description: "Standard deviation used in the calculation of kernel values."
           },
           {
             name: "gaussExtremaThresh",
@@ -118,6 +125,7 @@ function AutoRingDetection(Inte) {
             max: 1,
             step: 0.01,
             defaultValue: 0.2,
+            description: "A threshold to determine the magnitude of a change in brightness to detect an edge."
           },
           {
             name: "gaussColPercentile",
@@ -127,6 +135,7 @@ function AutoRingDetection(Inte) {
             max: 1,
             step: 0.01,
             defaultValue: 0.30,
+            description: "The number of edges that indicate a change in brightness, based on the area height. Typically works best form 0.10-0.25 and 0.75 to 0.90.",
           }
         ]
       }
@@ -257,21 +266,38 @@ function AutoRingDetection(Inte) {
     }
 
     AutoRingDetection.prototype.selectPoints = async function() {
-      // console.log(this.gaussianKernel(7, 1))
-
       if (this.dialog) {
         this.dialog.remove()
       }
-      this.displayDialog(2, [260, 230], [50, 300])
-      Inte.treering.imageAdjustmentInterface.imageAdjustment.enable()
+      this.displayDialog(2, [260, 230], [50, 50])
       this.tuneGLLayer(false);
+
+      $("#auto-ring-detection-img-adjust-toggle").on("click", () => {
+        if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
+          Inte.treering.imageAdjustmentInterface.imageAdjustment.disable();
+          this.dialog._container.style.left = "50px"
+        } else {
+          Inte.treering.imageAdjustmentInterface.imageAdjustment.enable();
+          this.dialog._container.style.left = "300px"          
+        }
+      })
+
+      $("#auto-ring-detection-directions-toggle").on("click", () => {
+        if ($("#auto-ring-detection-directions-text").is(":hidden")) {
+          $("#auto-ring-detection-directions-toggle").css("color", "#005fff")
+          $("#auto-ring-detection-directions-text").show()
+        } else {
+          $("#auto-ring-detection-directions-toggle").css("color", "black")
+          $("#auto-ring-detection-directions-text").hide()
+        }
+      })
 
       this.firstLatLng = null;
       this.secondLatLng = null;
 
       var clickCount = 0;
-      // let zoom = Math.floor(Inte.treering.viewer.getZoom());
-      let zoom = Inte.treering.getMaxNativeZoom() - 1
+      let zoom = Math.floor(Inte.treering.viewer.getZoom());
+      // let zoom = Inte.treering.getMaxNativeZoom() - 1
   
       // var clickCount = 0;
       $(Inte.treering.viewer.getContainer()).on("click", e => {
@@ -291,9 +317,8 @@ function AutoRingDetection(Inte) {
             break;
           }
           case 2: {
-            // $("#auto-ring-detection-path-step-1").css('font-weight', 'normal')
-            // $("#auto-ring-detection-path-step-2").css('font-weight', 'bold')
             $("#auto-ring-detection-page-turn-2").prop("disabled", false);
+            Inte.treering.viewer.getContainer().style.cursor = 'default';
 
             second = e;
             this.secondLatLng = Inte.treering.viewer.mouseEventToLatLng(second);
@@ -369,10 +394,9 @@ function AutoRingDetection(Inte) {
         }
         clickCount = 0;
 
-        // $("#auto-ring-detection-path-step-1").css('font-weight', 'bold')
-        // $("#auto-ring-detection-path-step-2").css('font-weight', 'normal')
         $("#auto-ring-detection-page-turn-2").prop("disabled", true);
-        $("#auto-ring-detection-area-error").hide()
+        $("#auto-ring-detection-area-error").hide();
+        Inte.treering.viewer.getContainer().style.cursor = 'pointer';
       })
 
       $("#auto-ring-detection-zoom-input").prop('max', Inte.treering.getMaxNativeZoom())
@@ -424,10 +448,31 @@ function AutoRingDetection(Inte) {
     AutoRingDetection.prototype.automaticDetection = function(data, zoom) {
       // let anchor = this.dialog.options.anchor;
       this.dialog.remove()
-      this.displayDialog(3, [280, 320], [50, 50]);
+      this.displayDialog(3, [280, 340], [50, 50]);
       let u = this.getDirectionVector(zoom);
       let currentAlgo;
       let boundaryPlacements;
+
+      $(".auto-ring-detection-slider-info-toggle").on("click", (e) => {
+        let textId = "#" + e.currentTarget.id + "-text";
+        let iconId = "#" + e.currentTarget.id;
+        if ($(textId).is(":hidden")) {
+          $(textId).show()
+          $(iconId).css("color", "#005fff")
+        } else {
+          $(textId).hide();
+          $(iconId).css("color", "black")
+        }
+        /**
+         *         if ($("#auto-ring-detection-directions-text").is(":hidden")) {
+          $("#auto-ring-detection-directions-toggle").css("color", "#005fff")
+          $("#auto-ring-detection-directions-text").show()
+        } else {
+          $("#auto-ring-detection-directions-toggle").css("color", "black")
+          $("#auto-ring-detection-directions-text").hide()
+        }
+         */
+      })
 
       //Radio Event Listener
       $(".auto-ring-detection-algo-radio").on("change", (algoRadioTarget) => {
@@ -494,13 +539,13 @@ function AutoRingDetection(Inte) {
 
     AutoRingDetection.prototype.createOutline = function(corners, rect = false) {
       if (rect) {
-        return [L.polygon(corners, {color: "red", weight: 3})]
+        return [L.polygon(corners, {color: "white", weight: 3})]
       }
 
       else {
-        let startPointBar = L.polyline([corners[0], corners[1]], {color: "red", weight: 3}).addTo(Inte.treering.viewer);
-        let endPointBar = L.polyline([corners[2], corners[3]], {color: "red", weight: 3}).addTo(Inte.treering.viewer);
-        let mainBar = L.polyline([this.firstLatLng, this.secondLatLng], {color: "red", weight: 3}).addTo(Inte.treering.viewer);
+        let startPointBar = L.polyline([corners[0], corners[1]], {color: "white", weight: 3}).addTo(Inte.treering.viewer);
+        let endPointBar = L.polyline([corners[2], corners[3]], {color: "black", weight: 3}).addTo(Inte.treering.viewer);
+        let mainBar = L.polyline([this.firstLatLng, this.secondLatLng], {color: "gray", weight: 3}).addTo(Inte.treering.viewer);
 
         return [startPointBar, endPointBar, mainBar]
       }
@@ -670,6 +715,7 @@ function AutoRingDetection(Inte) {
         }
       }
 
+      let startVal = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert ? 1 : 0;
       let transitionExtremaPairs = {};
       for (let i = 0; i < fullBlurData.length; i++) {
         let d1 = [0];
@@ -710,7 +756,7 @@ function AutoRingDetection(Inte) {
       }
 
       let colPercentile = algorithmSettings.gaussColPercentile
-      let colMap = [0];
+      let colMap = [null];
       for (let j = 1; j < fullBlurData[0].length; j++) {
         let lightCount = 0, darkCount = 0;
         for (let i = 0; i < fullBlurData.length; i++) {
@@ -729,7 +775,6 @@ function AutoRingDetection(Inte) {
           colMap.push(colMap[j - 1]);
         }
       }
-      console.log(colMap)
 
       let boundaryPlacements = [];
       let lastTransitionIndex = 1;
@@ -818,8 +863,9 @@ function AutoRingDetection(Inte) {
         imgMap.push(rowMap);
       }
 
+      let startVal = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert ? 1 : 0;
       let colPercentile = algorithmSettings.expColPercentile
-      let colMap = [0];
+      let colMap = [startVal];
       for (let j = 1; j < l; j++) {
         let lightCount = 0, darkCount = 0;
         for (let i = 0; i < h; i++) {

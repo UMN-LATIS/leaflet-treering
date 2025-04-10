@@ -1,36 +1,5 @@
-<script id="AutoRingDetection-dialog-template" type="text/x-handlebars-template">
-
-    <div id=auto-ring-detection-directions-page-X>
-        <label for="auto-ring-detection-window-size" style="margin: 0;">Window Size</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-        <input type="range" id="auto-ring-detection-window-size" min="7" max="51" step="2" value="11" style="width: 90%;">
-        <p id="auto-ring-detection-window-size-text">11</p>
-        </div>
-
-        <label for="auto-ring-detection-extrema-threshold" style="margin: 0;">Extrema Threshold</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-        <input type="range" id="auto-ring-detection-extrema-threshold" min="0" max="1" step="0.01" value="0.3" style="width: 90%;">
-        <p id="auto-ring-detection-extrema-threshold-text">0.3</p>
-        </div>
-
-        <label for="auto-ring-detection-column-threshold" style="margin: 0;">Column Threshold</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-        <input type="range" id="auto-ring-detection-column-threshold" min="0" max="1" step="0.01" value="0.75" style="width: 90%;">
-        <p id="auto-ring-detection-column-threshold-text">0.75</p>
-        </div>
-    </div>
-
-
-
-    <div id="auto-ring-detection-page-footer">
-        <button id="auto-ring-detection-button">button</button>
-    </div>
-    
-    <!-- <div style="height: 10; visibility:visible;"><canvas id="ard-canvas" width="1000" height="1000"></canvas></div> -->
-</script>
-
 <script id="AutoRingDetection-page-1" type="text/x-handlebars-template">
-    <p>Choose measurement settings:</p>
+    <p>Select measurement preferences:</p>
     <div id="auto-ring-detection-measurement-direction-div">
         <h5 style="margin: 0 0 0 0">Measurement Direction</h5>
         <input type="radio" name="auto-ring-detection-measurement-direction" id="auto-ring-detection-forward-radio">
@@ -58,46 +27,54 @@
 </script>
 
 <script id="AutoRingDetection-page-2" type="text/x-handlebars-template">
-    <p>Adjust image and detection settings:</p>
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-        <!-- <label for="auto-ring-detection-zoom-input">Zoom Level</label> -->
-        <p style="margin: 0 5 0 0;">Tile Zoom Level:</p>
-        <input type="range" id="auto-ring-detection-zoom-input" step=1>
+    <div style="justify-content: left; display: flex;">
+        <p style="font-weight: bold; font-size: 14; margin: 0">Toggle Image Settings:</p>
+        <i class="fa fa-sliders" id="auto-ring-detection-img-adjust-toggle" aria-hidden="true" style="font-size: 20; margin: 1.5 0 0 5;"></i>
+    </div>
+    
+    <div style="justify-content: left; display: flex;">
+        <p style="font-weight: bold; font-size: 14; margin: 0">Directions:</p>
+        <i class="fa fa-info-circle" id="auto-ring-detection-directions-toggle" aria-hidden="true" style="font-size: 18; margin: 3 0 0 5;"></i>
     </div>
 
-    <div style="display: flex; justify-content: left; align-items: center;">
+    <div id="auto-ring-detection-directions-text" hidden>
+        <p style="font-size: 14; margin: 0">1. Edit image settings to create a high contrast between boundaries</p>
+        <p style="font-size: 14; margin: 0">2. Select a tile level that balances detail and accuracy</p>
+        <p style="font-size: 14; margin: 0">3. Place the start and end points of the collection area such that the connecting line is perpendicular to boundaries</p>
+        <p style="font-size: 14; margin: 0">4. Select an area height that minimizes noise</p>
+    </div>
+
+    <hr style="border-top: 2px solid black; margin: 10 0 10 0">
+
+    <div class="auto-ring-detection-input-div">
+        <p style="margin: 0 5 0 0; font-weight: bold;">Tile Level:</p>
+        <input type="range" id="auto-ring-detection-zoom-input" step=1 style="width: 70%;">
+    </div>
+
+    <div class="auto-ring-detection-input-div" style="justify-content: left; margin-bottom: 5px;">
         <p style="margin: 0 5 0 0;">Zoom on change:</p>
         <input type="checkbox" id="auto-ring-detection-zoom-change-check" checked>
     </div> 
 
-    <!-- <input type="checkbox" name="save-start-and-end-points" id="auto-ring-detection-start-end-option">
-    <label for="auto-ring-detection-start-end-option">Save start/end points as ring boundaries?</label> -->
-
     <label for="auto-ring-detection-height-input">Collection height (25-500):</label>
     <input type="number" id="auto-ring-detection-height-input" min="1" max="500" value="100">
 
-    <!-- <p id="auto-ring-detection-path-step-1" style="font-weight: bold;">1. Place and adjust end points.</p>
-    <p id="auto-ring-detection-path-step-2">2. Confirm or reset placements.</p> -->
-    <!-- <p id="auto-ring-detection-path-step-3">3. Confirm path</p> -->
+    <hr style="border-top: 2px solid black; margin: 10 0 10 0">
 
-    <!-- <button class="auto-ring-detection-page-turn">Save Placements</button> -->
     <button id="auto-ring-detection-page-turn-2" disabled>Save Placements</button>
     <button id="auto-ring-detection-path-reset">Reset Placement</button>
 
     <p id="auto-ring-detection-area-error" style="font-weight: bold;" hidden>*Data collection area too large, please adjust settings to reduce area</p>
     <p id="auto-ring-detection-load-fix" hidden>**If tiles not loading, try switching to tree layer then back to GL layer</p>
-
-    <!-- <div id="ard-canvas-div"></div> -->
-     <!-- <canvas id="ard-canvas"></canvas> -->
 </script>
 
 <script id="AutoRingDetection-page-3" type="text/x-handlebars-template">
     <p>Choose/adjust algorithm</p>
 
     {{#each detectionMethods}}
-    <div style="display: flex; justify-content: left; align-items: center;">
+    <div class="auto-ring-detection-input-div" style="justify-content: left;">
         <input type="radio" name="ard-algorithm" class="auto-ring-detection-algo-radio" value={{this.method}}>
-        <label style="margin: 0px 0px 0px 5px; font-size: 14px;">{{this.radioLabel}}</label>
+        <label class="radio-label">{{this.radioLabel}}</label>
     </div>
     {{/each}}
 
@@ -106,10 +83,18 @@
     {{#each detectionMethods}}
     <div id={{this.divId}} hidden>
         {{#each this.options}}
-        <label for="{{this.id}}">{{this.label}}</label>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; justify-content: left;">
+            <label for="{{this.id}}">{{this.label}}</label>
+            <i class="fa fa-info-circle auto-ring-detection-slider-info-toggle" id="{{this.id}}-info-toggle" aria-hidden="true" style="font-size: 16; margin: 1.5 0 0 5;"></i>
+        </div>
+        <div class="auto-ring-detection-input-div">
             <input type="range" class="auto-ring-detection-algo-settings" id={{this.id}} min={{this.min}} max={{this.max}} step={{this.step}} value={{this.defaultValue}}>
             <p id ={{this.id}}-text> {{this.defaultValue}}</p>
+        </div>
+        <div id="{{this.id}}-info-toggle-text" hidden>
+            <hr style="border-top: 2px solid black; margin: 10 0 10 0">
+            <p style="font-size: 14; margin: 0">{{this.description}}</p>
+            <hr style="border-top: 2px solid black; margin: 10 0 10 0">
         </div>
         {{/each}}
     </div>
