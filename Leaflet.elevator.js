@@ -29,15 +29,18 @@ if(typeof require !== "undefined") var L = require('leaflet')
 	
 	getTileUrl: function(coords, tile){
 		this._loadFunction(coords, tile);
+		console.log("tile info");
+		console.log(tile.src);
         return tile;
 	},
 	
 
 	createTile: function(coords, done) {
 		var error;
+		
 		var tile = L.DomUtil.create('img', 'elevatorTile');
 		coords.z = coords.z  + this.options.zoomOffset;
-		var url = this._loadFunction(coords);
+
 		tile.onload = (function(done, error, tile) {
 			return function() {
 				done(error, tile);

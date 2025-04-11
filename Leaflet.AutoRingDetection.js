@@ -154,7 +154,6 @@ function AutoRingDetection(Inte) {
       this.active = true;
       this.userImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON()
       this.btn.state('active');
-      Inte.treering.viewer.getContainer().style.cursor = 'pointer';
 
       $(document).on('keyup', e => {
         var key = e.which || e.key;
@@ -269,7 +268,8 @@ function AutoRingDetection(Inte) {
       if (this.dialog) {
         this.dialog.remove()
       }
-      this.displayDialog(2, [260, 230], [50, 50])
+      this.displayDialog(2, [260, 230], [50, 50]);
+      Inte.treering.viewer.getContainer().style.cursor = 'pointer';
       this.tuneGLLayer(false);
 
       $("#auto-ring-detection-img-adjust-toggle").on("click", () => {

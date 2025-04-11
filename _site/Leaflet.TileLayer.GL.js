@@ -656,7 +656,7 @@ nextHighestPowerOfTwo: function(x) {
 		if(this.options._imageSize !== undefined) {
 			if(this.options._imageSize[coords.z+1] !== undefined) {
 
-				// console.log("Clipping tile")
+				console.log("Clipping tile")
 				var xPercentage = 100;
 				
 				if(coords.x* this.options.tileSize +  this.options.tileSize > this.options._imageSize[coords.z+1].x) {

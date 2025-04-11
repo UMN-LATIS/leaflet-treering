@@ -101,7 +101,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
 
   this.universalDelete = new UniversalDelete(this);
 
-  this.tools = [this.calibration, this.createPoint, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
+  this.tools = [this.calibration, this.createPoint, this.autoRingDetectionInterface.autoRingDetection, this.createBreak, this.universalDelete, this.cut, this.insertPoint, this.convertToStartPoint, this.insertZeroGrowth, this.insertBreak, this.annotationAsset, this.imageAdjustmentInterface.imageAdjustment, this.measurementOptions];
   
   // Code hosted in Leaflet.Dating.js
   this.datingInterface = new DatingInterface(this);
@@ -112,7 +112,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
   // --- //
   // Code hosted in Leaflet.PithEstimate.js
   this.pithEstimateInterface = new PithEstimateInterface(this);
-  let createToolArr = [this.createPoint.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn];
+  let createToolArr = [this.createPoint.btn, this.autoRingDetectionInterface.autoRingDetection.btn, this.mouseLine.btn, this.zeroGrowth.btn, this.createBreak.btn];
   for (btn of this.pithEstimateInterface.btns) {
     createToolArr.push(btn);
   }
