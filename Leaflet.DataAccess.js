@@ -119,7 +119,7 @@ function ViewDataDialog(Inte) {
             savePermissions: Inte.treering.meta.savePermission,
         });
 
-        let size = dat?.ew ? [260, this.dialogHeight] : [176, this.dialogHeight];
+        let size = dat?.ew ? [270, this.dialogHeight] : [180, this.dialogHeight];
         
         this.dialog.setContent(content);
 
@@ -307,6 +307,7 @@ function JSONFileUpload(Inte) {
             }
 
             Inte.treering.loadData();
+            Inte.treering.loadExternalTools(newDataJSON);
             Inte.treering.metaDataText.updateText();
 
             // Temporary solution to refresh data. Size does not update unless opened twice. Race condition?
@@ -526,7 +527,8 @@ function Download(Inte) {
           'ppm': Inte.treering.meta.ppm,
           'ptWidths': Inte.treering.helper.findDistances(),
           'ellipses': Inte.treering.areaCaptureInterface.ellipseData.getJSON(),
-          'currentView': Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON()
+          'currentView': Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON(),
+          'pithEstimate': Inte.treering.pithEstimateInterface.estimateData.getJSON(),
       };
 
       return data;
