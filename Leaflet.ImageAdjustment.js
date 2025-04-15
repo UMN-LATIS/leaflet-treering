@@ -98,30 +98,18 @@ function ImageAdjustment(Inte) {
       CSSFilter: false,
       GLName: "edgeDetect3"
     },
-    // { 
-    //   filterType: "gaussianBlur",
+    // {
+    //   filterType: "testBlur",
     //   defaultValue: "0",
-    //   inputID: "gaussianBlur-input",
-    //   sliderID: "gaussianBlur-slider",
+    //   inputID: "testBlur-input",
+    //   sliderID: "testBlur-slider",
     //   min: "0",
-    //   max: "10",
-    //   step: "0.5",
-    //   label: "Gaussian Blur (0-1)",
+    //   max: "5",
+    //   step: "0.1",
+    //   label: "Test Blur (0-1)",
     //   CSSFilter: false,
     //   GLName: "gaussianBlur"
-    // },     
-    // { 
-    //   filterType: "sobelVertical",
-    //   defaultValue: "0",
-    //   inputID: "sobelVertical-input",
-    //   sliderID: "sobelVertical-slider",
-    //   min: "0",
-    //   max: "1",
-    //   step: "0.01",
-    //   label: "sobel Vertical (0-1)",
-    //   CSSFilter: false,
-    //   GLName: "sobelVertical"
-    // },    
+    // },
     ];
 
   // Stores info of whether or not image is inverted
@@ -347,14 +335,14 @@ function ImageAdjustment(Inte) {
    * @param {object} imageSettingsData - object containing current image settings
    */
   ImageAdjustment.prototype.loadImageSettings = function(imageSettingsData) {
-    for (filter of filterList) {
+    for (let filter of filterList) {
       let sliderID = filter.filterType + "-slider";
       let inputID = filter.filterType + "-input";
       let slider = document.getElementById(sliderID);
       let input = document.getElementById(inputID);
 
-      slider.value = imageSettingsData[filter.filterType];
-      input.value = imageSettingsData[filter.filterType];
+      slider.value = imageSettingsData[filter.filterType] ? imageSettingsData[filter.filterType] : filter.defaultValue;
+      input.value = imageSettingsData[filter.filterType] ? imageSettingsData[filter.filterType] : filter.defaultValue;
     }
     this.invert = imageSettingsData["invert"];
     this.updateFilters();
@@ -366,7 +354,7 @@ function ImageAdjustment(Inte) {
       contrast: 350,
       sharpness: 0,
       emboss: 0.0,
-      saturate: 0,
+      saturate: 100,
       edgeDetect: 0.05,
     }
 

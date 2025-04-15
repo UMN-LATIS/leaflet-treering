@@ -29,8 +29,8 @@ if(typeof require !== "undefined") var L = require('leaflet')
 	
 	getTileUrl: function(coords, tile){
 		this._loadFunction(coords, tile);
-		console.log("tile info");
-		console.log(tile.src);
+		// console.log("tile info");
+		// console.log(tile.src);
         return tile;
 	},
 	

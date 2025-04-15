@@ -656,7 +656,7 @@ nextHighestPowerOfTwo: function(x) {
 		if(this.options._imageSize !== undefined) {
 			if(this.options._imageSize[coords.z+1] !== undefined) {
 
-				console.log("Clipping tile")
+				// console.log("Clipping tile")
 				var xPercentage = 100;
 				
 				if(coords.x* this.options.tileSize +  this.options.tileSize > this.options._imageSize[coords.z+1].x) {
@@ -973,65 +973,62 @@ nextHighestPowerOfTwo: function(x) {
 
 		//Recursive function to grab and paste tiles onto canvas, then collect data
 		let pasteTilesToCanvas = function(i, j, GLLayerObject, resolveCallback) {
-			GLLayerObject.addEventListener("load", function placeholder() { //Placeholder to deal with async stuff (I don't know why its needed but it is)
-				GLLayerObject.removeEventListener("load", placeholder);
-				for (i; i <= imax; i++) {
-					for (j; j <= jmax; j++) {
-						let tileCenter = L.point(tileSize.x * (i + 0.5), tileSize.y * (j + 0.5));
+			for (i; i <= imax; i++) {
+				for (j; j <= jmax; j++) {
+					let tileCenter = L.point(tileSize.x * (i + 0.5), tileSize.y * (j + 0.5));
 
-						//Find projections of tile to check for collisions
-						let tu = tileCenter.x * Math.cos(angle) - tileCenter.y * Math.sin(angle);
-						let tv = -tileCenter.x * Math.sin(angle) - tileCenter.y * Math.cos(angle);
+					//Find projections of tile to check for collisions
+					let tu = tileCenter.x * Math.cos(angle) - tileCenter.y * Math.sin(angle);
+					let tv = -tileCenter.x * Math.sin(angle) - tileCenter.y * Math.cos(angle);
 
-						let tuMin = tu - tileHalfExtent, tuMax = tu + tileHalfExtent;
-						let tvMin = tv - tileHalfExtent, tvMax = tv + tileHalfExtent;
-						if ((tuMin <= rumax && rumin <= tuMax) && (tvMin <= rvmax && rvmin <= tvMax)) {
-							let coords = L.point(i, j);
-							coords.z = zoom;
-							let tile = GLLayerObject._tiles[GLLayerObject._tileCoordsToKey(coords)];
+					let tuMin = tu - tileHalfExtent, tuMax = tu + tileHalfExtent;
+					let tvMin = tv - tileHalfExtent, tvMax = tv + tileHalfExtent;
+					if ((tuMin <= rumax && rumin <= tuMax) && (tvMin <= rvmax && rvmin <= tvMax)) {
+						let coords = L.point(i, j);
+						coords.z = zoom;
+						let tile = GLLayerObject._tiles[GLLayerObject._tileCoordsToKey(coords)];
 
-							if (!tile || tile.loading) { //assume that all tiles in the AABB exist, infinite recursion if not
-								let pt = L.point(i * tileSize.x, j * tileSize.y);
-								let ll = GLLayerObject._map.unproject(pt, zoom)
-								GLLayerObject._map.flyTo(ll, zoom, {animate: false})
-								pasteTilesToCanvas(i, j, GLLayerObject, resolveCallback)
-								return
+						if (!tile || !tile.active) { //assume that all tiles in the AABB exist, infinite recursion if not
+							let pt = L.point((i) * tileSize.x, j * tileSize.y);
+							let ll = GLLayerObject._map.unproject(pt, zoom)
+							GLLayerObject._map.on("moveend", function placeholder() {
+								GLLayerObject._map.removeEventListener("moveend", placeholder);
+								setTimeout(pasteTilesToCanvas, 750, i, j, GLLayerObject, resolveCallback) //Create a delay to allow tiles to load (can cause issues)
+								// pasteTilesToCanvas(i, j, GLLayerObject, resolveCallback)
+							})
+							GLLayerObject._map.flyTo(ll, zoom, {animate: true})
+							return
+						}
+						else {
+							if (cssFilters && cssFilters != "") {
+								ctx.filter = cssFilters
 							}
-							else {
-								if (cssFilters && cssFilters != "") {
-									ctx.filter = cssFilters
-								}
-								ctx.drawImage(tile.el, (i-imin)*tileSize.x,(j-jmin)*tileSize.y)
-								//visualize tiles on canvas
-								// ctx.beginPath()
-								// ctx.rect((i-imin)*tileSize.x, (j-jmin)*tileSize.y,tileSize.x, tileSize.y)
-								// ctx.stroke()				
-								
-								//visualize tiles on map
-								// let q = GLLayerObject._map.unproject(L.point(i*tileSize.x, j*tileSize.y)), r = GLLayerObject._map.unproject(L.point((i+1)*tileSize.x, (j+1)*tileSize.y));
-								// let b = L.latLngBounds(q, r);
-								// L.rectangle(b, {color: "black"}).addTo(GLLayerObject._map)
-							}
-	
-						}			
-					}
-					j = jmin
+							ctx.drawImage(tile.el, (i-imin)*tileSize.x,(j-jmin)*tileSize.y)
+							//visualize tiles on canvas
+							// ctx.beginPath()
+							// ctx.rect((i-imin)*tileSize.x, (j-jmin)*tileSize.y,tileSize.x, tileSize.y)
+							// ctx.stroke()				
+							
+							//visualize tiles on map
+							// let q = GLLayerObject._map.unproject(L.point(i*tileSize.x, j*tileSize.y)), r = GLLayerObject._map.unproject(L.point((i+1)*tileSize.x, (j+1)*tileSize.y));
+							// let b = L.latLngBounds(q, r);
+							// L.rectangle(b, {color: "black"}).addTo(GLLayerObject._map)
+						}
+
+					}			
 				}
-				//Visualize top left corner
-				// ctx.beginPath();
-				// ctx.arc(offset.x, offset.y, 20, 0, 2*Math.PI)
-				// ctx.stroke()
+				j = jmin
+			}
 
-				// Visualize collection area
-				// ctx.resetTransform();
-				// ctx.beginPath()
-				// ctx.strokeStyle = "blue"
-				// ctx.rect(offset.x, offset.y -tileSize.x*(startTileCoords.y - jmin), w, h)
-				// ctx.stroke();
+			// Visualize collection area
+			// ctx.resetTransform();
+			// ctx.beginPath()
+			// ctx.strokeStyle = "blue"
+			// ctx.rect(offset.x, offset.y -tileSize.x*(startTileCoords.y - jmin), w, h)
+			// ctx.stroke();
 
-				//getImageData doesn't use ctx transformations
-				resolveCallback(ctx.getImageData(offset.x, offset.y -tileSize.y*(startTileCoords.y - jmin), w, h));
-			})
+			//getImageData doesn't use ctx transformations
+			resolveCallback(ctx.getImageData(offset.x, offset.y -tileSize.y*(startTileCoords.y - jmin), w, h));
 		}
 
 		//Go to top left corner
@@ -1068,7 +1065,8 @@ nextHighestPowerOfTwo: function(x) {
 			}
 		}
 
-		// document.getElementById("ard-canvas-div").append(canvas)
+		// document.getElementById("ard-canvas").append(canvas)
+		// document.getElementById("imageMap").append(canvas)
 		return colorMatrix
 	},
 });

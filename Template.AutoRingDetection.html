@@ -20,7 +20,7 @@
         <br>
 
         <h5 style="margin: 0 0 0 0">Start Year</h5>
-        <input type="number"  id="auto-ring-detection-start-year-input" min="0" value="0">
+        <input type="number"  id="auto-ring-detection-start-year-input" min="0" value="1">
     </div>
     <!-- <button class="auto-ring-detection-page-turn">Next</button> -->
      <button id="auto-ring-detection-page-turn-1">Save Options</button>
@@ -57,7 +57,7 @@
     </div> 
 
     <label for="auto-ring-detection-height-input">Collection height (25-500):</label>
-    <input type="number" id="auto-ring-detection-height-input" min="1" max="500" value="100">
+    <input type="number" id="auto-ring-detection-height-input" min="1" max="1000" value="50">
 
     <hr style="border-top: 2px solid black; margin: 10 0 10 0">
 
@@ -66,6 +66,7 @@
 
     <p id="auto-ring-detection-area-error" style="font-weight: bold;" hidden>*Data collection area too large, please adjust settings to reduce area</p>
     <p id="auto-ring-detection-load-fix" hidden>**If tiles not loading, try switching to tree layer then back to GL layer</p>
+    <!-- <div id="ard-canvas"></div> -->
 </script>
 
 <script id="AutoRingDetection-page-3" type="text/x-handlebars-template">
@@ -101,7 +102,6 @@
     {{/each}}
 
     <button id="auto-ring-detection-page-turn-3" disabled>Save Automatic Placements</button>
-    <!-- <div style="height: 10;"><canvas id="ard-canvas1" width="2550" height="2550"></canvas></div> -->
 </script>
 
 <script id="AutoRingDetection-page-4" type="text/x-handlebars-template">

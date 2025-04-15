@@ -265,7 +265,7 @@ function LTreering (viewer, basePath, options, base_layer, gl_layer, fullJSON) {
       this.pithEstimateInterface.estimateData.loadJSON(data.pithEstimate);
 
       // Code hosted in Leaflet.ImageAdjustment.js
-      if (data.currentView) this.imageAdjustmentInterface.imageAdjustment.loadCurrentViewJSON(data.currentView);
+      if (data.currentView) this.imageAdjustmentInterface.imageAdjustment.loadImageSettings(data.currentView);
   }
 
   /**
