@@ -134,6 +134,7 @@ function ImageAdjustment(Inte) {
     'minSize': [0, 0],
     'className': 'image-adjust-custom'
   }).setContent(html).addTo(Inte.treering.viewer);
+  this.dialog._container.style.zIndex = 900;
   
   /**
    * Open the filter sliders dialog

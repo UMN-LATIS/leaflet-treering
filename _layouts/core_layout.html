@@ -261,9 +261,9 @@ void main(void){
 		$.get("templates.html", (dat) => html.push(dat)),
 		$.get("../Template.AreaCapture.html", (dat) => html.push(dat)),
 		$.get("../Template.DataAccess.html", (dat) => html.push(dat)),
-		// $.get("../Template.Dating.html", (dat) => html.push(dat)),
+		$.get("../Template.Dating.html", (dat) => html.push(dat)),
 		$.get("../Template.ImageAdjustment.html", (dat) => html.push(dat)),
-		// $.get("../Template.PithEstimate.html", (dat) => html.push(dat)),
+		$.get("../Template.PithEstimate.html", (dat) => html.push(dat)),
 		$.get("../Template.AutoRingDetection.html", (dat) => html.push(dat)),
 	).then(() => {
 		$("body").append(...html);

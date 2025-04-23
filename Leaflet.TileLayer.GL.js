@@ -843,14 +843,25 @@ nextHighestPowerOfTwo: function(x) {
 	//Input is an array with 4 latlngs, and the angle to rotate the area to be perpendicular
 	getImageData: async function(corners, angle, zoom, cssFilters) {
 		//Overall process is to find which tiles are included in the collection area, paste them to a canvas and collect the data
-		//Based on separating axis theorem
+		//Based on separating axis theorem https://en.wikipedia.org/wiki/Hyperplane_separation_theorem#Use_in_collision_detection
+
+		//Create diolog to back out of image data collection if needed
+		let content = document.getElementById("image-data-collection-dialog").innerHTML;
+
+		let exitDialog = L.control.dialog({
+			'size': [380, 60],
+			'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+			'anchor': [25, 600],
+			'initOpen': true,
+			'position': 'topleft',
+			'minSize': [0, 0]
+		}).setContent(content).addTo(this._map).lock()
 
 		//Set up variables for later
         // let canvas = document.getElementById("ard-canvas"); //For getting canvas visually
 		let canvas = document.createElement("canvas");
 
         let ctx = canvas.getContext("2d");
-		ctx.filter = "invert(100%)"
 		let tileSize = this.getTileSize();
 		this._map.setZoom(zoom, {animate: false}) //Zoom in to desired level so projections work properly
 
@@ -943,7 +954,8 @@ nextHighestPowerOfTwo: function(x) {
 			ctx.translate(0, -tileSize.y*(startTileCoords.y - jmin)) //Shift start upward if collection area starts below jmin
 			sizeError = !sizeError
 		} catch {
-			return false
+			exitDialog.remove();
+			return "sizeError"
 		}
 
 		// if (sizeError == true) {
@@ -971,8 +983,18 @@ nextHighestPowerOfTwo: function(x) {
 		ctx.rotate(angle)
 		ctx.translate(-offset.x, -offset.y)
 
+		//Break from getting image data
+		let exit = false
+		$("#image-data-collection-exit").on("click", () => {
+			exit = true;
+		})
+
 		//Recursive function to grab and paste tiles onto canvas, then collect data
 		let pasteTilesToCanvas = function(i, j, GLLayerObject, resolveCallback) {
+			if (exit) {
+				resolveCallback(false);
+				return
+			}
 			for (i; i <= imax; i++) {
 				for (j; j <= jmax; j++) {
 					let tileCenter = L.point(tileSize.x * (i + 0.5), tileSize.y * (j + 0.5));
@@ -993,7 +1015,19 @@ nextHighestPowerOfTwo: function(x) {
 							let ll = GLLayerObject._map.unproject(pt, zoom)
 							GLLayerObject._map.on("moveend", function placeholder() {
 								GLLayerObject._map.removeEventListener("moveend", placeholder);
-								setTimeout(pasteTilesToCanvas, 750, i, j, GLLayerObject, resolveCallback) //Create a delay to allow tiles to load (can cause issues)
+								setTimeout(() => {
+									tile = GLLayerObject._tiles[GLLayerObject._tileCoordsToKey(coords)]
+									if (tile !== undefined && !tile.loading) {
+										pasteTilesToCanvas(i, j, GLLayerObject, resolveCallback);
+									} else {
+										GLLayerObject.addEventListener("load", function placeholder2() {
+											GLLayerObject.removeEventListener("load", placeholder2);
+											pasteTilesToCanvas(i, j, GLLayerObject, resolveCallback);
+										});
+									}
+								}, 300)
+								
+								// setTimeout(pasteTilesToCanvas, 750, i, j, GLLayerObject, resolveCallback) //Create a delay to allow tiles to load (can cause issues)
 								// pasteTilesToCanvas(i, j, GLLayerObject, resolveCallback)
 							})
 							GLLayerObject._map.flyTo(ll, zoom, {animate: true})
@@ -1021,11 +1055,11 @@ nextHighestPowerOfTwo: function(x) {
 			}
 
 			// Visualize collection area
-			// ctx.resetTransform();
-			// ctx.beginPath()
-			// ctx.strokeStyle = "blue"
-			// ctx.rect(offset.x, offset.y -tileSize.x*(startTileCoords.y - jmin), w, h)
-			// ctx.stroke();
+			ctx.resetTransform();
+			ctx.beginPath()
+			ctx.strokeStyle = "blue"
+			ctx.rect(offset.x, offset.y -tileSize.x*(startTileCoords.y - jmin), w, h)
+			ctx.stroke();
 
 			//getImageData doesn't use ctx transformations
 			resolveCallback(ctx.getImageData(offset.x, offset.y -tileSize.y*(startTileCoords.y - jmin), w, h));
@@ -1044,7 +1078,11 @@ nextHighestPowerOfTwo: function(x) {
 		}
 
 		//Get the raw data
-		let rawData = await collectData(this)
+		let rawData = await collectData(this);
+		exitDialog.remove();
+		if (rawData === false) {
+			return "exitError";
+		}
 
 		//Organize data into a h x w matrix, with each entry [r, g, b]
 		let r,g,b;

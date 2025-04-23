@@ -12,3 +12,9 @@ label {
     justify-content: space-between;
     align-items: center;
 }
+
+#auto-ring-detection-blur-input-label {
+    margin-right: 3px;
+    font-size: 14px;
+    font-weight: bold;
+}

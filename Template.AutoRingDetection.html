@@ -56,8 +56,8 @@
         <input type="checkbox" id="auto-ring-detection-zoom-change-check" checked>
     </div> 
 
-    <label for="auto-ring-detection-height-input">Collection height (25-500):</label>
-    <input type="number" id="auto-ring-detection-height-input" min="1" max="1000" value="50">
+    <label for="auto-ring-detection-height-input">Collection height (10-800):</label>
+    <input type="number" id="auto-ring-detection-height-input" min="10" max="800" value="100">
 
     <hr style="border-top: 2px solid black; margin: 10 0 10 0">
 
@@ -66,7 +66,7 @@
 
     <p id="auto-ring-detection-area-error" style="font-weight: bold;" hidden>*Data collection area too large, please adjust settings to reduce area</p>
     <p id="auto-ring-detection-load-fix" hidden>**If tiles not loading, try switching to tree layer then back to GL layer</p>
-    <!-- <div id="ard-canvas"></div> -->
+    <p id="auto-ring-detection-layer-tip">*Only use auto ring detection on "GL Layer", not "Tree Ring" layer</p>
 </script>
 
 <script id="AutoRingDetection-page-3" type="text/x-handlebars-template">
@@ -79,7 +79,14 @@
     </div>
     {{/each}}
 
-    <hr style="border-top: 2px solid black; margin: 10 0 10 0">
+    <hr style="border-top: 2px solid black; margin: 6 0 6 0">
+
+    <div class="auto-ring-detection-input-div" style="justify-content: left;">
+        <label for="auto-ring-detection-blur-input" id="auto-ring-detection-blur-input-label">Blur Radius (1-4)</label>
+        <input type="number" id="auto-ring-detection-blur-input" min="1" max="4" step="1" value="1">
+    </div>
+    
+    <hr style="border-top: 2px solid black; margin: 6 0 6 0">
 
     {{#each detectionMethods}}
     <div id={{this.divId}} hidden>
@@ -108,4 +115,11 @@
     <p>Adjust individual Points</p>
     <p>Controls: ...</p>
     <button class="auto-ring-detection-confirm-points">Confirm Ring Placements</button>
+</script>
+
+<script id="image-data-collection-dialog" type="text/x-handlebars-template">
+    <div style="display: flex; justify-content: space-between; align-content:flex-start;">
+        <h4 style="width: 200px; margin: 4px 0 4px 0;">Collecting Image Data...</h4>
+        <button type="button" style="width: 145px; height: 30px; font-weight: bold; font-size: 14px;" id="image-data-collection-exit">Exit Data Collection</button>
+    </div>
 </script>

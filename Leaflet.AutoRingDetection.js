@@ -65,7 +65,7 @@ function AutoRingDetection(Inte) {
             min: 0,
             max: 1,
             step: 0.01,
-            defaultValue: 0.35,
+            defaultValue: 0.75,
             description: "A coefficient to determine the 'smoothness' of each 1D line. Values closer to 0 create smoother data."
           },
           {
@@ -83,9 +83,9 @@ function AutoRingDetection(Inte) {
             label: "Column Percentile",
             id: "auto-ring-detection-exp-col-percentile",
             min: 0,
-            max: 1,
-            step: 0.01,
-            defaultValue: 0.30,
+            max: 50,
+            step: 1,
+            defaultValue: 20,
             description: "The number of edges that indicate a change in brightness, based on the area height. Typically works best form 0.10-0.25 and 0.75 to 0.90.",
           }
         ],
@@ -192,6 +192,9 @@ function AutoRingDetection(Inte) {
         for (let pointMarker of this.markers) { pointMarker.remove()};
   
         this.tuneGLLayer(true);
+
+        if (Inte.treering.mouseLine.active) { Inte.treering.mouseLine.disable(); }
+        $(Inte.treering.viewer.getContainer()).off("click")
       }
     }
 
@@ -209,11 +212,11 @@ function AutoRingDetection(Inte) {
 
       this.dialog = L.control.dialog({
         'size': size,
-         'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+        'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
         'anchor': anchor,
-         'initOpen': true,
-         'position': 'topleft',
-         'minSize': [0, 0]
+        'initOpen': true,
+        'position': 'topleft',
+        'minSize': [0, 0]
        }).setContent(html).addTo(Inte.treering.viewer);
       return this.dialog;
     };
@@ -266,7 +269,7 @@ function AutoRingDetection(Inte) {
       if (this.dialog) {
         this.dialog.remove()
       }
-      this.displayDialog(2, [260, 230], [50, 50]);
+      this.displayDialog(2, [260, 275], [50, 50]);
       Inte.treering.viewer.getContainer().style.cursor = 'pointer';
       this.tuneGLLayer(false);
 
@@ -294,10 +297,9 @@ function AutoRingDetection(Inte) {
       this.secondLatLng = null;
 
       var clickCount = 0;
-      let zoom = Math.floor(Inte.treering.viewer.getZoom());
-      // let zoom = Inte.treering.getMaxNativeZoom() - 1
-  
-      // var clickCount = 0;
+      let zoom = Math.round(Inte.treering.viewer.getZoom());
+      Inte.treering.viewer.setZoom(zoom, {animate: true})
+
       $(Inte.treering.viewer.getContainer()).on("click", e => {
         clickCount++;
         switch(clickCount) {
@@ -398,6 +400,7 @@ function AutoRingDetection(Inte) {
         $("#auto-ring-detection-page-turn-2").prop("disabled", true);
         $("#auto-ring-detection-area-error").hide();
         Inte.treering.viewer.getContainer().style.cursor = 'pointer';
+        Inte.treering.mouseLine.disable();
       })
 
       $("#auto-ring-detection-zoom-input").prop('max', Inte.treering.getMaxNativeZoom())
@@ -405,7 +408,7 @@ function AutoRingDetection(Inte) {
       $("#auto-ring-detection-zoom-input").prop('value', zoom)
 
       $("#auto-ring-detection-zoom-input").on('change', () => {
-        zoom = Math.floor($("#auto-ring-detection-zoom-input").val())
+        zoom = Math.round($("#auto-ring-detection-zoom-input").val())
         if ($("#auto-ring-detection-zoom-change-check").is(':checked')) {
           Inte.treering.viewer.setZoom(zoom)
         }
@@ -421,14 +424,23 @@ function AutoRingDetection(Inte) {
       })
       
       $("#auto-ring-detection-page-turn-2").on("click", async () => {
+        $("#auto-ring-detection-layer-tip").hide();
         let detectionGeometry = this.getDetectionGeometry(this.detectionHeight, zoom);
         $("#auto-ring-detection-load-fix").show()
 
+        //Disable buttons
+        this.toggleDialogTools(true);
+
         let cssFilters = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCSSAdjustments()
+        // Inte.treering.baseLayer["GL Layer"].getImageData(detectionGeometry.corners, detectionGeometry.angle, zoom, cssFilters)
         let data = await Inte.treering.baseLayer["GL Layer"].getImageData(detectionGeometry.corners, detectionGeometry.angle, zoom, cssFilters);
 
-        if (!data) {//data returns false if area size too big
+        if (data === "sizeError") {//data returns false if area size too big
           $("#auto-ring-detection-area-error").show()
+          $("auto-ring-detection-load-fix").hide()
+          thiss.toggleDialogTools(false);
+        } else if (data === "exitError") {
+          this.toggleDialogTools(false);
           $("auto-ring-detection-load-fix").hide()
         }
         else {
@@ -446,12 +458,39 @@ function AutoRingDetection(Inte) {
       });
     }
 
-    AutoRingDetection.prototype.automaticDetection = function(data, zoom) {
+    AutoRingDetection.prototype.automaticDetection = function(rawData, zoom) {
       this.dialog.remove()
       this.displayDialog(3, [280, 340], [50, 50]);
       let u = this.getDirectionVector(zoom);
       let currentAlgo;
       let boundaryPlacements;
+
+      let data = this.medianBlur(rawData, 1)
+      $("#auto-ring-detection-blur-input").on("change", () => {
+        for (pointMarker of this.markers) { pointMarker.remove() };
+        this.markers = [];
+
+        let blurRadius = $("#auto-ring-detection-blur-input").val();
+        data = this.medianBlur(rawData, blurRadius);
+
+        let algoSettings = {
+          subAnnual: Inte.treering.measurementOptions.subAnnual,
+          zoom: zoom,
+        };
+        for (let option of currentAlgo.options) {
+          algoSettings[option.name] = $("#"+option.id).val();
+          $("#"+ option.id + "-text").html($("#" + option.id).val()); //Issue here
+        }
+
+        boundaryPlacements = currentAlgo.functionCall(data, algoSettings);
+        this.showAutomaticPlacements(u, boundaryPlacements);
+
+        if (boundaryPlacements && boundaryPlacements.length > 0) {
+          $("#auto-ring-detection-page-turn-3").prop("disabled", false)
+        } else {
+          $("#auto-ring-detection-page-turn-3").prop("disabled", true)
+        }
+      })
 
       $(".auto-ring-detection-slider-info-toggle").on("click", (e) => {
         let textId = "#" + e.currentTarget.id + "-text";
@@ -504,9 +543,9 @@ function AutoRingDetection(Inte) {
         };
         for (let option of currentAlgo.options) {
           algoSettings[option.name] = $("#"+option.id).val();
-          $("#"+ option.id + "-text").html($("#" + option.id).val()); //Issue here
+          $("#"+ option.id + "-text").html($("#" + option.id).val());
         }
-        boundaryPlacements = currentAlgo.functionCall(data, algoSettings, u);
+        boundaryPlacements = currentAlgo.functionCall(data, algoSettings);
         this.showAutomaticPlacements(u, boundaryPlacements);
 
         if (boundaryPlacements && boundaryPlacements.length > 0) {
@@ -530,7 +569,8 @@ function AutoRingDetection(Inte) {
 
     AutoRingDetection.prototype.createOutline = function(corners, rect = true) {
       if (rect) {
-        return [L.polygon(corners, {color: "white", weight: 3}).addTo(Inte.treering.viewer)]
+        let rectColor = $("#brightness-slider").val() > 150 ? "black" : "white"
+        return [L.polygon(corners, {color: rectColor, weight: 3}).addTo(Inte.treering.viewer)]
       }
 
       else {
@@ -584,27 +624,12 @@ function AutoRingDetection(Inte) {
 
       let l = imageData[0].length;
       let h = imageData.length;
-      let r,g,b, avg;
-      // let avgCounts = {};
-      
-      let imgMap = []
-      for (let i = 0; i < h; i++) {
-        let row = []
-        for (let j = 0; j < l; j++) {
-          r = imageData[i][j][0];
-          g = imageData[i][j][1];
-          b = imageData[i][j][2];
-          avg = Math.round((r + g + b)/3);
-          row.push(avg)
-        }
-        imgMap.push(row);
-      }
 
       let colMap = [];
-     for (let j = 0; j < l; j++) {
+      for (let j = 0; j < l; j++) {
         let colSum = 0;
         for (let i = 0; i < h; i++) {
-          let avg = imgMap[i][j];
+          let avg = imageData[i][j];
           let classification;
           if (avg >= boundaryBrightness + 10) {
             classification = 1;
@@ -648,177 +673,19 @@ function AutoRingDetection(Inte) {
       return boundaryPlacements
     }
 
-    AutoRingDetection.prototype.gaussSmoothingDetection = function(imageData, algorithmSettings) {
-      let size = algorithmSettings.gaussKernelSize;
-      let sigma = algorithmSettings.sigma;
-
-      //Get kernel given size and SD
-      let width = size % 2 == 0 ? size / 2 : Math.floor(size / 2)
-      let kernel = new Array(width * 2 + 1)
-      let sum = 0;
-      let x;
-
-      for (x = -width; x <= width; x++) {
-        kernel[width + x] = (1 / (Math.sqrt(2*Math.PI) * sigma)) * Math.exp(-1 * x**2 / (2 * sigma**2))
-        sum += kernel[width + x]
-      }
-
-      for (x = 0; x < kernel.length; x++) {
-        kernel[x] /= sum
-      }
-
-      let l = imageData[0].length;
-      let h = imageData.length;
-
-      //Horizontal blur
-      let r,g,b;
-      let smoothedVal = 0;
-      let hBlurData = []
-      for (let i = 0; i < h; i ++) {
-        let row = imageData[i];
-
-        let rawRow = [];
-        let blurRow = [];
-        for (let j = 0; j < l; j++) {
-          r = row[j][0];
-          g = row[j][1];
-          b = row[j][2];
-          rawRow.push((r + g + b) / 3)
-        }
-
-        for (let j = width; j < l - width; j++) {
-          smoothedVal = 0;
-          for (x = -width; x <= width; x++) {
-            smoothedVal += rawRow[j + x] * kernel[width + x];
-          }
-          blurRow.push(smoothedVal)
-        }
-        hBlurData.push(blurRow)
-      }
-
-      //Vertical blur
-      let fullBlurData = [];
-      for (let j = 0; j < l - 2 * width; j++) {
-        for (let i = width; i < h - width; i++) {
-          smoothedVal = 0;
-          for (x = -width; x <= width; x++) {
-            smoothedVal += hBlurData[i + x][j] * kernel[width + x];
-          }
-          if (fullBlurData[i - width]) {
-            fullBlurData[i - width].push(smoothedVal)
-          } else {
-            fullBlurData[i - width] = [smoothedVal]
-          }
-        }
-      }
-
-      let startVal = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert ? 1 : 0;
-      let transitionExtremaPairs = {};
-      for (let i = 0; i < fullBlurData.length; i++) {
-        let d1 = [0];
-        let d2 = [0];
-        for (let j = 1; j < fullBlurData[0].length; j++) {
-          let diff = fullBlurData[i][j] - fullBlurData[i][j-1];
-          d1.push(diff);
-          d2.push(diff - d1[j-1]);
-        }
-        let extremaThreshold = algorithmSettings.gaussExtremaThresh;
-
-        let minT = Math.min(...d1) * extremaThreshold;
-        let maxT = Math.max(...d1) * extremaThreshold;
-        for (let j = 1; j < d1.length; j++) {
-          if (d2[j-1] * d2[j] < 0) {
-            if (d1[j] <= minT || d1[j] >= maxT) {
-              transitionExtremaPairs[[i, j]] = d1[j]
-            }
-          }
-        }
-      }
-
-      let imgMap = [];
-      for (let i = 0; i < fullBlurData.length; i++) {
-        let rowMap = [null];
-        for (let j = 1; j < fullBlurData[0].length; j++) {
-          if (transitionExtremaPairs[[i, j]]) {
-            if (transitionExtremaPairs[[i, j]] > 0) {
-              rowMap.push(1)
-            } else {
-              rowMap.push(0)
-            }
-          } else {
-            rowMap.push(rowMap[j - 1])
-          }
-        }
-        imgMap.push(rowMap);
-      }
-
-      let colPercentile = algorithmSettings.gaussColPercentile
-      let colMap = [null];
-      for (let j = 1; j < fullBlurData[0].length; j++) {
-        let lightCount = 0, darkCount = 0;
-        for (let i = 0; i < fullBlurData.length; i++) {
-          if (imgMap[i][j] == 1) {
-            lightCount++;
-          } else if (imgMap[i][j] == 0) {
-            darkCount++
-          }
-        }
-
-        if (lightCount >= colPercentile * h) {
-          colMap.push(1)
-        } else if (darkCount >= colPercentile * h) {
-          colMap.push(0)
-        } else {
-          colMap.push(colMap[j - 1]);
-        }
-      }
-
-      let boundaryPlacements = [];
-      let lastTransitionIndex = 1;
-      for (let c = 1; c < colMap.length; c++) {
-        if (colMap[c] != colMap[c - 1]) {
-          if (algorithmSettings.subAnnual) {
-            if (c - lastTransitionIndex > 10) {
-              lastTransitionIndex = c;
-              boundaryPlacements.push(c + width)
-            } else {
-              lastTransitionIndex = c;
-            }            
-          } else if (colMap[c] == 1) {
-            if (c - lastTransitionIndex > 10) {
-              lastTransitionIndex = c;
-              boundaryPlacements.push(c + width)
-            } else {
-              lastTransitionIndex = c;
-            }
-          }
-        }
-      }
-      return boundaryPlacements
-    }
-
     AutoRingDetection.prototype.exponentialSmoothingDetection = function(imageData, algorithmSettings) {
-      let alpha = algorithmSettings.alpha
+      let alpha = algorithmSettings.alpha;
+      let invert = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert;
 
       let l = imageData[0].length;
       let h = imageData.length;
 
-      let r,g,b,avg
-      let transitionExtremaPairs = {};
       let ts = [];
       for (let i = 0; i < h; i ++) {
-        let row = imageData[i];
-
-        r = row[0][0];
-        g = row[0][1];
-        b = row[0][2];
-        avg = (r + g + b)/3
-        let f = [avg], d1 = [0], d2 = [0]
+        let f = [imageData[0][0]], d1 = [0], d2 = [0];
         for (let j = 1; j < l; j++) {
-          r = row[j][0];
-          g = row[j][1];
-          b = row[j][2];
-          avg = (r + g + b)/3
+
+          let avg = imageData[i][j]
           f.push(avg)
 
           let diff = avg - f[j-1];
@@ -832,85 +699,52 @@ function AutoRingDetection(Inte) {
 
         let expExtremaThresh = algorithmSettings.expExtremaThresh;
 
-        let minT = Math.min(...d1)* expExtremaThresh;
-        let maxT = Math.max(...d1)* expExtremaThresh;
-        for (let j = 1; j < l; j++) {
+        let minT = Math.min(...d1.slice(5))* expExtremaThresh * 0.75;
+        let maxT = Math.max(...d1.slice(5))* expExtremaThresh;
+        for (let j = 6; j < l; j++) {
           if (d2[j-1] * d2[j] < 0) {
-            if (d1[j] <= minT || d1[j] >= maxT) {
-              // transitions.push([this.detectionHeight/2 - i, j])
-              transitionExtremaPairs[[i, j]] = d1[j];
-              ts.push([i, j-1])
-            }
-          }
-        }
-      }
-
-      // return ts
-
-      let imgMap = [];
-      for (let i = 0; i < h; i++) {
-        let rowMap = [null];
-        for (let j = 1; j < l; j++) {
-          if (transitionExtremaPairs[[i, j]]) {
-            if (transitionExtremaPairs[[i, j]] > 0) {
-              rowMap.push(1)
+            if (algorithmSettings.subAnnual) {
+              if (d1[j] <= minT || d1[j] >= maxT) {
+                ts.push([i, j-1])
+                j += 3;
+              }
             } else {
-              rowMap.push(0)
+              if (invert && d1[j] <= minT) {
+                ts.push([i, j-1]);
+                j += 3;
+              } else if (!invert && d1[j] >= maxT) {
+                ts.push([i, j-1])
+                j += 3;
+              }
             }
-          } else {
-            rowMap.push(rowMap[j - 1])
           }
         }
-        imgMap.push(rowMap);
       }
 
-      let startVal = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert ? 1 : 0;
-      let colPercentile = algorithmSettings.expColPercentile
-      let colMap = [startVal];
-      for (let j = 1; j < l; j++) {
-        let lightCount = 0, darkCount = 0;
-        for (let i = 0; i < h; i++) {
-          if (imgMap[i][j] == 1) {
-            lightCount++;
-          } else if (imgMap[i][j] == 0) {
-            darkCount++
-          }
-        }
-
-        if (lightCount >= colPercentile * h) {
-          colMap.push(1)
-        } else if (darkCount >= colPercentile * h) {
-          colMap.push(0)
+      let counter = {}
+      for (let coord of ts) {
+        let xVal = coord[1];
+        if (counter[xVal]) {
+          counter[xVal]++;
         } else {
-          colMap.push(colMap[j - 1])
+          counter[xVal] = 1;
         }
       }
 
       let boundaryPlacements = [];
-      let lastTransitionIndex = 1;
-      if (algorithmSettings.subAnnual) {
-        for (let c = 1; c < l; c++) {
-          if (colMap[c] != colMap[c - 1]) {
-            if (c - lastTransitionIndex > 10) {
-              lastTransitionIndex = c;
-              boundaryPlacements.push(c)
-            } else {
-              lastTransitionIndex = c;
-            }
-          }
+      let prevTI = 0;
+      for (let x = 7; x < l - 2; x++) {
+        let sum = 0;
+        for (let c = -2; c <= 2; c++) {
+          let count = (counter[x + c] !== undefined) ? counter[x] : 0;
+          sum += count
         }
-      } else {
-        let boundaryVal = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert ? 1 : 0;
-        for (let c = 1; c < l; c++) {
-          if (colMap[c] != colMap[c - 1] && colMap[c] == boundaryVal) {
-            if (c - lastTransitionIndex > 20) {
-              lastTransitionIndex = c;
-              boundaryPlacements.push(c)
-            } else {
-              lastTransitionIndex = c;
-            }
-          }
-        }        
+        sum /= 5;
+
+        if (sum >= algorithmSettings.expColPercentile && (x - prevTI) > 20) {
+          prevTI = x;
+          boundaryPlacements.push(x)
+        }
       }
 
       return boundaryPlacements
@@ -925,6 +759,10 @@ function AutoRingDetection(Inte) {
         base = this.firstLatLng
       }
 
+      if ((transitions[0] * u.x) < 0) { //If point placed left of leftmost point of selection area
+        u = {x: -u.x, y: -u.y}
+      }
+
       let lng, lat, latLng, pointMarker;
       for (let point of transitions) {
         lng = base.lng + point * u.x;
@@ -935,16 +773,6 @@ function AutoRingDetection(Inte) {
         this.markers.push(pointMarker);
         pointMarker.addTo(Inte.treering.viewer)
       }
-
-      // for (let point of transitions) {
-      //   // console.log(point)
-      //   let lat = this.firstLatLng.lat + point[1] * u.y + (-point[0] + 25) * u.x;
-      //   let lng = this.firstLatLng.lng + point[1] * u.x - (-point[0] + 25) * u.y;
-      //   let latLng = L.latLng(lat, lng);
-      //   let pointMarker = L.circleMarker(latLng, {radius: 0.5, color: 'yellow'});
-      //   this.markers.push(pointMarker)
-      //   pointMarker.addTo(Inte.treering.viewer)
-      // }
     }
 
     AutoRingDetection.prototype.placePoints = function(u, boundaryPlacements) {
@@ -963,6 +791,10 @@ function AutoRingDetection(Inte) {
         base = this.secondLatLng
       } else {
         base = this.firstLatLng
+      }
+
+      if ((boundaryPlacements[0] * u.x) < 0) { //If point placed left of leftmost point of selection area
+        u = {x: -u.x, y: -u.y}
       }
 
       let lng, lat, latLng;
@@ -995,5 +827,75 @@ function AutoRingDetection(Inte) {
       let dy = (firstPixelCoords < secondPixelCoords) ? -(deltaY/numPixels * latLngPerPixel) : deltaY/numPixels * latLngPerPixel
   
       return {x: dx, y: dy}
+    }
+
+    AutoRingDetection.prototype.medianBlur = function (data, r) {
+      let h = data.length;
+      let w = data[0].length;
+
+      let intensityData = [];
+      for (let i = 0; i < h; i++) {
+        let row = [];
+        for (let j = 0; j < w; j++) {
+          let pixel = data[i][j]
+          row.push((pixel[0] + pixel[1] + pixel[2]) / 3)
+        }
+        intensityData.push(row)
+      }
+
+      let blurData = []
+      for (let i = 0; i < h; i++) {
+        let row = [];
+        for (let j = 0; j < w; j++) {
+          let window = [];
+          for (let ry = -r; ry <= r; ry++) {
+            for (let rx = -r; rx <= r; rx++) {
+              let ny = i + ry;
+              if (ny < 0) {
+                ny = 0;
+              } else if (ny >= h) {
+                ny = h - 1
+              }
+
+              let nx = j + rx;
+              if (nx < 0) {
+                nx = 0
+              } else if (nx >= w) {
+                nx = w - 1
+              }
+
+              window.push(intensityData[ny][nx])
+            }
+          }
+
+          window.sort((a,b) => a - b)
+          let median = window[window.length/2 - 0.5];
+          row.push(median)
+        }
+        blurData.push(row)
+      }
+
+      return blurData
+    }
+
+    AutoRingDetection.prototype.toggleDialogTools = function(disableState) {
+      toolIDs = ["zoom-input", "zoom-change-check", "height-input", "page-turn-2", "path-reset"];
+      for (let id of toolIDs) {
+        $("#auto-ring-detection-" + id).prop('disabled', disableState);
+      }
+
+      if (disableState) {
+        $("#auto-ring-detection-img-adjust-toggle").off("click")
+      } else {
+        $("#auto-ring-detection-img-adjust-toggle").on("click", () => {
+          if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
+            Inte.treering.imageAdjustmentInterface.imageAdjustment.disable();
+            this.dialog._container.style.left = "50px"
+          } else {
+            Inte.treering.imageAdjustmentInterface.imageAdjustment.enable();
+            this.dialog._container.style.left = "300px"          
+          }
+        })
+      }
     }
   }

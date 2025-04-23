@@ -17,7 +17,6 @@
     "leaflet-fullscreen": "~1.0.2",
     "leaflet-minimap": "~3.4.0",
     "leaflet-modal": "~0.1.3",
-    "ml-savitzky-golay-generalized": "^4.2.0",
     "simple-smoothing-spline": "^0.1.7"
   },
   "scripts": {
