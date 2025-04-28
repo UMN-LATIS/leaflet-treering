@@ -1066,7 +1066,7 @@ nextHighestPowerOfTwo: function(x) {
 		}
 
 		//Go to top left corner
-		let pt = L.point(imin * tileSize.x, jmin * tileSize.y);
+		let pt = L.point((imin + imax)/2 * tileSize.x, (jmin + jmax)/2 * tileSize.y);
 		let ll = this._map.unproject(pt, zoom);
 		this._map.flyTo(ll, zoom, {animate: false})
 

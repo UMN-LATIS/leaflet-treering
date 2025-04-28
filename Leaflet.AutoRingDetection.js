@@ -12,18 +12,21 @@ function AutoRingDetectionInterface(Lt) {
 /**
  * Use GL Layer filters and ring detection algorithms to automatically
  * place points.
+ * @constructor
+ * 
  * @param {LTreering} Lt - Leaflet treering object
  */
 function AutoRingDetection(Inte) {
     this.active = false;
     this.userImageSettings = {};
   
-    this.markers = [];
+    this.markers = [];  //Temporary markers for adjusting automatic detection settings
     this.firstLatLng = null;
     this.secondLatLng = null;
     this.detectionHeight = 0;
     this.detectionAreaOutline = [L.polyline([])];
 
+    //Expandable list of detection methods and their inputs
     this.detectionMethods = [
       {
         method: "classification",
@@ -32,13 +35,13 @@ function AutoRingDetection(Inte) {
         options: [
           {
             name: 'boundaryBrightness',
-            label: "Boundary Brightness",
+            label: "Boundary Intensity",
             id: 'auto-ring-detection-boundary-brightness',
             min: 0,
             max: 255,
             step: 1,
             defaultValue: 50,
-            description: "An estimate for the average RGB of a boundary or latewood segment."
+            description: "An estimate for the average RGB (intensity) to separate earlywood and latewood segments."
           },
           {
             name: "classColPercentile",
@@ -48,10 +51,11 @@ function AutoRingDetection(Inte) {
             max: 1,
             step: 0.01,
             defaultValue: 0.25,
-            description: "The number of edges that indicate a change in brightness, based on the area height. Typically works best form 0.10-0.25 and 0.75 to 0.90.",
+            description: "The number of lines that indicate a change in intensity, as a percent of the area height, required to place a boundary. Typically works best form 0.10-0.25 and 0.75 to 0.90.",
           }
         ],
-        radioLabel: "Pixel Classification"
+        radioLabel: "Pixel Classification",
+        radioInfo: "Classifies pixels as low or high intensity, based on the intensity input. Searches for changes in intensity to place boundary points."
       },
       {
         method: "exponential-smoothing",
@@ -66,7 +70,7 @@ function AutoRingDetection(Inte) {
             max: 1,
             step: 0.01,
             defaultValue: 0.75,
-            description: "A coefficient to determine the 'smoothness' of each 1D line. Values closer to 0 create smoother data."
+            description: "A coefficient to determine the 'smoothness' of data when searching for edges. Values closer to 0 create smoother data."
           },
           {
             name: "expExtremaThresh",
@@ -76,69 +80,22 @@ function AutoRingDetection(Inte) {
             max: 1,
             step: 0.01,
             defaultValue: 0.2,
-            description: "A threshold to determine the magnitude of a change in brightness to detect an edge."
+            description: "Determines the magnitude of change in intensity required to detect an edge."
           },
           {
             name: "expColPercentile",
-            label: "Column Percentile",
+            label: "Edge Count",
             id: "auto-ring-detection-exp-col-percentile",
             min: 0,
             max: 50,
             step: 1,
             defaultValue: 20,
-            description: "The number of edges that indicate a change in brightness, based on the area height. Typically works best form 0.10-0.25 and 0.75 to 0.90.",
+            description: "The number of detected edges to indicate a boundary point.",
           }
         ],
-        radioLabel: "Exp Smoothing Edge Detection"
+        radioLabel: "Edge Detection",
+        radioInfo: "Uses exponential smoothing to perform edge detection along the axis defined by the start/end points. Searches for areas with high number of edges"
       },
-      // {
-      //   method: "gaussian-smoothing",
-      //   divId: "auto-ring-detection-gauss-detection-settings",
-      //   radioLabel: "Gaussian Edge Detection",
-      //   functionCall: (data, algoSettings) => {return this.gaussSmoothingDetection(data, algoSettings)},
-      //   options: [
-      //     {
-      //       name: "gaussKernelSize",
-      //       label: "Kernel Size",
-      //       id: "auto-ring-detection-gauss-kernel-size",
-      //       min: 3,
-      //       max: 20,
-      //       step: 1,
-      //       defaultValue: 5,
-      //       description: "The size of the kernel used for gaussian bluring."
-      //     },
-      //     {
-      //       name: "sigma",
-      //       label: "Blue Standard Deviation",
-      //       id: "auto-ring-detection-gauss-sigma",
-      //       min: 1,
-      //       max: 30,
-      //       step: 1,
-      //       defaultValue: 5,
-      //       description: "Standard deviation used in the calculation of kernel values."
-      //     },
-      //     {
-      //       name: "gaussExtremaThresh",
-      //       label: "Brightness Change Threshold",
-      //       id: "auto-ring-detection-gauss-extrema-threshold",
-      //       min: 0,
-      //       max: 1,
-      //       step: 0.01,
-      //       defaultValue: 0.2,
-      //       description: "A threshold to determine the magnitude of a change in brightness to detect an edge."
-      //     },
-      //     {
-      //       name: "gaussColPercentile",
-      //       label: "Column Percentile",
-      //       id: "auto-ring-detection-gauss-col-percentile",
-      //       min: 0,
-      //       max: 1,
-      //       step: 0.01,
-      //       defaultValue: 0.30,
-      //       description: "The number of edges that indicate a change in brightness, based on the area height. Typically works best form 0.10-0.25 and 0.75 to 0.90.",
-      //     }
-      //   ]
-      // }
     ]
   
     this.btn = new Button(
@@ -148,9 +105,14 @@ function AutoRingDetection(Inte) {
       () => { this.disable() }
     );
   
+    /**
+     * Turn on tool, either set preferences or outline area to detect from
+     * @function
+     */
     AutoRingDetection.prototype.enable = function () {
       this.active = true;
-      this.userImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON()
+      //Save user's settings before changing to detection settings
+      this.userImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON();
       this.btn.state('active');
 
       $(document).on('keyup', e => {
@@ -160,19 +122,22 @@ function AutoRingDetection(Inte) {
         }
       });
   
+      //Only need to get annual/subannual, forward/backward measurements if not already set
       if (Inte.treering.data.points.length == 0) {
         this.setMeasurementPreferences();
       } 
       else {
-        this.selectPoints(false)
+        this.detectionAreaSelection(false)
       }
     }
 
+    /**
+     * Turn off tool, remove/revert visuals
+     * @function
+     */
     AutoRingDetection.prototype.disable = function () {
       if (this.active) {
         if (this.dialog) {
-          // this.dialog.unlock();
-          // this.dialog.close();
           this.dialog.remove();
         };
   
@@ -183,7 +148,7 @@ function AutoRingDetection(Inte) {
           Inte.treering.imageAdjustmentInterface.imageAdjustment.disable()
         }
 
-        // Inte.treering.viewer.getContainer().removeEventListener("click", autoDetectPlacment)
+        //Remove visuals
         for (let line of this.detectionAreaOutline) {
           line.remove()
         }
@@ -191,19 +156,35 @@ function AutoRingDetection(Inte) {
         if (this.secondPointMarker) {this.secondPointMarker.remove()}
         for (let pointMarker of this.markers) { pointMarker.remove()};
   
+        //Change back to user's saved settings
         this.tuneGLLayer(true);
 
+        //Remove visuals/event listeners from detectionAreaSelection
         if (Inte.treering.mouseLine.active) { Inte.treering.mouseLine.disable(); }
         $(Inte.treering.viewer.getContainer()).off("click")
       }
     }
 
-    AutoRingDetection.prototype.displayDialog = function (pageNumber, size = [280, 320], anchor = [50, 50]) {
-      let contentId = "AutoRingDetection-page-" + pageNumber;
+    /**
+     * Displays dialog of given page number (see html file)
+     * @function
+     * 
+     * @param {Integer} pageNumber - Integer 1-3 references which dialog to be loaded
+     * @param {Array} size - Size of dialog in form [width, height]
+     * @param {Array} anchor - Placement of dialog on map in form [x, y] (distance from top left)
+     * @returns displayed dialog and its settings
+     */
+    AutoRingDetection.prototype.displayDialog = function (pageNumber, size, anchor) {
+      let contentId = "AutoRingDetection-page-" + pageNumber; //Different dialog templates for different steps in the process
       let content = document.getElementById(contentId).innerHTML;
+      // console.log(Inte.treering.measurementOptions.subAnnual)
 
       let html;
-      if (pageNumber == 3) { //only need Handlebars for detection page
+      if (pageNumber == 2) {
+        let template = Handlebars.compile(content);
+        let subAnnual = Inte.treering.measurementOptions.subAnnual
+        html = template({subAnnual: subAnnual})
+      } else if (pageNumber == 3) {
         let template = Handlebars.compile(content);
         html = template({detectionMethods: this.detectionMethods}) 
       } else {
@@ -217,27 +198,39 @@ function AutoRingDetection(Inte) {
         'initOpen': true,
         'position': 'topleft',
         'minSize': [0, 0]
-       }).setContent(html).addTo(Inte.treering.viewer);
+      }).setContent(html).addTo(Inte.treering.viewer);
+
+       //Set recommended method
+       if (Inte.treering.measurementOptions.subAnnual) {
+        $("#exponential-smoothing-rec").hide();
+        $("#classification-rec").show();
+       } else {
+        $("#exponential-smoothing-rec").show();
+        $("#classification-rec").hide();
+       }
       return this.dialog;
     };
 
+    /**
+     * Adjusts image settings to preset settings
+     * @function
+     * 
+     * @param {Boolean} reset - Reverts to user's selected settings if true, uses preset settings if false
+     */
     AutoRingDetection.prototype.tuneGLLayer = function (reset) {
       if (reset) {
+        //Reset back to saved settings
         Inte.treering.imageAdjustmentInterface.imageAdjustment.loadImageSettings(this.userImageSettings);
       } else {
+        //Set pre-determined image settings (pretty arbitrary)
         Inte.treering.imageAdjustmentInterface.imageAdjustment.setDetectionSettings();
       }
     };
 
-    AutoRingDetection.prototype.displayDirections = function (pageNumber) {
-      this.displayDialog(pageNumber)
-      $(".auto-ring-detection-page-turn").on("click", () => {
-        pageNumber++;
-        this.dialog.remove()
-        this.displayDirections(pageNumber);
-      }) 
-    }
-
+    /**
+     * Saves measurement preferences (annual vs. subannual, forward vs. backward)
+     * @function
+     */
     AutoRingDetection.prototype.setMeasurementPreferences = function () {
       this.displayDialog(1, [275, 275], [50, 50])
       $("#auto-ring-detection-page-turn-1").on("click", () => {
@@ -261,17 +254,21 @@ function AutoRingDetection(Inte) {
           Inte.treering.measurementOptions.subAnnual = false;
         }
         Inte.treering.metaDataText.updateText();
-        this.selectPoints()
+        this.detectionAreaSelection()
       })
     }
 
-    AutoRingDetection.prototype.selectPoints = async function() {
+    /**
+     * Determine area to search for boundaries through user input
+     * @function
+     */
+    AutoRingDetection.prototype.detectionAreaSelection = async function() {
       if (this.dialog) {
         this.dialog.remove()
       }
       this.displayDialog(2, [260, 275], [50, 50]);
       Inte.treering.viewer.getContainer().style.cursor = 'pointer';
-      this.tuneGLLayer(false);
+      this.tuneGLLayer(false); //Turn on default detection image settings
 
       $("#auto-ring-detection-img-adjust-toggle").on("click", () => {
         if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
@@ -303,6 +300,7 @@ function AutoRingDetection(Inte) {
       $(Inte.treering.viewer.getContainer()).on("click", e => {
         clickCount++;
         switch(clickCount) {
+          //Place first point, store latlng, and turn on hbar
           case 1: {
             first = e;
             this.firstLatLng = Inte.treering.viewer.mouseEventToLatLng(first);
@@ -318,6 +316,7 @@ function AutoRingDetection(Inte) {
             Inte.treering.mouseLine.from(this.firstLatLng)
             break;
           }
+          //Place second point, store latlng, turn off hbar, create area outline
           case 2: {
             $("#auto-ring-detection-page-turn-2").prop("disabled", false);
             Inte.treering.viewer.getContainer().style.cursor = 'default';
@@ -337,6 +336,7 @@ function AutoRingDetection(Inte) {
             let corners = this.getDetectionGeometry(this.detectionHeight, zoom).corners;
             this.detectionAreaOutline = this.createOutline(corners);
   
+            //Event listeners for moving first & second point, height input
             this.firstPointMarker.on("dragend", () => {
               for (let line of this.detectionAreaOutline) {
                 line.remove()
@@ -403,6 +403,7 @@ function AutoRingDetection(Inte) {
         Inte.treering.mouseLine.disable();
       })
 
+      //Get max and min zoom values for slider
       $("#auto-ring-detection-zoom-input").prop('max', Inte.treering.getMaxNativeZoom())
       $("#auto-ring-detection-zoom-input").prop('min', Inte.treering.viewer.getMinZoom())
       $("#auto-ring-detection-zoom-input").prop('value', zoom)
@@ -428,6 +429,10 @@ function AutoRingDetection(Inte) {
         let detectionGeometry = this.getDetectionGeometry(this.detectionHeight, zoom);
         $("#auto-ring-detection-load-fix").show()
 
+        //Hide image adjust for less clutter
+        Inte.treering.imageAdjustmentInterface.imageAdjustment.disable();
+        this.dialog._container.style.left = "50px"
+
         //Disable buttons
         this.toggleDialogTools(true);
 
@@ -438,13 +443,15 @@ function AutoRingDetection(Inte) {
         if (data === "sizeError") {//data returns false if area size too big
           $("#auto-ring-detection-area-error").show()
           $("auto-ring-detection-load-fix").hide()
-          thiss.toggleDialogTools(false);
+          thiss.toggleDialogTools(false); //Enable buttons
         } else if (data === "exitError") {
           this.toggleDialogTools(false);
           $("auto-ring-detection-load-fix").hide()
         }
         else {
-          this.tuneGLLayer(true);
+          this.tuneGLLayer(true); //Return to user's saved settings
+
+          //Remove visuals and image adjust dialog
           this.firstPointMarker.remove();
           this.secondPointMarker.remove();
 
@@ -453,12 +460,17 @@ function AutoRingDetection(Inte) {
           }
 
           Inte.treering.viewer.getContainer().style.cursor = 'default';
-          this.automaticDetection(data, zoom)
+          this.bounaryPlacementAdjustments(data, zoom)
         }
       });
     }
 
-    AutoRingDetection.prototype.automaticDetection = function(rawData, zoom) {
+    /**
+     * 
+     * @param {Array} rawData - 2 Dimensional matrix of RGB data
+     * @param {Integer} zoom - Zoom level from user input in previous step
+     */
+    AutoRingDetection.prototype.bounaryPlacementAdjustments = function(rawData, zoom) {
       this.dialog.remove()
       this.displayDialog(3, [280, 340], [50, 50]);
       let u = this.getDirectionVector(zoom);
@@ -473,22 +485,24 @@ function AutoRingDetection(Inte) {
         let blurRadius = $("#auto-ring-detection-blur-input").val();
         data = this.medianBlur(rawData, blurRadius);
 
-        let algoSettings = {
-          subAnnual: Inte.treering.measurementOptions.subAnnual,
-          zoom: zoom,
-        };
-        for (let option of currentAlgo.options) {
-          algoSettings[option.name] = $("#"+option.id).val();
-          $("#"+ option.id + "-text").html($("#" + option.id).val()); //Issue here
-        }
-
-        boundaryPlacements = currentAlgo.functionCall(data, algoSettings);
-        this.showAutomaticPlacements(u, boundaryPlacements);
-
-        if (boundaryPlacements && boundaryPlacements.length > 0) {
-          $("#auto-ring-detection-page-turn-3").prop("disabled", false)
-        } else {
-          $("#auto-ring-detection-page-turn-3").prop("disabled", true)
+        if (currentAlgo) {
+          let algoSettings = {
+            subAnnual: Inte.treering.measurementOptions.subAnnual,
+            zoom: zoom,
+          };
+          for (let option of currentAlgo.options) {
+            algoSettings[option.name] = $("#"+option.id).val();
+            $("#"+ option.id + "-text").html($("#" + option.id).val()); //Issue here
+          }
+  
+          boundaryPlacements = currentAlgo.functionCall(data, algoSettings);
+          this.showAutomaticPlacements(u, boundaryPlacements);
+  
+          if (boundaryPlacements && boundaryPlacements.length > 0) {
+            $("#auto-ring-detection-page-turn-3").prop("disabled", false)
+          } else {
+            $("#auto-ring-detection-page-turn-3").prop("disabled", true)
+          }
         }
       })
 
@@ -567,22 +581,25 @@ function AutoRingDetection(Inte) {
       });
     }
 
-    AutoRingDetection.prototype.createOutline = function(corners, rect = true) {
-      if (rect) {
-        let rectColor = $("#brightness-slider").val() > 150 ? "black" : "white"
-        return [L.polygon(corners, {color: rectColor, weight: 3}).addTo(Inte.treering.viewer)]
-      }
-
-      else {
-        let startPointBar = L.polyline([corners[0], corners[1]], {color: "white", weight: 3}).addTo(Inte.treering.viewer);
-        let endPointBar = L.polyline([corners[2], corners[3]], {color: "black", weight: 3}).addTo(Inte.treering.viewer);
-        let mainBar = L.polyline([this.firstLatLng, this.secondLatLng], {color: "gray", weight: 3}).addTo(Inte.treering.viewer);
-
-        return [startPointBar, endPointBar, mainBar]
-      }
-
+    /**
+     * Creates rectangle showing detection area, with its color based on brightness
+     * @function
+     * 
+     * @param {Array} corners - Array with 4 latLng objects
+     * @returns - Leaflet polygon, for future removal
+     */
+    AutoRingDetection.prototype.createOutline = function(corners) {
+      let rectColor = $("#brightness-slider").val() > 150 ? "black" : "white"
+      return [L.polygon(corners, {color: rectColor, weight: 3}).addTo(Inte.treering.viewer)]
     }
 
+    /**
+     * Finds corners of detection area and angle between start/end points
+     * 
+     * @param {Integer} detectionHeight - Height of detection area
+     * @param {Integer} zoom - Map zoom level
+     * @returns - Object with corners, angle of detection area
+     */
     AutoRingDetection.prototype.getDetectionGeometry = function (detectionHeight, zoom) {
       let firstPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.firstLatLng, zoom).floor();
       let secondPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.secondLatLng, zoom).floor();
@@ -618,6 +635,13 @@ function AutoRingDetection(Inte) {
       return {corners: corners, angle: -angle}
     }
 
+    /**
+     * Classifies each pixel as light or dark, uses the count of each column to find boundaries
+     * 
+     * @param {Array} imageData - Processed (blurred) 2-D array of pixels, represented by avg rgb
+     * @param {Object} algorithmSettings - Contains detection settings relevant to algorithm
+     * @returns Array of boundary placements
+     */
     AutoRingDetection.prototype.classificationDetection = function(imageData, algorithmSettings) {
       let boundaryBrightness = algorithmSettings.boundaryBrightness;
       let colPercentile = algorithmSettings.classColPercentile;
@@ -644,6 +668,8 @@ function AutoRingDetection(Inte) {
         colMap.push(colClass);
       }
       
+      let minDist = 18 - 4 *(Inte.treering.getMaxNativeZoom() - algorithmSettings.zoom);
+      minDist = minDist < 4 ? 4 : minDist;
 
       let boundaryPlacements = [];
       let nextTransitionDTL = null;
@@ -651,7 +677,7 @@ function AutoRingDetection(Inte) {
       for (let i = 1; i < l; i++) {
         if (algorithmSettings.subAnnual) {
           if (colMap[i] != colMap[i-1]) {
-            if (i - lastTransitionIndex > 10) {
+            if (i - lastTransitionIndex > minDist) {
               lastTransitionIndex = i;
               if (colMap[i] == 1 && (nextTransitionDTL || nextTransitionDTL == null)) {
                 boundaryPlacements.push(i)
@@ -673,6 +699,14 @@ function AutoRingDetection(Inte) {
       return boundaryPlacements
     }
 
+    /**
+     * Uses exponential smoothing across rows to find edges, counts edges vertically to detect boundaries
+     * @function
+     * 
+     * @param {Array} imageData - Processed (blurred) 2-D array of pixels, represented by avg rgb
+     * @param {*} algorithmSettings - Contains detection settings relevant to algorithm
+     * @returns Array of boundary placements
+     */
     AutoRingDetection.prototype.exponentialSmoothingDetection = function(imageData, algorithmSettings) {
       let alpha = algorithmSettings.alpha;
       let invert = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert;
@@ -700,7 +734,7 @@ function AutoRingDetection(Inte) {
         let expExtremaThresh = algorithmSettings.expExtremaThresh;
 
         let minT = Math.min(...d1.slice(5))* expExtremaThresh * 0.75;
-        let maxT = Math.max(...d1.slice(5))* expExtremaThresh;
+        let maxT = Math.max(...d1.slice(5))* expExtremaThresh * 0.75;
         for (let j = 6; j < l; j++) {
           if (d2[j-1] * d2[j] < 0) {
             if (algorithmSettings.subAnnual) {
@@ -709,10 +743,10 @@ function AutoRingDetection(Inte) {
                 j += 3;
               }
             } else {
-              if (invert && d1[j] <= minT) {
+              if (invert && d1[j] >= maxT) {
                 ts.push([i, j-1]);
                 j += 3;
-              } else if (!invert && d1[j] >= maxT) {
+              } else if (!invert && d1[j] <= minT) {
                 ts.push([i, j-1])
                 j += 3;
               }
@@ -731,8 +765,11 @@ function AutoRingDetection(Inte) {
         }
       }
 
-      let boundaryPlacements = [];
-      let prevTI = 0;
+      let minDist = 40 - 5 *(Inte.treering.getMaxNativeZoom() - algorithmSettings.zoom);
+      minDist = minDist < 8 ? 8 : minDist;
+
+      let bounaryPlacements = []
+      let localStart = 0, localMax = [0, 0];
       for (let x = 7; x < l - 2; x++) {
         let sum = 0;
         for (let c = -2; c <= 2; c++) {
@@ -741,17 +778,34 @@ function AutoRingDetection(Inte) {
         }
         sum /= 5;
 
-        if (sum >= algorithmSettings.expColPercentile && (x - prevTI) > 20) {
-          prevTI = x;
-          boundaryPlacements.push(x)
+
+        if (sum >= algorithmSettings.expColPercentile) {
+          if (localStart === 0) {
+            localStart = x;
+            localMax = [x, sum]
+          } else if (x > localStart + minDist) {
+            bounaryPlacements.push(localMax[0])
+            localStart = x;
+            localMax = [x, sum]
+          } else if (x < localStart + 30 && sum >= localMax[1]) {
+            localMax = [x, sum]
+          }
         }
       }
+      bounaryPlacements.push(localMax[0])
 
-      return boundaryPlacements
+      return bounaryPlacements
     }
 
     
-    AutoRingDetection.prototype.showAutomaticPlacements = function(u, transitions) {
+    /**
+     * Places temporary markers representing boundary placements
+     * @function
+     * 
+     * @param {Object} u - unit vector of form {x: x, y: y} that represents direction from start to end point
+     * @param {Array} boundaryPlacements - Boundary placements from detection algorithms
+     */
+    AutoRingDetection.prototype.showAutomaticPlacements = function(u, boundaryPlacements) {
       let base;
       if (this.firstLatLng.lng > this.secondLatLng.lng) {
         base = this.secondLatLng
@@ -759,12 +813,12 @@ function AutoRingDetection(Inte) {
         base = this.firstLatLng
       }
 
-      if ((transitions[0] * u.x) < 0) { //If point placed left of leftmost point of selection area
+      if ((boundaryPlacements[0] * u.x) < 0) { //If point placed left of leftmost point of selection area
         u = {x: -u.x, y: -u.y}
       }
 
       let lng, lat, latLng, pointMarker;
-      for (let point of transitions) {
+      for (let point of boundaryPlacements) {
         lng = base.lng + point * u.x;
         lat = base.lat + point * u.y;
 
@@ -775,6 +829,13 @@ function AutoRingDetection(Inte) {
       }
     }
 
+    /**
+     * Saves boundary placements and saves accompanying data
+     * @function
+     * 
+     * @param {Object} u - unit vector of form {x: x, y: y} that represents direction from start to end point
+     * @param {Array} boundaryPlacements - Boundary placements from detection algorithms
+     */
     AutoRingDetection.prototype.placePoints = function(u, boundaryPlacements) {
       // let anchor = this.dialog.options.anchor;
       this.dialog.remove();
@@ -814,6 +875,13 @@ function AutoRingDetection(Inte) {
       this.disable();
     }
   
+    /**
+     * Calculates the unit vector with direction from first to second point
+     * @function
+     * 
+     * @param {Integer} zoom - Zoom level from user input
+     * @returns object in the form {x: int, y: int} representing the unit vector with the direction from the first to the second placed point
+     */
     AutoRingDetection.prototype.getDirectionVector = function(zoom) {
       let firstPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.firstLatLng, zoom).floor();
       let secondPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.secondLatLng, zoom).floor();
@@ -829,6 +897,14 @@ function AutoRingDetection(Inte) {
       return {x: dx, y: dy}
     }
 
+    /**
+     * Uses a median blur on the image data to reduce noise when searching for boundaries
+     * @function
+     * 
+     * @param {Array} data - Matrix of pixels in image, with each pixel represented by (r, g, b)
+     * @param {Integer} r - Blur radius for kernel size, r=1 uses a 3x3 kernel, r=2 uses 5x5 etc.
+     * @returns 2D matrix of pixels, represented by avg rgb after blurring
+     */
     AutoRingDetection.prototype.medianBlur = function (data, r) {
       let h = data.length;
       let w = data[0].length;
@@ -878,6 +954,12 @@ function AutoRingDetection(Inte) {
       return blurData
     }
 
+    /**
+     * Disables or enables tools for detectionAreaSelection, used when collecting image data
+     * @function
+     * 
+     * @param {Boolean} disableState - Boolean stating whether or not dialog tools are to be enabled or disabled
+     */
     AutoRingDetection.prototype.toggleDialogTools = function(disableState) {
       toolIDs = ["zoom-input", "zoom-change-check", "height-input", "page-turn-2", "path-reset"];
       for (let id of toolIDs) {

@@ -38,10 +38,18 @@
     </div>
 
     <div id="auto-ring-detection-directions-text" hidden>
-        <p style="font-size: 14; margin: 0">1. Edit image settings to create a high contrast between boundaries</p>
-        <p style="font-size: 14; margin: 0">2. Select a tile level that balances detail and accuracy</p>
-        <p style="font-size: 14; margin: 0">3. Place the start and end points of the collection area such that the connecting line is perpendicular to boundaries</p>
-        <p style="font-size: 14; margin: 0">4. Select an area height that minimizes noise</p>
+        <h5 style="margin: 0; font-weight: bold;">1. Adjust Image Settigns</h6>
+        {{#if subAnnual}}
+        <p style="font-size: 13; margin: 0">Either earlywood or latewood segments should be homogenized</p>
+        {{else}}
+        <p style="font-size: 13; margin: 0">Boundaries should have a high contrast with other features, and unnecessary details should be hidden</p>
+        {{/if}}
+        <h5 style="margin: 0; font-weight: bold;">2. Select Tile Level (Zoom)</h6>
+        <p style="font-size: 13; margin: 0">High zoom levels often result in precise placements, but detect unwanted structures. Lower zoom levels better detect boundaries with less precision.</p>
+        <h5 style="margin: 0; font-weight: bold;">3. Place Start & End Points</h6>
+        <p style="font-size: 13; margin: 0">Choose the area to seach for boundaries. The line between the start and end points must be orthogonal to boundaries.</p>
+        <h5 style="margin: 0; font-weight: bold;">4. Select Area Height</h6>
+        <p style="font-size: 13; margin: 0">Select the tallest area such that the section of each boundary is perpendicular to the main path.</p>
     </div>
 
     <hr style="border-top: 2px solid black; margin: 10 0 10 0">
@@ -76,14 +84,15 @@
     <div class="auto-ring-detection-input-div" style="justify-content: left;">
         <input type="radio" name="ard-algorithm" class="auto-ring-detection-algo-radio" value={{this.method}}>
         <label class="radio-label">{{this.radioLabel}}</label>
+        <p id="{{this.method}}-rec" style="margin: 0 0 0 0; font-size: 12px;" hidden>*Recommended</p>
     </div>
     {{/each}}
 
     <hr style="border-top: 2px solid black; margin: 6 0 6 0">
 
     <div class="auto-ring-detection-input-div" style="justify-content: left;">
-        <label for="auto-ring-detection-blur-input" id="auto-ring-detection-blur-input-label">Blur Radius (1-4)</label>
-        <input type="number" id="auto-ring-detection-blur-input" min="1" max="4" step="1" value="1">
+        <label for="auto-ring-detection-blur-input" id="auto-ring-detection-blur-input-label">Blur Radius (1-5)</label>
+        <input type="number" id="auto-ring-detection-blur-input" min="1" max="5" step="1" value="1">
     </div>
     
     <hr style="border-top: 2px solid black; margin: 6 0 6 0">
