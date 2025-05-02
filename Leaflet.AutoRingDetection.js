@@ -110,8 +110,6 @@ function AutoRingDetection(Inte) {
      * @function
      */
     AutoRingDetection.prototype.enable = function () {
-      console.log(Inte.treering.data)
-
       this.active = true;
       //Save user's settings before changing to detection settings
       this.userImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON();
@@ -179,7 +177,6 @@ function AutoRingDetection(Inte) {
     AutoRingDetection.prototype.displayDialog = function (pageNumber, size, anchor) {
       let contentId = "AutoRingDetection-page-" + pageNumber; //Different dialog templates for different steps in the process
       let content = document.getElementById(contentId).innerHTML;
-      // console.log(Inte.treering.measurementOptions.subAnnual)
 
       let html;
       if (pageNumber == 2) {
@@ -712,6 +709,7 @@ function AutoRingDetection(Inte) {
      * @returns Array of boundary placements
      */
     AutoRingDetection.prototype.exponentialSmoothingDetection = function(imageData, algorithmSettings) {
+      $("#auto-ring-detection-exp-col-percentile").prop('max', Math.ceil(imageData.length/2.5))
       let alpha = algorithmSettings.alpha;
       let invert = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert;
 
@@ -739,7 +737,7 @@ function AutoRingDetection(Inte) {
 
         let minT = Math.min(...d1.slice(5))* expExtremaThresh * 0.75;
         let maxT = Math.max(...d1.slice(5))* expExtremaThresh * 0.75;
-        for (let j = 6; j < l; j++) {
+        for (let j = 15; j < l; j++) {
           if (d2[j-1] * d2[j] < 0) {
             if (algorithmSettings.subAnnual) {
               if (d1[j] <= minT || d1[j] >= maxT) {
@@ -747,12 +745,10 @@ function AutoRingDetection(Inte) {
                 j += 3;
               }
             } else {
-              if (invert && d1[j] <= maxT) {
+              if (invert && d1[j] >= maxT) { //for GR... <= minT, oposite for !invert
                 ts.push([i, j-1]);
-                j += 3;
-              } else if (!invert && d1[j] >= minT) {
+              } else if (!invert && d1[j] <= minT) {
                 ts.push([i, j-1])
-                j += 3;
               }
             }
           }
@@ -777,11 +773,10 @@ function AutoRingDetection(Inte) {
       for (let x = 7; x < l - 2; x++) {
         let sum = 0;
         for (let c = -1; c <= 1; c++) {
-          let count = (counter[x + c] !== undefined) ? counter[x] : 0;
+          let count = (counter[x + c] !== undefined) ? counter[x + c] : 0;
           sum += count
         }
         sum /= 3;
-
 
         if (sum >= algorithmSettings.edgeCount) {
           if (localStart === 0) {
@@ -865,9 +860,6 @@ function AutoRingDetection(Inte) {
         u = {x: -u.x, y: -u.y}
       }
 
-      // console.log(Inte.treering.undo)
-      // console.log(Inte.treering.data.year)
-
 
       let lng, lat, latLng;
       let i = 0;
@@ -882,8 +874,6 @@ function AutoRingDetection(Inte) {
         i++;
       }
       Inte.treering.visualAsset.reload()
-      // Inte.treering.undo.push();
-      // console.log(Inte.treering.undo)
 
       this.disable();
     }
