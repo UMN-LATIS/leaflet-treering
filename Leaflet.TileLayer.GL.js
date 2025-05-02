@@ -849,7 +849,7 @@ nextHighestPowerOfTwo: function(x) {
 		let content = document.getElementById("image-data-collection-dialog").innerHTML;
 
 		let exitDialog = L.control.dialog({
-			'size': [380, 60],
+			'size': [385, 60],
 			'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
 			'anchor': [25, 600],
 			'initOpen': true,
@@ -991,12 +991,13 @@ nextHighestPowerOfTwo: function(x) {
 
 		//Recursive function to grab and paste tiles onto canvas, then collect data
 		let pasteTilesToCanvas = function(i, j, GLLayerObject, resolveCallback) {
-			if (exit) {
+			$("#image-data-collection-exit").on("click", () => {
 				resolveCallback(false);
-				return
-			}
+				exit = true;
+			})
 			for (i; i <= imax; i++) {
 				for (j; j <= jmax; j++) {
+					if (exit) { return }
 					let tileCenter = L.point(tileSize.x * (i + 0.5), tileSize.y * (j + 0.5));
 
 					//Find projections of tile to check for collisions
@@ -1017,7 +1018,7 @@ nextHighestPowerOfTwo: function(x) {
 								GLLayerObject._map.removeEventListener("moveend", placeholder);
 								setTimeout(() => {
 									tile = GLLayerObject._tiles[GLLayerObject._tileCoordsToKey(coords)]
-									if (tile !== undefined && !tile.loading) {
+									if (tile !== undefined && tile.loaded) {
 										pasteTilesToCanvas(i, j, GLLayerObject, resolveCallback);
 									} else {
 										GLLayerObject.addEventListener("load", function placeholder2() {

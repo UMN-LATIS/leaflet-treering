@@ -488,7 +488,7 @@ function MeasurementData (dataObject, Lt) {
       this.index = this.points.length;
       let lastIndex = this.points.length - 1;
       // If only a start point exists, reset data.
-      if (!this.points[lastIndex].year) {
+      if (!this.points[lastIndex].year && this.points.length === 0) {
         this.year = 0;
         this.earlywood = true;
       } else {

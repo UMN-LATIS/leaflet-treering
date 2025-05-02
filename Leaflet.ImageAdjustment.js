@@ -143,8 +143,8 @@ function ImageAdjustment(Inte) {
   ImageAdjustment.prototype.enable = function() {
     this.open = true;
 
-    this.dialog.lock();
     this.dialog.open();
+    $(this.dialog._closeNode).hide()
 
     this.btn.state('active');
     if(!this.eventListenersEnabled) {

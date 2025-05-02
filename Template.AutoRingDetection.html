@@ -1,29 +1,28 @@
 <script id="AutoRingDetection-page-1" type="text/x-handlebars-template">
-    <p>Select measurement preferences:</p>
+    <h4 style="font-weight: bold;">Measurement Preferences</p>
     <div id="auto-ring-detection-measurement-direction-div">
-        <h5 style="margin: 0 0 0 0">Measurement Direction</h5>
-        <input type="radio" name="auto-ring-detection-measurement-direction" id="auto-ring-detection-forward-radio">
-        <label for="auto-ring-detection-forward-radio">Forward</label>
+        <h5 style="margin: 0 0 0 0; font-size: 16px; text-decoration: underline;">Measurement Direction</h5>
+        <input type="radio" name="auto-ring-detection-measurement-direction" id="auto-ring-detection-forward-radio" checked>
+        <label for="auto-ring-detection-forward-radio" class="ard-measurement-preferences-label">Forward</label>
         <br>
 
         <input type="radio" name="auto-ring-detection-measurement-direction" id="auto-ring-detection-backward-radio">
-        <label for="auto-ring-detection-backward-radio">Backward</label>
+        <label for="auto-ring-detection-backward-radio" class="ard-measurement-preferences-label">Backward</label>
         <br>
 
-        <h5 style="margin: 0 0 0 0">Measurement Interval</h5>
-        <input type="radio" name="auto-ring-detection-measurement-interval" id="auto-ring-detection-annual-radio">
-        <label for="auto-ring-detection-annual-radio">Annual</label>
+        <h5 style="margin: 0 0 0 0; font-size: 16px; text-decoration: underline;">Measurement Interval</h5>
+        <input type="radio" name="auto-ring-detection-measurement-interval" id="auto-ring-detection-annual-radio" checked>
+        <label for="auto-ring-detection-annual-radio" class="ard-measurement-preferences-label">Annual</label>
         <br>
 
         <input type="radio" name="auto-ring-detection-measurement-interval" id="auto-ring-detection-subannual-radio">
-        <label for="auto-ring-detection-subannual-radio">Subannual</label>
+        <label for="auto-ring-detection-subannual-radio" class="ard-measurement-preferences-label">Subannual</label>
         <br>
 
-        <h5 style="margin: 0 0 0 0">Start Year</h5>
-        <input type="number"  id="auto-ring-detection-start-year-input" min="0" value="1">
+        <label for="auto-ring-detection-start-year-input" style="margin: 0 0 0 0; font-size: 16px; font-weight: normal; text-decoration: underline;">Start Year:</label>
+        <input type="number"  id="auto-ring-detection-start-year-input" value="1900">
     </div>
-    <!-- <button class="auto-ring-detection-page-turn">Next</button> -->
-     <button id="auto-ring-detection-page-turn-1">Save Options</button>
+    <button id="auto-ring-detection-page-turn-1" class="ard-button" style="margin-top: 6px; width: fit-content;">Save Options</button>
 </script>
 
 <script id="AutoRingDetection-page-2" type="text/x-handlebars-template">
@@ -55,22 +54,22 @@
     <hr style="border-top: 2px solid black; margin: 10 0 10 0">
 
     <div class="auto-ring-detection-input-div">
-        <p style="margin: 0 5 0 0; font-weight: bold;">Tile Level:</p>
+        <p style="margin: 0 5 0 0; font-weight: bold; font-size: 14.5px;">Tile Level:</p>
         <input type="range" id="auto-ring-detection-zoom-input" step=1 style="width: 70%;">
     </div>
 
     <div class="auto-ring-detection-input-div" style="justify-content: left; margin-bottom: 5px;">
         <p style="margin: 0 5 0 0;">Zoom on change:</p>
-        <input type="checkbox" id="auto-ring-detection-zoom-change-check" checked>
+        <input type="checkbox" id="auto-ring-detection-zoom-change-check" style="margin: 0;" checked>
     </div> 
 
-    <label for="auto-ring-detection-height-input">Collection height (10-800):</label>
-    <input type="number" id="auto-ring-detection-height-input" min="10" max="800" value="100">
+    <label for="auto-ring-detection-height-input" style="margin: 0; font-size: 14.5px;">Collection height (10-800):</label>
+    <input type="number" id="auto-ring-detection-height-input" min="10" max="800" value="100" style="width: 50px">
 
     <hr style="border-top: 2px solid black; margin: 10 0 10 0">
 
-    <button id="auto-ring-detection-page-turn-2" disabled>Save Placements</button>
-    <button id="auto-ring-detection-path-reset">Reset Placement</button>
+    <button id="auto-ring-detection-page-turn-2" class="ard-button" disabled>Save Placements</button>
+    <button id="auto-ring-detection-path-reset" class="ard-button">Reset Placement</button>
 
     <p id="auto-ring-detection-area-error" style="font-weight: bold;" hidden>*Data collection area too large, please adjust settings to reduce area</p>
     <p id="auto-ring-detection-load-fix" hidden>**If tiles not loading, try switching to tree layer then back to GL layer</p>
@@ -78,12 +77,12 @@
 </script>
 
 <script id="AutoRingDetection-page-3" type="text/x-handlebars-template">
-    <p>Choose/adjust algorithm</p>
+    <h5 style="font-weight: bold; font-size: 16px; margin-top: 0; margin-bottom: 5px;">Adjust Automatic Placements</h4>
 
     {{#each detectionMethods}}
     <div class="auto-ring-detection-input-div" style="justify-content: left;">
         <input type="radio" name="ard-algorithm" class="auto-ring-detection-algo-radio" value={{this.method}}>
-        <label class="radio-label">{{this.radioLabel}}</label>
+        <label class="ard-algo-radio-label">{{this.radioLabel}}</label>
         <p id="{{this.method}}-rec" style="margin: 0 0 0 0; font-size: 12px;" hidden>*Recommended</p>
     </div>
     {{/each}}
@@ -92,7 +91,7 @@
 
     <div class="auto-ring-detection-input-div" style="justify-content: left;">
         <label for="auto-ring-detection-blur-input" id="auto-ring-detection-blur-input-label">Blur Radius (1-5)</label>
-        <input type="number" id="auto-ring-detection-blur-input" min="1" max="5" step="1" value="1">
+        <input type="number" id="auto-ring-detection-blur-input" min="1" max="5" step="1" value="3">
     </div>
     
     <hr style="border-top: 2px solid black; margin: 6 0 6 0">
@@ -101,15 +100,15 @@
     <div id={{this.divId}} hidden>
         {{#each this.options}}
         <div style="display: flex; justify-content: left;">
-            <label for="{{this.id}}">{{this.label}}</label>
-            <i class="fa fa-info-circle auto-ring-detection-slider-info-toggle" id="{{this.id}}-info-toggle" aria-hidden="true" style="font-size: 16; margin: 1.5 0 0 5;"></i>
+            <label for="{{this.id}}" class="ard-options-label">{{this.label}}</label>
+            <i class="fa fa-info-circle auto-ring-detection-slider-info-toggle" id="{{this.id}}-info-toggle" aria-hidden="true" style="font-size: 16; margin: 1.5 0 0 5; padding-top: 2px;"></i>
         </div>
         <div class="auto-ring-detection-input-div">
             <input type="range" class="auto-ring-detection-algo-settings" id={{this.id}} min={{this.min}} max={{this.max}} step={{this.step}} value={{this.defaultValue}}>
             <p id ={{this.id}}-text> {{this.defaultValue}}</p>
         </div>
         <div id="{{this.id}}-info-toggle-text" hidden>
-            <hr style="border-top: 2px solid black; margin: 10 0 10 0">
+            <!-- <hr style="border-top: 2px solid black; margin: 10 0 10 0"> -->
             <p style="font-size: 14; margin: 0">{{this.description}}</p>
             <hr style="border-top: 2px solid black; margin: 10 0 10 0">
         </div>
@@ -117,18 +116,18 @@
     </div>
     {{/each}}
 
-    <button id="auto-ring-detection-page-turn-3" disabled>Save Automatic Placements</button>
+    <button id="auto-ring-detection-page-turn-3" class="ard-button" disabled>Save Automatic Placements</button>
 </script>
 
 <script id="AutoRingDetection-page-4" type="text/x-handlebars-template">
     <p>Adjust individual Points</p>
     <p>Controls: ...</p>
-    <button class="auto-ring-detection-confirm-points">Confirm Ring Placements</button>
+    <button class="auto-ring-detection-confirm-points ard-button">Confirm Ring Placements</button>
 </script>
 
 <script id="image-data-collection-dialog" type="text/x-handlebars-template">
     <div style="display: flex; justify-content: space-between; align-content:flex-start;">
         <h4 style="width: 200px; margin: 4px 0 4px 0;">Collecting Image Data...</h4>
-        <button type="button" style="width: 145px; height: 30px; font-weight: bold; font-size: 14px;" id="image-data-collection-exit">Exit Data Collection</button>
+        <button type="button" class="ard-button" style="width: 145px; height: 30px; font-weight: bold; font-size: 13.5px;" id="image-data-collection-exit">Exit Data Collection</button>
     </div>
 </script>

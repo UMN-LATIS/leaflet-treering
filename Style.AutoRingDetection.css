@@ -1,8 +1,9 @@
-label {
-    margin: 0;
+.ard-measurement-preferences-label {
+    font-size: 16px;
+    font-weight: normal;
 }
 
-.radio-label {
+.ard-algo-radio-label {
     margin: 0px 0px 0px 5px;
     font-size: 14px;
 }
@@ -10,11 +11,36 @@ label {
 .auto-ring-detection-input-div {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: start;
+    height: 22px;
 }
 
 #auto-ring-detection-blur-input-label {
     margin-right: 3px;
     font-size: 14px;
     font-weight: bold;
+}
+
+.ard-button {
+	border-radius: 5px;
+	background-color: #e0e0e0;
+    border-width: 0;
+    font-size: 14px;
+    font-weight: bold;
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+#auto-ring-detection-start-year-input {
+    width: 60px;
+}
+
+#auto-ring-detection-start-year-input {
+    font-size: 14px;
+    font-weight: normal;
+}
+
+.ard-options-label {
+    font-size: 14px;
+    margin: 0;
 }
