@@ -351,10 +351,10 @@ function ImageAdjustment(Inte) {
 
   ImageAdjustment.prototype.setDetectionSettings = function() {
     let detectionSettings = {
-      brightness: 80,
+      brightness: 100,
       contrast: 350,
       sharpness: 0,
-      emboss: 0.0,
+      emboss: 0,
       saturate: 100,
       edgeDetect: 0.05,
     }

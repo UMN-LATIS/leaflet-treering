@@ -1056,11 +1056,11 @@ nextHighestPowerOfTwo: function(x) {
 			}
 
 			// Visualize collection area
-			ctx.resetTransform();
-			ctx.beginPath()
-			ctx.strokeStyle = "blue"
-			ctx.rect(offset.x, offset.y -tileSize.x*(startTileCoords.y - jmin), w, h)
-			ctx.stroke();
+			// ctx.resetTransform();
+			// ctx.beginPath()
+			// ctx.strokeStyle = "blue"
+			// ctx.rect(offset.x, offset.y -tileSize.x*(startTileCoords.y - jmin), w, h)
+			// ctx.stroke();
 
 			//getImageData doesn't use ctx transformations
 			resolveCallback(ctx.getImageData(offset.x, offset.y -tileSize.y*(startTileCoords.y - jmin), w, h));
@@ -1100,9 +1100,26 @@ nextHighestPowerOfTwo: function(x) {
 				g = data[index + 1];
 				b = data[index + 2];
 				index += 4;
-				colorMatrix[row].push([r,b,g])
+				colorMatrix[row].push([r,g,b])
 			}
 		}
+
+		// document.getElementById('ard-download').addEventListener('click', function(e) {
+		// 	console.log('listened')
+		// 	// Convert our canvas to a data URL
+		// 	let canvasUrl = canvas.toDataURL();
+		// 	// Create an anchor, and set the href value to our data URL
+		// 	const createEl = document.createElement('a');
+		// 	createEl.href = canvasUrl;
+		
+		// 	// This is the name of our downloaded file
+		// 	createEl.download = "download-this-canvas";
+		
+		// 	// Click the download button, causing a download, and then remove it
+		// 	createEl.click();
+		// 	createEl.remove();
+		// });
+		
 
 		// document.getElementById("ard-canvas").append(canvas)
 		// document.getElementById("imageMap").append(canvas)

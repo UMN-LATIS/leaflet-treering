@@ -40,7 +40,7 @@ function AutoRingDetection(Inte) {
             min: 0,
             max: 255,
             step: 1,
-            defaultValue: 50,
+            defaultValue: 90,
             description: "An estimate for the average RGB (intensity) to separate earlywood and latewood segments. Low values represent darker segments, and high values represent light segements."
           },
           {
@@ -110,6 +110,7 @@ function AutoRingDetection(Inte) {
      * @function
      */
     AutoRingDetection.prototype.enable = function () {
+      // console.log(Inte.treering.baseLayer["GL Layer"])
       this.active = true;
       //Save user's settings before changing to detection settings
       this.userImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON();
@@ -459,7 +460,9 @@ function AutoRingDetection(Inte) {
           }
 
           Inte.treering.viewer.getContainer().style.cursor = 'default';
+          // let bData = this.medianBlur(data, 3);
           this.adjustAutoPlacements(data, zoom)
+          // this.getDist(data)
         }
       });
     }
@@ -474,7 +477,7 @@ function AutoRingDetection(Inte) {
 
       dialogSize = Inte.treering.measurementOptions.subAnnual ? [280, 280] : [280, 320];
       this.displayDialog(3, dialogSize, [50, 50]);
-      let u = this.getDirectionVector(zoom);
+      let u = this.getUnitVector(this.firstLatLng, this.secondLatLng, zoom);
       let currentAlgo;
       let boundaryPlacements;
 
@@ -650,153 +653,255 @@ function AutoRingDetection(Inte) {
       let l = imageData[0].length;
       let h = imageData.length;
 
-      let colMap = [];
-      for (let j = 0; j < l; j++) {
-        let colSum = 0;
-        for (let i = 0; i < h; i++) {
-          let avg = imageData[i][j];
-          let classification;
-          if (avg >= boundaryBrightness + 5) {
-            classification = 1;
-          } else if (avg <= boundaryBrightness - 5) {
-            classification = 0
-          } else {
-            classification = 0.5
-          }
-          colSum += classification;
-        }
-        let colClass = colSum >= (1 - colPercentile) * h ? 1 : 0;
-        colMap.push(colClass);
-      }
-      
-      let minDist = 18 - 4 *(Inte.treering.getMaxNativeZoom() - algorithmSettings.zoom);
-      minDist = minDist < 4 ? 4 : minDist;
-
-      let boundaryPlacements = [];
-      let nextTransitionDTL = null;
-      let lastTransitionIndex = 1;
-      for (let i = 1; i < l; i++) {
-        if (algorithmSettings.subAnnual) {
-          if (colMap[i] != colMap[i-1]) {
-            if (i - lastTransitionIndex > minDist) {
-              lastTransitionIndex = i;
-              if (colMap[i] == 1 && (nextTransitionDTL || nextTransitionDTL == null)) {
-                boundaryPlacements.push(i)
-                nextTransitionDTL = false;
-              } else if (colMap[i] == 0 && (!nextTransitionDTL || nextTransitionDTL == null)) {
-                boundaryPlacements.push(i)
-                nextTransitionDTL = true;
-              }              
-            } else {
-              lastTransitionIndex = i;
-            }
-          }
-        } else if (colMap[i] == 0 && colMap[i-1] != 0) {
-          i += 40 - 2 * (Inte.treering.getMaxNativeZoom() - algorithmSettings.zoom);
-          boundaryPlacements.push(i)
-        }
-      }
-
-      return boundaryPlacements
-    }
-
-    /**
-     * Uses exponential smoothing across rows to find edges, counts edges vertically to detect boundaries
-     * @function
-     * 
-     * @param {Array} imageData - Processed (blurred) 2-D array of pixels, represented by avg rgb
-     * @param {*} algorithmSettings - Contains detection settings relevant to algorithm
-     * @returns Array of boundary placements
-     */
-    AutoRingDetection.prototype.exponentialSmoothingDetection = function(imageData, algorithmSettings) {
-      $("#auto-ring-detection-exp-col-percentile").prop('max', Math.ceil(imageData.length/2.5))
-      let alpha = algorithmSettings.alpha;
-      let invert = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert;
-
-      let l = imageData[0].length;
-      let h = imageData.length;
-
-      let ts = [];
-      for (let i = 0; i < h; i ++) {
-        let f = [imageData[0][0]], d1 = [0], d2 = [0];
+      let transitions = [];
+      let trs = {};
+      let prevClass, currentClass;
+      for (let i = 0; i < h; i++) {
+        prevClass = imageData[i][0] <= boundaryBrightness ? "dark" : "bright"
         for (let j = 1; j < l; j++) {
-
-          let avg = imageData[i][j]
-          f.push(avg)
-
-          let diff = avg - f[j-1];
-          let smoothDiff = alpha * diff + (1 - alpha) * d1[j-1];
-          d1.push(smoothDiff)
-
-          diff = smoothDiff - d1[j-1]
-          smoothDiff = alpha * diff + (1 - alpha) * d2[j - 1]
-          d2.push(smoothDiff)
+          let intensity = imageData[i][j];
+          currentClass = intensity <= boundaryBrightness ? "dark" : "bright";
+          if (currentClass !== prevClass) {
+            transitions.push([i, j]);
+            trs[[i,j]] = currentClass
+          }
+          prevClass = currentClass;
         }
+      }
 
-        let expExtremaThresh = algorithmSettings.expExtremaThresh;
+      for (let j = 0; j < l; j++) {
+        prevClass = imageData[0][j] <= boundaryBrightness ? "dark" : "bright";
+        for (let i = 1; i < h; i++) {
+          let intensity = imageData[i][j];
+          currentClass = intensity <= boundaryBrightness ? "dark" : "bright";
+          if (currentClass !== prevClass && !([i, j] in transitions)) {
+            transitions.push([i, j]);
+            trs[[i,j]] = "vertical"
+          }
+          prevClass = currentClass;
+        }
+      }
 
-        let minT = Math.min(...d1.slice(5))* expExtremaThresh * 0.75;
-        let maxT = Math.max(...d1.slice(5))* expExtremaThresh * 0.75;
-        for (let j = 15; j < l; j++) {
-          if (d2[j-1] * d2[j] < 0) {
-            if (algorithmSettings.subAnnual) {
-              if (d1[j] <= minT || d1[j] >= maxT) {
-                ts.push([i, j-1])
-                j += 3;
+      let goodEs = []
+      let edge;
+      for (let point of transitions) {
+        if (point[0] === 1) {
+          edge = this.traceEdge(trs, point, h)
+          for (let p of edge) {
+            delete trs[p]
+          }
+          // goodEs = goodEs.concat(edge)
+          if (edge.length > 0) {
+            goodEs.push(edge)
+          }
+          
+        }
+      }
+      console.log(goodEs)
+      // this.traceEdge(trs, transitions[0])
+      // console.log(trs)
+
+      let u = this.getUnitVector(this.firstLatLng, this.secondLatLng, algorithmSettings.zoom)
+      u = {x: u.x, y: u.y}
+      // if ((transitions[0][0] * u.x) < 0) { //If point placed left of leftmost point of selection area
+      //   u = {x: -u.x, y: -u.y}
+      // }
+      for (m of this.markers) {
+        m.remove()
+      }
+
+      let colorDict = {
+        "dark": "blue",
+        "bright": "red",
+        "vertical": "purple"
+      }
+      this.markers = [];
+      // for (let point of transitions) {
+      //   // let color = trs[point] === "dark" ? 'blue' : 'red'
+      //   // let color = colorDict[trs[point]]
+      //   // console.log(point)
+      //   let lat = this.firstLatLng.lat + point[1] * u.y + (-point[0] + h/2) * u.x;
+      //   let lng = this.firstLatLng.lng + point[1] * u.x - (-point[0] + h/2) * u.y;
+      //   let latLng = L.latLng(lat, lng);
+      //   let pointMarker = L.circleMarker(latLng, {radius: 0.5, color: "yellow"});
+      //   this.markers.push(pointMarker)
+      //   pointMarker.addTo(Inte.treering.viewer)
+      // }
+      // for (let point of goodEs) {
+      //   let lat = this.firstLatLng.lat + point[1] * u.y + (-point[0] + h/2) * u.x;
+      //   let lng = this.firstLatLng.lng + point[1] * u.x - (-point[0] + h/2) * u.y;
+      //   let latLng = L.latLng(lat, lng);
+      //   let pointMarker = L.circleMarker(latLng, {radius: 0.5, color: "blue"});
+      //   this.markers.push(pointMarker)
+      //   pointMarker.addTo(Inte.treering.viewer)
+      // }
+      
+      //show ring boundaries
+      for (let edge of goodEs) {
+        let edgeLatLngs = [];
+        for (let point of edge) {
+          let lat = this.firstLatLng.lat + point[1] * u.y + (-point[0] + h/2) * u.x;
+          let lng = this.firstLatLng.lng + point[1] * u.x - (-point[0] + h/2) * u.y;
+          let latLng = L.latLng(lat, lng);
+          edgeLatLngs.push(latLng)
+
+        }
+        let edgeLine = L.polyline(edgeLatLngs, {color: "blue"});
+        this.markers.push(edgeLine);
+        edgeLine.addTo(Inte.treering.viewer)
+      }
+
+      let start = [h/2, 0]
+      let count = 0
+      let boundaryPlacements = []
+      let lineIntersects = []
+      for (let edge of goodEs) {
+        //find largest x
+        let maxX = 0
+        for (let point of edge) {
+          maxX = point[1] > maxX ? point[1] : maxX;
+        }
+        console.log(maxX)
+
+        let top = edge[0];
+        let bottom = edge[edge.length - 1]
+        let dx = bottom[1] - top[1];
+        let dy = bottom[0] - top[0];
+
+        let magnitude = Math.sqrt(dx**2 + dy**2)
+        let ox = dy/magnitude
+        let oy = -dx/magnitude
+
+        let continueSearch = true
+        let c = 0
+        let intersect = [0, 0]
+        let newLine = false
+        let nx = 0, ny = 0;
+        while (continueSearch && nx <= maxX) {
+          ny = Math.floor(start[0] + c * oy)
+          nx = Math.floor(start[1] + c * ox)
+          //if outside bounds, move points to top/bottom of edge
+          //need to put points in different list
+          //Need to handle no point found
+          if (ny < 0) {
+            start = goodEs[count - 1].slice(-1)[0]
+            ny = Math.floor(start[0] + c * oy)
+            nx = Math.floor(start[1] + c * ox)
+            newLine = true
+          } else if (ny > h) {
+            start = goodEs[count - 1][0]
+            ny = Math.floor(start[0] + c * oy)
+            nx = Math.floor(start[1] + c * ox)
+            newLine = true
+          }
+
+          for (let point of edge) {
+            if (point[0] === ny && point[1] === nx) {
+              intersect = [ny, nx]
+              continueSearch = false;
+              if (newLine) {
+                boundaryPlacements.push(lineIntersects)
+                lineIntersects = [start, intersect]
+              } else {
+                lineIntersects.push(intersect)
               }
-            } else {
-              if (invert && d1[j] >= maxT) { //for GR... <= minT, oposite for !invert
-                ts.push([i, j-1]);
-              } else if (!invert && d1[j] <= minT) {
-                ts.push([i, j-1])
-              }
+
+
+              let nLat = this.firstLatLng.lat + nx * u.y - (ny - h/2) * u.x
+              let nLng = this.firstLatLng.lng + nx * u.x + (ny - h/2) * u.y
+              let ll = L.latLng(nLat, nLng)
+              this.markers.push(L.circleMarker(ll, {color: "red", radius: 1}).addTo(Inte.treering.viewer))
+              break          
             }
           }
+          c++; 
         }
+
+        //if no point found, place a point on the top or bottom of edge
+        if (nx > maxX) {
+          intersect = ny > h ? goodEs[count].slice(-1)[0] : goodEs[count][0]
+          lineIntersects.push(intersect)
+          // console.log(count, 'missing point')
+          // let top = goodEs[count][0]
+          // lineIntersects.push(top)
+
+          let nLat = this.firstLatLng.lat + intersect[1] * u.y - (intersect[0] - h/2) * u.x
+          let nLng = this.firstLatLng.lng + intersect[1] * u.x + (intersect[0] - h/2) * u.y
+          let ll = L.latLng(nLat, nLng)
+          this.markers.push(L.circleMarker(ll, {color: "red", radius: 1}).addTo(Inte.treering.viewer))
+        }
+        start = intersect
+        count++
       }
+      boundaryPlacements.push(lineIntersects)
+      console.log(boundaryPlacements)
 
-      let counter = {}
-      for (let coord of ts) {
-        let xVal = coord[1];
-        if (counter[xVal]) {
-          counter[xVal]++;
-        } else {
-          counter[xVal] = 1;
-        }
-      }
+      // for (let line of boundaryPlacements) {
+      //     let lng, lat, latLng;
+      //     let i = 0;
+      //     for (let point of line) {
+      //       lat = this.firstLatLng.lat + point[1] * u.y + (-point[0] + h/2) * u.x;
+      //       lng = this.firstLatLng.lng + point[1] * u.x - (-point[0] + h/2) * u.y;
+      //       latLng = L.latLng(lat, lng);
 
-      let minDist = 40 - 5 *(Inte.treering.getMaxNativeZoom() - algorithmSettings.zoom);
-      minDist = minDist < 8 ? 8 : minDist;
+      //       let start = (i === 0) ? true : false;
+      //       Inte.treering.data.newPoint(start, latLng, true);
+      //       Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index-1, latLng)
+      //       i++;
+      //     }
+      //     Inte.treering.visualAsset.reload()
+      // }
+      return boundaryPlacements
 
-      let bounaryPlacements = []
-      let localStart = 0, localMax = [0, 0];
-      for (let x = 7; x < l - 2; x++) {
-        let sum = 0;
-        for (let c = -1; c <= 1; c++) {
-          let count = (counter[x + c] !== undefined) ? counter[x + c] : 0;
-          sum += count
-        }
-        sum /= 3;
+      // let colMap = [];
+      // for (let j = 0; j < l; j++) {
+      //   let colSum = 0;
+      //   for (let i = 0; i < h; i++) {
+      //     let avg = imageData[i][j];
+      //     let classification;
+      //     if (avg >= boundaryBrightness + 5) {
+      //       classification = 1;
+      //     } else if (avg <= boundaryBrightness - 5) {
+      //       classification = 0
+      //     } else {
+      //       classification = 0.5
+      //     }
+      //     colSum += classification;
+      //   }
+      //   let colClass = colSum >= (1 - colPercentile) * h ? 1 : 0;
+      //   colMap.push(colClass);
+      // }
+      
+      // let minDist = 18 - 4 *(Inte.treering.getMaxNativeZoom() - algorithmSettings.zoom);
+      // minDist = minDist < 4 ? 4 : minDist;
 
-        if (sum >= algorithmSettings.edgeCount) {
-          if (localStart === 0) {
-            localStart = x;
-            localMax = [x, sum]
-          } else if (x > localStart + minDist) {
-            bounaryPlacements.push(localMax[0])
-            localStart = x;
-            localMax = [x, sum]
-          } else if (x < localStart + 30 && sum >= localMax[1]) {
-            localMax = [x, sum]
-          }
-        }
-      }
-      if (localMax[0] !== 0)
-      bounaryPlacements.push(localMax[0])
+      // let boundaryPlacements = [];
+      // let nextTransitionDTL = null;
+      // let lastTransitionIndex = 1;
+      // for (let i = 1; i < l; i++) {
+      //   if (algorithmSettings.subAnnual) {
+      //     if (colMap[i] != colMap[i-1]) {
+      //       if (i - lastTransitionIndex > minDist) {
+      //         lastTransitionIndex = i;
+      //         if (colMap[i] == 1 && (nextTransitionDTL || nextTransitionDTL == null)) {
+      //           boundaryPlacements.push(i)
+      //           nextTransitionDTL = false;
+      //         } else if (colMap[i] == 0 && (!nextTransitionDTL || nextTransitionDTL == null)) {
+      //           boundaryPlacements.push(i)
+      //           nextTransitionDTL = true;
+      //         }              
+      //       } else {
+      //         lastTransitionIndex = i;
+      //       }
+      //     }
+      //   } else if (colMap[i] == 0 && colMap[i-1] != 0) {
+      //     i += 40 - 2 * (Inte.treering.getMaxNativeZoom() - algorithmSettings.zoom);
+      //     boundaryPlacements.push(i)
+      //   }
+      // }
 
-      return bounaryPlacements
+      // return boundaryPlacements
     }
-
     
     /**
      * Places temporary markers representing boundary placements
@@ -806,27 +911,27 @@ function AutoRingDetection(Inte) {
      * @param {Array} boundaryPlacements - Boundary placements from detection algorithms
      */
     AutoRingDetection.prototype.showAutomaticPlacements = function(u, boundaryPlacements) {
-      let base;
-      if (this.firstLatLng.lng > this.secondLatLng.lng) {
-        base = this.secondLatLng
-      } else {
-        base = this.firstLatLng
-      }
+      // let base;
+      // if (this.firstLatLng.lng > this.secondLatLng.lng) {
+      //   base = this.secondLatLng
+      // } else {
+      //   base = this.firstLatLng
+      // }
 
-      if ((boundaryPlacements[0] * u.x) < 0) { //If point placed left of leftmost point of selection area
+      if ((boundaryPlacements[0][1] * u.x) < 0) { //If point placed left of leftmost point of selection area
         u = {x: -u.x, y: -u.y}
       }
 
-      let lng, lat, latLng, pointMarker;
-      for (let point of boundaryPlacements) {
-        lng = base.lng + point * u.x;
-        lat = base.lat + point * u.y;
+      // let lng, lat, latLng, pointMarker;
+      // for (let point of boundaryPlacements) {
+      //   lng = base.lng + point * u.x;
+      //   lat = base.lat + point * u.y;
 
-        latLng = L.latLng(lat, lng);
-        pointMarker = L.circleMarker(latLng, {radius: 2, color: 'yellow'});
-        this.markers.push(pointMarker);
-        pointMarker.addTo(Inte.treering.viewer)
-      }
+      //   latLng = L.latLng(lat, lng);
+      //   pointMarker = L.circleMarker(latLng, {radius: 2, color: 'yellow'});
+      //   this.markers.push(pointMarker);
+      //   pointMarker.addTo(Inte.treering.viewer)
+      // }
     }
 
     /**
@@ -839,41 +944,59 @@ function AutoRingDetection(Inte) {
     AutoRingDetection.prototype.placePoints = function(u, boundaryPlacements) {
       Inte.treering.undo.push();
 
-      // let anchor = this.dialog.options.anchor;
-      this.dialog.remove();
-      // this.displayDialog(4, [280, 320], anchor)
-      this.dialog = null;
+      for (let line of boundaryPlacements) {
+        let lng, lat, latLng;
+        let i = 0;
+        for (let point of line) {
+          lat = this.firstLatLng.lat + point[1] * u.y + (-point[0] + this.detectionHeight/2) * u.x;
+          lng = this.firstLatLng.lng + point[1] * u.x - (-point[0] + this.detectionHeight/2) * u.y;
+          latLng = L.latLng(lat, lng);
 
-      if (!Inte.treering.measurementOptions.forwardDirection) {
-        boundaryPlacements = boundaryPlacements.reverse()
+          let start = (i === 0) ? true : false;
+          Inte.treering.data.newPoint(start, latLng, true);
+          Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index-1, latLng)
+          i++;
+        }
+        Inte.treering.visualAsset.reload()
       }
 
+      // // let anchor = this.dialog.options.anchor;
+      // this.dialog.remove();
+      // // this.displayDialog(4, [280, 320], anchor)
+      // this.dialog = null;
 
-      let base;
-      if (this.firstLatLng.lng > this.secondLatLng.lng) {
-        base = this.secondLatLng
-      } else {
-        base = this.firstLatLng
-      }
-
-      if ((boundaryPlacements[0] * u.x) < 0) { //If point placed left of leftmost point of selection area
-        u = {x: -u.x, y: -u.y}
-      }
+      // if (!Inte.treering.measurementOptions.forwardDirection) {
+      //   boundaryPlacements = boundaryPlacements.reverse()
+      // }
 
 
-      let lng, lat, latLng;
-      let i = 0;
-      for (let point of boundaryPlacements) {
-        lng = base.lng + point *u.x;
-        lat = base.lat + point * u.y;
-        latLng = L.latLng(lat, lng);
+      // let base;
+      // if (this.firstLatLng.lng > this.secondLatLng.lng) {
+      //   base = this.secondLatLng
+      // } else {
+      //   base = this.firstLatLng
+      // }
 
-        let start = (i === 0) ? true : false;
-        Inte.treering.data.newPoint(start, latLng, true);
-        Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index-1, latLng)
-        i++;
-      }
-      Inte.treering.visualAsset.reload()
+      // if ((boundaryPlacements[0] * u.x) < 0) { //If point placed left of leftmost point of selection area
+      //   u = {x: -u.x, y: -u.y}
+      // }
+
+
+      // let lng, lat, latLng;
+      // let i = 0;
+      // for (let point of boundaryPlacements) {
+      //   // lng = base.lng + point *u.x;
+      //   // lat = base.lat + point * u.y;
+      //   lat = this.firstLatLng.lat + point[1] * u.y + (-point[0] + 100/2) * u.x;
+      //   lng = this.firstLatLng.lng + point[1] * u.x - (-point[0] + 100/2) * u.y;
+      //   latLng = L.latLng(lat, lng);
+
+      //   let start = (i === 0) ? true : false;
+      //   Inte.treering.data.newPoint(start, latLng, true);
+      //   Inte.treering.visualAsset.newLatLng(Inte.treering.data.points, Inte.treering.data.index-1, latLng)
+      //   i++;
+      // }
+      // Inte.treering.visualAsset.reload()
 
       this.disable();
     }
@@ -885,9 +1008,9 @@ function AutoRingDetection(Inte) {
      * @param {Integer} zoom - Zoom level from user input
      * @returns object in the form {x: int, y: int} representing the unit vector with the direction from the first to the second placed point
      */
-    AutoRingDetection.prototype.getDirectionVector = function(zoom) {
-      let firstPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.firstLatLng, zoom).floor();
-      let secondPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(this.secondLatLng, zoom).floor();
+    AutoRingDetection.prototype.getUnitVector = function(ll1, ll2, zoom) {
+      let firstPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(ll1, zoom).floor();
+      let secondPixelCoords = Inte.treering.baseLayer["GL Layer"]._map.project(ll2, zoom).floor();
   
       let deltaX = secondPixelCoords.x - firstPixelCoords.x;
       let deltaY = secondPixelCoords.y - firstPixelCoords.y;
@@ -897,7 +1020,7 @@ function AutoRingDetection(Inte) {
       let dx = -deltaX/numPixels * latLngPerPixel;
       let dy = deltaY/numPixels * latLngPerPixel;
   
-      return {x: dx, y: dy}
+      return {x: -dx, y: -dy}
     }
 
     /**
@@ -982,5 +1105,149 @@ function AutoRingDetection(Inte) {
           }
         })
       }
+    }
+
+    AutoRingDetection.prototype.getDist = function(data) {
+      let h = data.length;
+      let w = data[0].length;
+      let counts = {
+        'red': {},
+        'green': {},
+        'blue': {},
+        'avg': {},
+      }
+
+      let r,g,b,avg;
+      for (let i = 0; i < h; i++) {
+        for (let j = 0; j < w; j++) {
+          let pixel = data[i][j];
+          r = pixel[0];
+          g = pixel[1];
+          b = pixel[2];
+          avg = Math.round((r + g + b)/3);
+
+          if (counts['red'][r]) {
+            counts['red'][r]++
+          } else {
+            counts['red'][r] = 1;
+          }
+
+          if (counts['green'][g]) {
+            counts['green'][g]++
+          } else {
+            counts['green'][g] = 1;
+          }
+
+          if (counts['blue'][b]) {
+            counts['blue'][b]++
+          } else {
+            counts['blue'][b] = 1;
+          }
+
+          if (counts['avg'][avg]) {
+            counts['avg'][avg]++
+          } else {
+            counts['avg'][avg] = 1;
+          }
+
+          // if (counts[val]) {
+          //   counts[val]++
+          // } else {
+          //   counts[val] = 1
+          // }
+        }
+      }
+
+      let out = "val\tr\tg\tb\tavg\n";
+      for (let x = 0; x <= 255; x++) {
+        let rCount = counts['red'][x] ? counts['red'][x] : 0;
+        let gCount = counts['green'][x] ? counts['green'][x] : 0;
+        let bCount = counts['blue'][x] ? counts['blue'][x] : 0;
+        let avgCount = counts['avg'][x] ? counts['avg'][x] : 0;
+        out += x + "\t" + rCount + "\t" + gCount + "\t" + bCount + "\t" + avgCount + "\n"
+      }
+      // for (let x = 0; x <= 255; x++) {
+      //   let count = counts[x] ? counts[x] : 0;
+      //   out += x + "\t" + count + "\n";
+      // }
+      console.log(out)
+    }
+
+    AutoRingDetection.prototype.traceEdge = function(transitions, start, h) {
+      let edge = {};
+      edge[start] = true;
+      let edgeArray = [];
+      let paths = [];
+      let point = start;
+      let edgeEnd = false;
+      let bottomY = 0, topY = 0;
+      let leftChecker = {};
+
+      while (!edgeEnd) {
+        for (let x = -1; x <= 1; x++) {
+          for (let y = -1; y <= 1; y++) {
+            let check = [point[0] + y, point[1] + x]
+            if (transitions[check] && edge[check] !== true) {
+              if (check[0] > bottomY) {
+                bottomY = check[0]
+              }
+              if (check[0] > topY && check[1] > start[1] + 12) {
+                topY = check[0]
+              }
+              edge[check] = true;
+              edgeArray.push(check);
+              if (check[0] > h - 2) {
+                edgeEnd = true;
+              } else {
+                paths.push(check)
+              }
+            }
+          }
+        }
+        if (paths.length == 0) {
+          edgeEnd = true;
+        } else {
+          point = paths.pop();
+        }
+      }
+
+      for (let edge of edgeArray) {
+        if (!leftChecker[edge[0]]) {
+          leftChecker[edge[0]] = edge[1]
+        } else if (leftChecker[edge[0]] > edge[1]){
+          
+        }
+      }
+
+      // if (bottomY > h - 10 || topY < 10) {
+      if (bottomY > h - 10) {
+        return edgeArray
+      } else {
+        return []
+      }
+    }
+
+    AutoRingDetection.prototype.printData = function(data) {
+      let rOut = "";
+      let gOut = "";
+      let bOut = "";
+
+      let h = data.length;
+      let w = data[0].length;
+      for (let i = 0; i < h; i++) {
+        for (let j = 0; j < w - 1; j++) {
+          let pixel = data[i][j];
+          rOut += pixel[0] + "\t";
+          gOut += pixel[1] + "\t";
+          bOut += pixel[2] + "\t";
+        }
+        rOut += data[i][w-1][0] + "\n"
+        gOut += data[i][w-1][1] + "\n"
+        bOut += data[i][w-1][2] + "\n"
+      }
+
+      console.log(rOut)
+      console.log(gOut)
+      console.log(bOut)
     }
   }

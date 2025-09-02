@@ -10,7 +10,7 @@ if(typeof require !== "undefined") var L = require('leaflet')
 			attributionControl: false,
 			detectRetina: true,
 			edgeBufferTiles: 1,
-			tileType: "tiled"
+			tileType: 'tiled'
 		},
 
 		initialize: function(tileLoadFunction, options) {
@@ -29,8 +29,6 @@ if(typeof require !== "undefined") var L = require('leaflet')
 	
 	getTileUrl: function(coords, tile){
 		this._loadFunction(coords, tile);
-		// console.log("tile info");
-		// console.log(tile.src);
         return tile;
 	},
 	
@@ -46,21 +44,24 @@ if(typeof require !== "undefined") var L = require('leaflet')
 				done(error, tile);
 			}
 		})(done, error, tile);
+
 		this._loadFunction(coords, tile);
-		if(this._imageSize !== undefined && this.options.tileType == "iiif") {
+		if(this._imageSize !== undefined && this.options.tileType === 'iiif') {
 			if(this._imageSize[coords.z+1] !== undefined) {
-				console.log("Clipping tile");
+				console.log("Clipping tile")
 				var xPercentage = 100;
-				if (coords.x * this.options.tileSize + this.options.tileSize > this._imageSize[coords.z + 1].x) {
-					xPercentage = 100 - 100 * ((coords.x * this.options.tileSize + this.options.tileSize - this._imageSize[coords.z + 1].x) / this.options.tileSize);
+				
+				if(coords.x* this.options.tileSize +  this.options.tileSize > this._imageSize[coords.z+1].x) {
+					xPercentage = 100 - 100 * ((coords.x * this.options.tileSize + this.options.tileSize - this._imageSize[coords.z+1].x) / this.options.tileSize);
 				}
 				var yPercentage = 100;
-				if (coords.y * this.options.tileSize + this.options.tileSize > this._imageSize[coords.z + 1].y) {
-					yPercentage = 100 - 100 * ((coords.y * this.options.tileSize + this.options.tileSize - this._imageSize[coords.z + 1].y) / this.options.tileSize);
+				if(coords.y* this.options.tileSize +  this.options.tileSize > this._imageSize[coords.z+1].y) {
+					yPercentage =100 - 100*((coords.y* this.options.tileSize +  this.options.tileSize - this._imageSize[coords.z+1].y) / this.options.tileSize);
 				}
-				if (xPercentage < 1) xPercentage = 0;
-				if (yPercentage < 1) yPercentage = 0;
-				tile.style.clipPath = "polygon(0% 0%," + xPercentage + "% 0%," + xPercentage + "% " + yPercentage + "%, 0% " + yPercentage + "%)";
+				if(xPercentage < 1) xPercentage = 100;
+				if(yPercentage < 1) yPercentage = 100;
+				tile.style.clipPath = "polygon(0% 0%," + xPercentage  + "% 0%," + xPercentage  + "% " + yPercentage  + "%,  0% " + yPercentage  + "%)";
+
 		}
 		}
 		
