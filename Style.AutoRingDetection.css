@@ -15,6 +15,16 @@
     height: 22px;
 }
 
+.auto-ring-detection-placement-settings-div {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    height: 22px;
+    margin-right: 3px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
 #auto-ring-detection-blur-input-label {
     margin-right: 3px;
     font-size: 14px;
