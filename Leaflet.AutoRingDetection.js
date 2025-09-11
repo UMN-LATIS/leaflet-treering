@@ -649,18 +649,18 @@ function AutoRingDetection(Inte) {
         for (let i = 1; i < h; i++) {
           let intensity = imageData[i][j];
           currentClass = intensity <= globalThreshold ? "dark" : "bright";
-          if (currentClass !== prevClass && !([i, j] in transitions)) {
+          if (currentClass !== prevClass && !transitions.includes([i,j])) {
             transitions.push([i, j]);
-            trs[[i,j]] = "vertical"
+            trs[[i,j]] = currentClass
           }
           prevClass = currentClass;
         }
       }
 
-      let boundarySets = []
+      let boundarySets = [];
       let edge;
       for (let point of transitions) {
-        if (point[0] === 1) {
+        if (point[0] === 0) {
           edge = this.traceEdge(trs, point, h)
           for (let p of edge) {
             delete trs[p]
@@ -674,17 +674,19 @@ function AutoRingDetection(Inte) {
 
       let u = this.getUnitVector(this.firstLatLng, this.secondLatLng, algorithmSettings.zoom)
 
-      for (m of this.markers) {
-        m.remove()
-      }
-
-      for (line of this.edgeLines) {
-        line.remove();
+      for (let marker of this.markers) {
+        marker.remove()
       }
 
       this.markers = [];
 
-      
+      for (let point of transitions) {
+        let lat = this.firstLatLng.lat + point[1] * u.y + (-point[0] + h/2) * u.x;
+        let lng = this.firstLatLng.lng + point[1] * u.x - (-point[0] + h/2) * u.y;
+        let latLng = L.latLng(lat, lng);
+        this.markers.push(L.circleMarker(latLng, {color: "yellow", radius: "1"}).addTo(Inte.treering.viewer))
+      }
+
       //show ring boundaries
       for (let edge of boundarySets) {
         let edgeLatLngs = [];
@@ -692,11 +694,14 @@ function AutoRingDetection(Inte) {
           let lat = this.firstLatLng.lat + point[1] * u.y + (-point[0] + h/2) * u.x;
           let lng = this.firstLatLng.lng + point[1] * u.x - (-point[0] + h/2) * u.y;
           let latLng = L.latLng(lat, lng);
+
           edgeLatLngs.push(latLng)
 
         }
         this.markers.push(L.polyline(edgeLatLngs, {color: "blue"}).addTo(Inte.treering.viewer))
       }
+
+
 
       let start = [h/2, 0]
       let count = 0
@@ -723,8 +728,8 @@ function AutoRingDetection(Inte) {
         let intersect = [0, 0]
         let newLine = false
         let nx = 0, ny = 0;
-        while (continueSearch && (nx <= maxX && nx >= 0)) {
-          console.log(nx)
+        while (continueSearch && (nx <= maxX && nx >= 0) && (ny >=0 && ny <= h)) {
+          // console.log(nx, c, ox)
           ny = Math.floor(start[0] + c * oy)
           nx = Math.floor(start[1] + c * ox)
           //if outside bounds, move points to top/bottom of edge
@@ -752,7 +757,6 @@ function AutoRingDetection(Inte) {
               } else {
                 lineIntersects.push(intersect)
               }
-              break          
             }
           }
           c++; 
@@ -767,7 +771,6 @@ function AutoRingDetection(Inte) {
         count++
       }
       boundaryPlacements.push(lineIntersects)
-      console.log(boundaryPlacements)
       return boundaryPlacements
       return [[]]
     }
@@ -957,71 +960,143 @@ function AutoRingDetection(Inte) {
 
     AutoRingDetection.prototype.traceEdge = function(transitions, start, h) {
       let edge = {};
-      edge[start] = true;
-      let edgeArray = [];
+      edge[start] = 0;
+      let o2 = {0: start}
+      let graph = [];
       let paths = [];
       let point = start;
       let edgeEnd = false;
       let bottomY = 0, topY = 0;
-      let leftChecker = {};
+      let sources = [];
+      let destinations = [];
+      let currentIndex = 0;
+      let nextIndex = 1;
 
       while (!edgeEnd) {
         for (let x = -1; x <= 1; x++) {
           for (let y = -1; y <= 1; y++) {
             let check = [point[0] + y, point[1] + x]
-            if (transitions[check] && edge[check] !== true) {
-              if (check[0] > bottomY) {
-                bottomY = check[0]
-              }
-              if (check[0] > topY && check[1] > start[1] + 2) {
-                topY = check[0]
-              }
-              edge[check] = true;
-              edgeArray.push(check);
-              if (check[0] > h - 2) {
-                edgeEnd = true;
-              } else {
+            //If the check is a transition:
+            // add the connection to the array (ie show that 0 is connected to 1), but don't connect to itself
+            //Add the coordinates to the object to store the index of the point, if it hasn't already been added
+            if (transitions[check]) {
+              if (typeof(edge[check]) !== "number") {
+                edge[check] = nextIndex;
+                o2[nextIndex] = check
                 paths.push(check)
+                if (check[0] > bottomY) { bottomY = check[0] }
+                if (check[0] < 2) {sources.push(nextIndex)}
+                if (check[0] > h - 2) {destinations.push(nextIndex)}
+                nextIndex++
+              }
+
+              if (graph[currentIndex] && edge[check] != currentIndex) {
+                graph[currentIndex].push(edge[check])
+              } else if (edge[check] != currentIndex) {
+                graph[currentIndex] = [edge[check]]
               }
             }
+
+            // if (transitions[check] && typeof(edge[check]) !== "number") {
+            //   if (check[0] > bottomY) {
+            //     bottomY = check[0]
+            //   }
+            //   if (check[0] > topY && check[1] > start[1] + 2) {
+            //     topY = check[0]
+            //   }
+            //   edge[check] = i;
+            //   graphEdges.push([edge[point], i])
+              
+            //   // edgeArray.push(check);
+            //   paths.push(check)
+            //   if (check[0] < 2) {
+            //     sources.push(i)
+            //   }
+            //   if (check[0] > h - 2) {
+            //     destinations.push(i)
+            //   }
+            //   i++;
+              // if (check[0] > h - 2) {
+              //   edgeEnd = true;
+              // } else {
+              //   paths.push(check)
+              // }
+            // }
           }
         }
         if (paths.length == 0) {
           edgeEnd = true;
         } else {
           point = paths.pop();
+          currentIndex = edge[point]
         }
       }
 
-      // if (bottomY > h - 10 || topY < 10) {
-      if (bottomY > h - 4) {
-        return edgeArray
+      if (sources.length > 0 && destinations.length > 0) {
+        let vertexCount = nextIndex;
+        let s = sources[0];
+        let d = destinations[0]
+        
+        let par = Array(vertexCount).fill(-1);
+        let distance = Array(vertexCount).fill(Infinity)
+
+        let q = [];
+        distance[s] = 0;
+        q.push(s);
+
+        while (q.length > 0) {
+          let node = q.shift();
+
+          for (let neighbor of graph[node]) {
+            if (distance[neighbor] === Infinity) {
+              par[neighbor] = node;
+              distance[neighbor] = distance[node] + 1;
+              q.push(neighbor)
+            }
+          }
+        }
+
+        let path = [d];
+        let currentNode = d;
+        while (par[currentNode] !== -1) {
+          path.push(par[currentNode]);
+          currentNode = par[currentNode]
+        }
+        path.push(s)
+
+        let optimalPath = []
+        for (let point of path) {
+          optimalPath.push(o2[point])
+        }
+        return optimalPath
       } else {
         return []
       }
+      
+
+      // if (bottomY > h - 10 || topY < 10) {
+      // if (bottomY > h - 4) {
+      //   return edgeArray
+      // } else {
+      //   return []
+      // }
     }
 
-    AutoRingDetection.prototype.printData = function(data) {
-      let rOut = "";
-      let gOut = "";
-      let bOut = "";
+    AutoRingDetection.prototype.shortestPath = function(graph, S, par, dist) {
+      let q = [];
+      dist[S] = 0;
+      q.push(S);
 
-      let h = data.length;
-      let w = data[0].length;
-      for (let i = 0; i < h; i++) {
-        for (let j = 0; j < w - 1; j++) {
-          let pixel = data[i][j];
-          rOut += pixel[0] + "\t";
-          gOut += pixel[1] + "\t";
-          bOut += pixel[2] + "\t";
+      while (q.length > 0) {
+        let node = q.shift();
+
+        for (let neighbor of graph[node]) {
+          if (dist[neighbor] === Infinity) {
+            par[neighbor] = node;
+            dist[neighbor] = dist[node] + 1;
+            q.push(neighbor)
+          }
         }
-        rOut += data[i][w-1][0] + "\n"
-        gOut += data[i][w-1][1] + "\n"
-        bOut += data[i][w-1][2] + "\n"
       }
-
-      console.log(rOut)
-      console.log(gOut)
-      console.log(bOut)
     }
   }
