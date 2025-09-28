@@ -1031,7 +1031,7 @@ nextHighestPowerOfTwo: function(x) {
 								// setTimeout(pasteTilesToCanvas, 750, i, j, GLLayerObject, resolveCallback) //Create a delay to allow tiles to load (can cause issues)
 								// pasteTilesToCanvas(i, j, GLLayerObject, resolveCallback)
 							})
-							GLLayerObject._map.flyTo(ll, zoom, {animate: true})
+							GLLayerObject._map.flyTo(ll, zoom, {animate: false})
 							return
 						}
 						else {

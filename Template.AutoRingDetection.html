@@ -1,5 +1,6 @@
 <script id="AutoRingDetection-page-1" type="text/x-handlebars-template">
-    <h4 style="font-weight: bold;">Measurement Preferences</p>
+    <h4 style="font-weight: bold; margin: 0 0 5 0;">Boundary Detection Tool</h6>
+    <h6 style="font-weight: bold;">Measurement Preferences</p>
     <div id="auto-ring-detection-measurement-direction-div">
         <h5 style="margin: 0 0 0 0; font-size: 16px; text-decoration: underline;">Measurement Direction</h5>
         <input type="radio" name="auto-ring-detection-measurement-direction" id="auto-ring-detection-forward-radio" checked>
@@ -26,18 +27,19 @@
 </script>
 
 <script id="AutoRingDetection-page-2" type="text/x-handlebars-template">
+    <h4 style="font-weight: bold; margin: 0 0 5 0;">Boundary Detection Tool</h6>
     <div style="justify-content: left; display: flex;">
-        <p style="font-weight: bold; font-size: 14; margin: 0">Toggle Image Settings:</p>
+        <p style="font-weight: bold; font-size: 14; margin: 0">Adjust Image Settings:</p>
         <i class="fa fa-sliders" id="auto-ring-detection-img-adjust-toggle" aria-hidden="true" style="font-size: 20; margin: 1.5 0 0 5;"></i>
     </div>
     
     <div style="justify-content: left; display: flex;">
-        <p style="font-weight: bold; font-size: 14; margin: 0">Directions:</p>
+        <p style="font-weight: bold; font-size: 14; margin: 0">Instructions:</p>
         <i class="fa fa-info-circle" id="auto-ring-detection-directions-toggle" aria-hidden="true" style="font-size: 18; margin: 3 0 0 5;"></i>
     </div>
 
     <div id="auto-ring-detection-directions-text" hidden>
-        <h5 style="margin: 0; font-weight: bold;">1. Adjust Image Settigns</h6>
+        <!-- <h5 style="margin: 0; font-weight: bold;">1. Adjust Image Settigns</h6>
         {{#if subAnnual}}
         <p style="font-size: 13; margin: 0">Either earlywood or latewood segments should be homogenized</p>
         {{else}}
@@ -48,14 +50,15 @@
         <h5 style="margin: 0; font-weight: bold;">3. Place Start & End Points</h6>
         <p style="font-size: 13; margin: 0">Choose the area to seach for boundaries. The line between the start and end points must be orthogonal to boundaries.</p>
         <h5 style="margin: 0; font-weight: bold;">4. Select Area Height</h6>
-        <p style="font-size: 13; margin: 0">Select the tallest area such that the section of each boundary is perpendicular to the main path.</p>
+        <p style="font-size: 13; margin: 0">Select the tallest area such that the section of each boundary is perpendicular to the main path.</p> -->
+        <p>placeholder text</p>
     </div>
 
     <hr style="border-top: 2px solid black; margin: 10 0 10 0">
 
     <div class="auto-ring-detection-input-div">
-        <p style="margin: 0 5 0 0; font-weight: bold; font-size: 14.5px;">Tile Level:</p>
-        <input type="range" id="auto-ring-detection-zoom-input" step=1 style="width: 70%;">
+        <p style="margin: 0 5 0 0; font-weight: bold; font-size: 14.5px;">Resolution Level:</p>
+        <input type="range" id="auto-ring-detection-zoom-input" step=1 style="width: 50%;">
     </div>
 
     <div class="auto-ring-detection-input-div" style="justify-content: left; margin-bottom: 5px;">
@@ -63,22 +66,23 @@
         <input type="checkbox" id="auto-ring-detection-zoom-change-check" style="margin: 0;" checked>
     </div> 
 
-    <label for="auto-ring-detection-height-input" style="margin: 0; font-size: 14.5px;">Collection height (10-800):</label>
+    <label for="auto-ring-detection-height-input" style="margin: 0; font-size: 14.5px;">Box height (10-800):</label>
     <input type="number" id="auto-ring-detection-height-input" min="10" max="800" value="100" style="width: 50px">
 
     <hr style="border-top: 2px solid black; margin: 10 0 10 0">
 
     <!-- <button id="ard-download">Download</button> -->
-    <button id="auto-ring-detection-page-turn-2" class="ard-button" disabled>Save Placements</button>
-    <button id="auto-ring-detection-path-reset" class="ard-button">Reset Placement</button>
+    <button id="auto-ring-detection-page-turn-2" class="ard-button" disabled>Save Box</button>
+    <button id="auto-ring-detection-path-reset" class="ard-button">Reset Box</button>
 
-    <p id="auto-ring-detection-area-error" style="font-weight: bold;" hidden>*Data collection area too large, please adjust settings to reduce area</p>
+    <!-- <p id="auto-ring-detection-area-error" style="font-weight: bold;" hidden>*Data collection area too large, please adjust settings to reduce area</p>
     <p id="auto-ring-detection-load-fix" hidden>**If tiles not loading, try switching to tree layer then back to GL layer</p>
-    <p id="auto-ring-detection-layer-tip">*Only use auto ring detection on "GL Layer", not "Tree Ring" layer</p>
+    <p id="auto-ring-detection-layer-tip">*Only use auto ring detection on "GL Layer", not "Tree Ring" layer</p> -->
 </script>
 
 <script id="AutoRingDetection-page-3" type="text/x-handlebars-template">
-    <h5 style="font-weight: bold; font-size: 16px; margin-top: 0; margin-bottom: 5px;">Adjust Automatic Placements</h4>
+    <h4 style="font-weight: bold; margin: 0 0 5 0;">Boundary Detection Tool</h6>
+    <h6 style="font-weight: bold; font-size: 16px; margin-top: 0; margin-bottom: 5px;">Adjust Automatic Placements</h4>
 
     {{#each detectionMethods}}
     <div class="auto-ring-detection-input-div" style="justify-content: left;">
