@@ -1,5 +1,3 @@
-const { latLng } = require("leaflet");
-
 /**
  * Interface for auto ring detection and related tools
  * @constructor
@@ -28,6 +26,7 @@ function AutoRingDetection(Inte) {
     this.secondLatLng = null;
     this.detectionHeight = 0;
     this.detectionAreaOutline = [L.polyline([])];
+    this.detectionImageSettings = false;
 
     //Expandable list of detection methods and their inputs
     this.detectionMethods = [
@@ -64,7 +63,6 @@ function AutoRingDetection(Inte) {
      * @function
      */
     AutoRingDetection.prototype.enable = function () {
-      // console.log(Inte.treering.baseLayer["GL Layer"])
       this.active = true;
       //Save user's settings before changing to detection settings
       this.userImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON();
@@ -176,8 +174,8 @@ function AutoRingDetection(Inte) {
         //Reset back to saved settings
         Inte.treering.imageAdjustmentInterface.imageAdjustment.loadImageSettings(this.userImageSettings);
       } else {
-        //Set pre-determined image settings (pretty arbitrary)
-        Inte.treering.imageAdjustmentInterface.imageAdjustment.setDetectionSettings();
+        //Set image settings, there are default and user-saved settings
+        Inte.treering.imageAdjustmentInterface.imageAdjustment.setDetectionSettings(this.detectionImageSettings);
       }
     };
 
@@ -278,6 +276,20 @@ function AutoRingDetection(Inte) {
 
             second = e;
             this.secondLatLng = Inte.treering.viewer.mouseEventToLatLng(second);
+            if (this.firstLatLng.lng > this.secondLatLng.lng) {
+              this.secondLatLng = this.firstLatLng;
+              this.firstLatLng = Inte.treering.viewer.mouseEventToLatLng(second);
+
+              this.firstPointMarker.remove();
+              this.firstPointMarker = L.marker(this.firstLatLng, {
+                icon: L.icon({
+                  iconUrl: "../images/AutoStartPoint.png",
+                  iconSize: [24, 24]
+                }),
+                draggable: true
+              }).addTo(Inte.treering.viewer)
+            }
+
             this.secondPointMarker = L.marker(this.secondLatLng, {
               icon: L.icon({
                 iconUrl : "../images/AutoEarlywoodPoint.png",
@@ -391,7 +403,14 @@ function AutoRingDetection(Inte) {
         this.toggleDialogTools(true);
 
         let cssFilters = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCSSAdjustments()
-        // Inte.treering.baseLayer["GL Layer"].getImageData(detectionGeometry.corners, detectionGeometry.angle, zoom, cssFilters)
+
+        //Save the user's view
+        let viewCenter = Inte.treering.baseLayer["GL Layer"]._map.getCenter();
+        let viewZoom = Inte.treering.baseLayer["GL Layer"]._map.getZoom();
+
+        //Save the user's image adjustments, specific to auto detection
+        this.detectionImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON();
+
         let data = await Inte.treering.baseLayer["GL Layer"].getImageData(detectionGeometry.corners, detectionGeometry.angle, zoom, cssFilters);
 
         if (data === "sizeError") {//data returns false if area size too big
@@ -403,7 +422,7 @@ function AutoRingDetection(Inte) {
           $("auto-ring-detection-load-fix").hide()
         }
         else {
-          this.tuneGLLayer(true); //Return to user's saved settings
+          this.tuneGLLayer(true); //Return to user's saved  image settings
 
           //Remove visuals and image adjust dialog
           this.firstPointMarker.remove();
@@ -416,6 +435,7 @@ function AutoRingDetection(Inte) {
           Inte.treering.viewer.getContainer().style.cursor = 'default';
           // let bData = this.medianBlur(data, 3);
           this.adjustAutoPlacements(data, zoom)
+          Inte.treering.baseLayer["GL Layer"]._map.flyTo(viewCenter, viewZoom, {animate: false}) //Return to view settings
           // this.getDist(data)
         }
       });
@@ -677,10 +697,7 @@ function AutoRingDetection(Inte) {
       }
 
       let u = this.getUnitVector(this.firstLatLng, this.secondLatLng, algorithmSettings.zoom);
-      let leftLatLng = this.firstLatLng;
-      if (this.firstLatLng.lng > this.secondLatLng.lng) {
-        leftLatLng = this.secondLatLng;
-      }      
+      let leftLatLng = this.firstLatLng;  
 
       for (let marker of this.markers) {
         marker.remove()
@@ -733,9 +750,6 @@ function AutoRingDetection(Inte) {
      */
     AutoRingDetection.prototype.showAutomaticPlacements = function(u, boundaryPlacements) {
       let leftLatLng = this.firstLatLng;
-      if (this.firstLatLng.lng > this.secondLatLng.lng) {
-        leftLatLng = this.secondLatLng;
-      }
 
       for (let point of boundaryPlacements) {
         let lat = leftLatLng.lat + point[1] * u.y + (-point[0] + this.detectionHeight/2) * u.x;
@@ -756,14 +770,11 @@ function AutoRingDetection(Inte) {
     AutoRingDetection.prototype.placePoints = function(u, boundaryPlacements) {
       Inte.treering.undo.push();
 
-      // if (!Inte.treering.measurementOptions.forwardDirection) {
-      //   boundaryPlacements = boundaryPlacements.reverse()
-      // }
+      if (!Inte.treering.measurementOptions.forwardDirection) {
+        boundaryPlacements = boundaryPlacements.reverse()
+      }
 
       let leftLatLng = this.firstLatLng;
-      if (this.firstLatLng.lng > this.secondLatLng.lng) {
-        leftLatLng = this.secondLatLng;
-      }
 
       let i = 0;
       for (let point of boundaryPlacements) {
@@ -799,12 +810,7 @@ function AutoRingDetection(Inte) {
       let dx = -deltaX/numPixels * latLngPerPixel;
       let dy = deltaY/numPixels * latLngPerPixel;
   
-      if (this.firstLatLng.lng < this.secondLatLng.lng) {
-
-        dx *= -1;
-        dy *= -1;
-      }
-      return {x: dx, y: dy}
+      return {x: -dx, y: -dy}
     }
 
     /**

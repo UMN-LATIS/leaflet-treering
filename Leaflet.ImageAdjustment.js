@@ -98,18 +98,6 @@ function ImageAdjustment(Inte) {
       CSSFilter: false,
       GLName: "edgeDetect3"
     },
-    // {
-    //   filterType: "testBlur",
-    //   defaultValue: "0",
-    //   inputID: "testBlur-input",
-    //   sliderID: "testBlur-slider",
-    //   min: "0",
-    //   max: "5",
-    //   step: "0.1",
-    //   label: "Test Blur (0-1)",
-    //   CSSFilter: false,
-    //   GLName: "gaussianBlur"
-    // },
     ];
 
   // Stores info of whether or not image is inverted
@@ -189,8 +177,6 @@ function ImageAdjustment(Inte) {
         });
       }
     }
-
-    // updateCSSFilterString += "blur(5px)"
 
     document.getElementsByClassName("leaflet-pane")[0].style.filter = updateCSSFilterString;
     Inte.treering.baseLayer['GL Layer'].setKernelsAndStrength(updateGLFilterObjs);
@@ -349,16 +335,20 @@ function ImageAdjustment(Inte) {
     this.updateFilters();
     }
 
-  ImageAdjustment.prototype.setDetectionSettings = function() {
-    let detectionSettings = {
-      brightness: 100,
-      contrast: 350,
-      sharpness: 0,
-      emboss: 0,
-      saturate: 100,
-      edgeDetect: 0.05,
+  ImageAdjustment.prototype.setDetectionSettings = function(savedSettings) {
+    let detectionSettings;
+    if (!savedSettings) {
+      detectionSettings = {
+        brightness: 100,
+        contrast: 250,
+        sharpness: 0,
+        emboss: 0,
+        saturate: 100,
+        edgeDetect: 0.05,
+      }
+    } else {
+      detectionSettings = savedSettings;
     }
-
 
     for (filter of filterList) {
       let sliderID = filter.filterType + "-slider";
@@ -369,7 +359,7 @@ function ImageAdjustment(Inte) {
       slider.value = detectionSettings[filter.filterType]
       input.value = slider.value;
     }
-    this.invert = false
+    this.invert = detectionSettings["invert"]
 
     this.updateFilters();
   }
