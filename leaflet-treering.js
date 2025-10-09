@@ -4808,6 +4808,10 @@ function KeyboardShortCutDialog (Lt) {
        'use': 'Create new measurement path',
       },
       {
+        'key': 'Shift-f',
+        'use': 'Create new auto detection swath'
+      },
+      {
        'key': 'Shift-k',
        'use': 'Resume last measurement path',
       },
