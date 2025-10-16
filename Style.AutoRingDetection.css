@@ -54,3 +54,8 @@
     font-size: 14px;
     margin: 0;
 }
+
+.ard-disabled-div {
+  pointer-events: none; /* Prevents all mouse events */
+  opacity: 0.7; /* Optional: Visually indicate it's disabled */
+}

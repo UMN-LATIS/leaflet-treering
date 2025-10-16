@@ -1,3 +1,93 @@
+<script id="AutoRingDetection-dialog-template" type="text/x-handlebars-template">
+    <h4 style="font-weight: bold; margin: 0 0 5 0;">Boundary Detection Tool</h4>
+
+    <hr style="border-top: 2px solid black; margin: 10 0 10 0">
+
+    <div id="auto-ring-detection-box-placement">
+        <div style="justify-content: left; display: flex;">
+            <p style="font-weight: bold; font-size: 14; margin: 0">Adjust Image Settings:</p>
+            <i class="fa fa-sliders" id="auto-ring-detection-img-adjust-toggle" aria-hidden="true" style="font-size: 20; margin: 1.5 0 0 5;"></i>
+        </div>
+        
+        <div style="justify-content: left; display: flex;">
+            <p style="font-weight: bold; font-size: 14; margin: 0">Instructions:</p>
+            <i class="fa fa-info-circle" id="auto-ring-detection-directions-toggle" aria-hidden="true" style="font-size: 18; margin: 3 0 0 5;"></i>
+        </div>
+
+        <div id="auto-ring-detection-directions-text" hidden>
+            <p>placeholder text</p>
+        </div>
+
+        <div class="auto-ring-detection-input-div">
+            <p style="margin: 0 5 0 0; font-weight: bold; font-size: 14px;">Resolution Level:</p>
+            <input type="range" id="auto-ring-detection-zoom-input" step=1 style="width: 45%;">
+            <p id="auto-ring-detection-zoom-number-display" style="margin: 0 0 0 5; font-size: 12px;">10</p>
+        </div>
+
+        <div class="auto-ring-detection-input-div" style="justify-content: left; margin-bottom: 5px;">
+            <p style="margin: 0 5 0 0;">Zoom on change:</p>
+            <input type="checkbox" id="auto-ring-detection-zoom-change-check" style="margin: 0;" checked>
+        </div> 
+
+
+        <div class="auto-ring-detection-input-div">
+            <label for="auto-ring-detection-height-input" style="margin: 0 0 0 0; font-size: 14px;">Box height (Pixels):</label>
+            <input type="range" id="auto-ring-detection-height-input" min="10" max="500" value="50" step="5" style="width: 40%" disabled>
+            <p id="auto-ring-detection-box-height-number-display" style="margin: 0 0 0 5; font-size: 12px;">50</p>
+        </div>
+
+        <button id="auto-ring-detection-page-turn-2" class="ard-button" disabled>Save Box</button>
+        <button id="auto-ring-detection-path-reset" class="ard-button">Reset Box</button> 
+        <!-- Change reset mechanics -->
+    </div>
+
+    <hr style="border-top: 2px solid black; margin: 10 0 10 0">
+
+    <div id="auto-ring-detection-point-placement"  class="">
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <label style="font-weight: bold; font-size: 14px; margin-top: 0; margin-bottom: 0;">Color Channel:</label>
+            <div>
+                <label for="auto-ring-detection-channel-intensity">RGB</label>
+                <input type="radio" name="ard-color-channel" class="auto-ring-detection-channel-radio" id="auto-ring-detection-channel-intensity" value="intensity">
+            </div>
+
+            <div>
+                <label for="auto-ring-detection-channel-intensity">R</label>
+                <input type="radio" name="ard-color-channel" class="auto-ring-detection-channel-radio" id="auto-ring-detection-channel-r" value="r">
+            </div>
+
+            <div>
+                <label for="auto-ring-detection-channel-intensity">G</label>
+                <input type="radio" name="ard-color-channel" class="auto-ring-detection-channel-radio" id="auto-ring-detection-channel-g" value="g">             
+            </div>
+
+            <div>
+                <label for="auto-ring-detection-channel-intensity">B</label>
+                <input type="radio" name="ard-color-channel" class="auto-ring-detection-channel-radio" id="auto-ring-detection-channel-b" value="b">
+            </div>
+        </div>
+
+
+        <div class="auto-ring-detection-placement-settings-div" style="justify-content: left;">
+            <label for="auto-ring-detection-blur-input" id="auto-ring-detection-blur-input-label">Blur:</label>
+            <input type="range" style="width: 50%; margin-left: 80px;" id="auto-ring-detection-blur-input" min="1" max="5" step="1" value="3">
+        </div>
+
+        <div id="auto-ring-detection-global-thresholding">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <!-- <i class="fa fa-info-circle auto-ring-detection-slider-info-toggle" id="global-threshold-info-toggle" aria-hidden="true" style="font-size: 16; margin: 1.5 0 0 5; padding-top: 2px;"></i> -->
+                <label for="global-threshold" class="ard-options-label">Threshold:</label>
+                <input type="range" min="20" max="500" step="5" value="50" class="auto-ring-detection-algo-settings" id="global-threshold" style="width: 50%; margin-left: 30px;">
+                <p id="global-threshold-text" style="margin: 0;">50</p>
+            </div>
+        </div>
+
+        <button id="auto-ring-detection-page-turn-3" class="ard-button" style="margin-top: 4px;" disabled>Save Automatic Placements</button>
+    </div>
+
+</script>
+
+
 <script id="AutoRingDetection-page-1" type="text/x-handlebars-template">
     <h4 style="font-weight: bold; margin: 0 0 5 0;">Boundary Detection Tool</h6>
     <h6 style="font-weight: bold;">Measurement Preferences</p>

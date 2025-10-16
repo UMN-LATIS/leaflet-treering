@@ -335,20 +335,20 @@ function ImageAdjustment(Inte) {
     this.updateFilters();
     }
 
-  ImageAdjustment.prototype.setDetectionSettings = function(savedSettings) {
-    let detectionSettings;
-    if (!savedSettings) {
-      detectionSettings = {
-        brightness: 100,
-        contrast: 250,
-        sharpness: 0,
-        emboss: 0,
-        saturate: 100,
-        edgeDetect: 0.05,
-      }
-    } else {
-      detectionSettings = savedSettings;
-    }
+  ImageAdjustment.prototype.setDetectionSettings = function(detectionSettings) {
+    // let detectionSettings;
+    // if (!savedSettings) {
+    //   detectionSettings = {
+    //     brightness: 100,
+    //     contrast: 250,
+    //     sharpness: 0,
+    //     emboss: 0,
+    //     saturate: 100,
+    //     edgeDetect: 0.05,
+    //   }
+    // } else {
+    //   detectionSettings = savedSettings;
+    // }
 
     for (filter of filterList) {
       let sliderID = filter.filterType + "-slider";

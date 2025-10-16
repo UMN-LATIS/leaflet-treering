@@ -4520,7 +4520,11 @@ MeasurementOptions.prototype.displayDialog = function () {
     $("#confirm-button").click(() => {
       if (this.userSelectedPref == false) {
         this.userSelectedPref = true;
-        Lt.createPoint.enable();
+        if (Lt.autoRingDetectionInterface.autoRingDetection.active) {
+          Lt.autoRingDetectionInterface.autoRingDetection.main();
+        } else {
+          Lt.createPoint.enable();
+        }
       };
       this.disable();
     });
