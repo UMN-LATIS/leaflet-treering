@@ -18,7 +18,7 @@
 .auto-ring-detection-placement-settings-div {
     display: flex;
     justify-content: space-between;
-    align-items: start;
+    align-items: center;
     height: 22px;
     margin-right: 3px;
     font-size: 14px;
@@ -39,15 +39,6 @@
     font-weight: bold;
     padding-top: 3px;
     padding-bottom: 3px;
-}
-
-#auto-ring-detection-start-year-input {
-    width: 60px;
-}
-
-#auto-ring-detection-start-year-input {
-    font-size: 14px;
-    font-weight: normal;
 }
 
 .ard-options-label {
