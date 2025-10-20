@@ -359,7 +359,7 @@ function ImageAdjustment(Inte) {
       slider.value = detectionSettings[filter.filterType]
       input.value = slider.value;
     }
-    this.invert = detectionSettings["invert"]
+    this.invert = detectionSettings["invert"] ? detectionSettings["invert"] : this.invert;
 
     this.updateFilters();
   }

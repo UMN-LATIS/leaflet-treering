@@ -96,7 +96,9 @@ function AutoRingDetection(Inte) {
       this.startLatLng = null;
       this.endLatLng = null;      
 
-      if (Inte.treering.data.year === 0) {
+      console.log(Inte.treering.data)
+      console.log(Inte.treering.measurementOptions)
+      if (!Inte.treering.measurementOptions.userSelectedPref) {
         Inte.treering.measurementOptions.enable();
       } else {
         this.main();
@@ -177,7 +179,8 @@ function AutoRingDetection(Inte) {
       //Start/end boundary placements
       $(Inte.treering.viewer.getContainer()).on("click", (e) => {
         if (this.active) {
-          if (this.startLatLng === null && e.key !== "Enter") {
+          if (this.startLatLng === null) {
+            console.log('1')
             this.startLatLng = Inte.treering.viewer.mouseEventToLatLng(e); //Save start boundary placement
             this.startMarker = L.marker(this.startLatLng, {
               icon: L.icon({
@@ -200,7 +203,7 @@ function AutoRingDetection(Inte) {
             if (Inte.treering.data.year === 0) { this.getYear(); }
           }
         
-          else if (this.endLatLng === null && e.key !== "Enter") {
+          else if (this.endLatLng === null && e.target === e.currentTarget) {
             this.endLatLng = Inte.treering.viewer.mouseEventToLatLng(e); //Save end boundary placement
             if (this.startLatLng.lng > this.endLatLng.lng) {
               this.endLatLng = this.startLatLng;
@@ -487,7 +490,7 @@ function AutoRingDetection(Inte) {
       $("input[name='ard-color-channel']" + valString).prop("checked", true);
 
       $("#auto-ring-detection-blur-input").val(this.userDetectionSettings.blurRadius);
-      $("#auto-ring-detection-box-height-input-label").html(this.userDetectionSettings.blurRadius);
+        $("#auto-ring-detection-blur-text").html(this.userDetectionSettings.blurRadius);
 
       $("#auto-ring-detection-global-threshold").val(this.userDetectionSettings.threshold);
       $("#auto-ring-detection-global-threshold-text").html(this.userDetectionSettings.threshold);
@@ -566,6 +569,9 @@ function AutoRingDetection(Inte) {
       let transitions = [];
       let trs = {};
       let prevClass, currentClass;
+
+
+      //Horizontal pass
       for (let i = 0; i < h; i++) {
         prevClass = imageData[i][0] <= globalThreshold ? "dark" : "bright"
         for (let j = 1; j < l; j++) {
@@ -579,6 +585,7 @@ function AutoRingDetection(Inte) {
         }
       }
 
+      //Vertical Pass
       for (let j = 0; j < l; j++) {
         prevClass = imageData[0][j] <= globalThreshold ? "dark" : "bright";
         for (let i = 1; i < h; i++) {
@@ -594,12 +601,14 @@ function AutoRingDetection(Inte) {
 
       let boundarySets = [];
       let edges;
+      let trsInEdges = {}
       for (let point of transitions) {
         if (point[0] <= 1 || point[0] >= h - 1) {
           edges = this.traceEdge(trs, point, h)
           if (edges.length > 0) {
             for (let edge of edges) {
               for (let point of edge) {
+                trsInEdges[point] = trs[point];
                 delete trs[point];
               }
             }
@@ -639,7 +648,7 @@ function AutoRingDetection(Inte) {
         this.markers.push(L.polyline(edgeLatLngs, {color: "#029effff"}).addTo(Inte.treering.viewer))
       }
 
-      let boundaryPlacements = [[h/2,0]];
+      let boundaryPlacements = []
       let y = Math.floor(h/2);
       for (let edge of boundarySets) {
         for (let x = 0; x < l; x++) {
@@ -651,7 +660,19 @@ function AutoRingDetection(Inte) {
           }
         }
       }
-      boundaryPlacements.push([h/2,l])
+
+      //If first/last edges are close to manually placed
+      if (boundaryPlacements.length > 0) {
+        if (boundaryPlacements[0][1] > 10) {
+          boundaryPlacements = [[h/2, 0]].concat(boundaryPlacements)
+        }
+
+        if (boundaryPlacements.slice(-1)[0][1] < l - 10) {
+          boundaryPlacements.push([h/2, l])
+        }
+      }
+
+      // boundaryPlacements.push([h/2,l])
       return boundaryPlacements;
     }
     
