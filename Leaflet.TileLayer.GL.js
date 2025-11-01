@@ -858,7 +858,7 @@ nextHighestPowerOfTwo: function(x) {
 		}).setContent(content).addTo(this._map).lock()
 
 		//Set up variables for later
-        // let canvas = document.getElementById("ard-canvas"); //For getting canvas visually
+        // let canvas = document.getElementById("ard-canvas"); //For getting canvas visually if bug testing
 		let canvas = document.createElement("canvas");
 
         let ctx = canvas.getContext("2d");
@@ -922,7 +922,7 @@ nextHighestPowerOfTwo: function(x) {
 		let xMinAABB = xc - halfWidth, xMaxAABB = xc + halfWidth;
 		let yMinAABB = yc - halfHeight, yMaxAABB = yc + halfHeight;
 
-		//Visualize AABB
+		//Visualize AABB (uncomment for bug testing)
 		// let p1 = this._map.unproject(L.point(xMaxAABB, yMaxAABB), zoom);
 		// let p4 = this._map.unproject(L.point(xMinAABB, yMinAABB), zoom);
 		// let bounds = L.latLngBounds(p1, p4)
@@ -945,7 +945,7 @@ nextHighestPowerOfTwo: function(x) {
 		let offset = startPoint.subtract(startTileCoords.scaleBy(tileSize))
 		offset = L.point(offset.x + tileSize.x*(startTileCoords.x - imin), offset.y + tileSize.y*(startTileCoords.y - jmin))
 
-		canvas.height = h + 500;
+		canvas.height = h + 500; //Over estimate canvas size so no tiles are cut off
 		canvas.width = w + 500;
 		
 		//Allow for any area in future; currently just return an error
@@ -1011,7 +1011,7 @@ nextHighestPowerOfTwo: function(x) {
 						coords.z = zoom;
 						let tile = GLLayerObject._tiles[GLLayerObject._tileCoordsToKey(coords)];
 
-						if (!tile || !tile.active) { //assume that all tiles in the AABB exist, infinite recursion if not
+						if (!tile || !tile.active) { //assume that all tiles in the AABB exist, will fail to finish function if not
 							let pt = L.point((i) * tileSize.x, j * tileSize.y);
 							let ll = GLLayerObject._map.unproject(pt, zoom)
 							GLLayerObject._map.on("moveend", function placeholder() {
@@ -1039,12 +1039,12 @@ nextHighestPowerOfTwo: function(x) {
 								ctx.filter = cssFilters
 							}
 							ctx.drawImage(tile.el, (i-imin)*tileSize.x,(j-jmin)*tileSize.y)
-							//visualize tiles on canvas
+							//visualize tiles on canvas (bug testing)
 							// ctx.beginPath()
 							// ctx.rect((i-imin)*tileSize.x, (j-jmin)*tileSize.y,tileSize.x, tileSize.y)
 							// ctx.stroke()				
 							
-							//visualize tiles on map
+							//visualize tiles on map (bug testing)
 							// let q = GLLayerObject._map.unproject(L.point(i*tileSize.x, j*tileSize.y)), r = GLLayerObject._map.unproject(L.point((i+1)*tileSize.x, (j+1)*tileSize.y));
 							// let b = L.latLngBounds(q, r);
 							// L.rectangle(b, {color: "black"}).addTo(GLLayerObject._map)
@@ -1103,22 +1103,6 @@ nextHighestPowerOfTwo: function(x) {
 				colorMatrix[row].push([r,g,b])
 			}
 		}
-
-		// document.getElementById('ard-download').addEventListener('click', function(e) {
-		// 	console.log('listened')
-		// 	// Convert our canvas to a data URL
-		// 	let canvasUrl = canvas.toDataURL();
-		// 	// Create an anchor, and set the href value to our data URL
-		// 	const createEl = document.createElement('a');
-		// 	createEl.href = canvasUrl;
-		
-		// 	// This is the name of our downloaded file
-		// 	createEl.download = "download-this-canvas";
-		
-		// 	// Click the download button, causing a download, and then remove it
-		// 	createEl.click();
-		// 	createEl.remove();
-		// });
 		
 
 		// document.getElementById("ard-canvas").append(canvas)

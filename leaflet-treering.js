@@ -1605,7 +1605,6 @@ function VisualAsset (Lt) {
           color = (annual) ? 'AEW_point' : 'ALW_point'
         }
         else {
-          console.log('check 4', i)
           color = (annual) ? 'light_blue' : 'dark_blue';
         }
       }
@@ -1694,6 +1693,24 @@ function VisualAsset (Lt) {
 
         this.markers[k].setIcon(new MarkerIcon(color, "../"));
         this.markers[k].zero = false;
+      }
+
+      //If an auto-placed point is moved by the user, change it to a manually placed point
+      if (pts[i].auto) {
+        let color;
+        if (subAnnual) {
+          if (pts[i].earlywood) {
+            color = (pts[i].year % 10 == 0) ? 'light_red' : 'light_blue';
+          } 
+          else {
+            color = (pts[i].year % 10 == 0) ? 'dark_red' : 'dark_blue';
+          } 
+        } else if (annual) {
+          color = (pts[i].year % 10 == 0) ? 'dark_red' : 'light_blue';
+        }
+
+        this.markers[i].setIcon(new MarkerIcon(color, "../"));
+        pts[i].auto = false;
       }
 
       Lt.annotationAsset.reloadAssociatedYears();
