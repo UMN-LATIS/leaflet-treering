@@ -43,6 +43,7 @@ function AutoRingDetection(Inte) {
         edgeDetect: 0,
     };
 
+    //Settings used in boundary detection that save between uses
     this.userDetectionSettings = {
       zoom: 0,
       zoomOnChange: true,
@@ -100,7 +101,10 @@ function AutoRingDetection(Inte) {
       });
 
       this.leftLatLng = null;
-      this.rightLatLng = null;      
+      this.rightLatLng = null;
+
+      this.startLatLng = null;
+      this.endLatLng = null;
 
       if (!Inte.treering.measurementOptions.userSelectedPref && Inte.treering.data.year === 0) {
         Inte.treering.measurementOptions.enable();
@@ -109,7 +113,7 @@ function AutoRingDetection(Inte) {
       }
     }
 
-      /**
+    /**
      * Turn off tool, remove/revert visuals
      * @function
      */
@@ -204,7 +208,6 @@ function AutoRingDetection(Inte) {
           $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
         }
 
-
         this.boundaryAdjustmentListeners(blurredData)
       })
     }
@@ -229,6 +232,14 @@ function AutoRingDetection(Inte) {
               }).addTo(Inte.treering.viewer).on("dragend", () => { //Create marker + listener
                 for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
                 this.startLatLng = this.startMarker._latlng; //Get new start latlng
+
+                if (this.startLatLng.lng < this.endLatLng.lng) {
+                  this.leftLatLng = this.startLatLng;
+                  this.rightLatLng = this.endLatLng
+                } else {
+                  this.leftLatLng =this.endLatLng;
+                  this.rightLatLng = this.startLatLng;
+                }
                 corners = this.getDetectionGeometry().corners; //Get new outline
                 this.detectionAreaOutline = this.createOutline(corners);
               });
@@ -250,6 +261,14 @@ function AutoRingDetection(Inte) {
               }).addTo(Inte.treering.viewer).on("dragend", () => { //Create marker + listener
                 for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
                 this.endLatLng = this.endMarker._latlng; //Get new start latlng
+
+                if (this.startLatLng.lng < this.endLatLng.lng) {
+                  this.leftLatLng = this.startLatLng;
+                  this.rightLatLng = this.endLatLng
+                } else {
+                  this.leftLatLng =this.endLatLng;
+                  this.rightLatLng = this.startLatLng;
+                }
                 corners = this.getDetectionGeometry().corners; //Get new outline
                 this.detectionAreaOutline = this.createOutline(corners);
               });
@@ -276,6 +295,14 @@ function AutoRingDetection(Inte) {
               }).addTo(Inte.treering.viewer).on("dragend", () => {
                 for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
                 this.endLatLng = this.endMarker._latlng; //Get new start latlng
+
+                if (this.startLatLng.lng < this.endLatLng.lng) {
+                  this.leftLatLng = this.startLatLng;
+                  this.rightLatLng = this.endLatLng
+                } else {
+                  this.leftLatLng =this.endLatLng;
+                  this.rightLatLng = this.startLatLng;
+                }
                 corners = this.getDetectionGeometry().corners; //Get new outline
                 this.detectionAreaOutline = this.createOutline(corners);
               });
@@ -291,6 +318,14 @@ function AutoRingDetection(Inte) {
               }).addTo(Inte.treering.viewer).on("dragend", () => {
                 for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
                 this.startLatLng = this.startMarker._latlng; //Get new start latlng
+
+                if (this.startLatLng.lng < this.endLatLng.lng) {
+                  this.leftLatLng = this.startLatLng;
+                  this.rightLatLng = this.endLatLng
+                } else {
+                  this.leftLatLng =this.endLatLng;
+                  this.rightLatLng = this.startLatLng;
+                }
                 corners = this.getDetectionGeometry().corners; //Get new outline
                 this.detectionAreaOutline = this.createOutline(corners);
               });
