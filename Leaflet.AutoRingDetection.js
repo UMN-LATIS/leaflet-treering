@@ -32,6 +32,10 @@ function AutoRingDetection(Inte) {
     this.detectionAreaOutline = [L.polyline([])];
     this.markers = [];  //Temporary markers for adjusting automatic detection settings
     this.imgData = [[]];
+    this.u = {};
+    this.boundaryPlacements = [];
+
+    this.listenersOn = false;
 
     this.userImageSettings = {};
     this.detectionImageSettings = {
@@ -71,6 +75,16 @@ function AutoRingDetection(Inte) {
       () => { Inte.treering.disableTools(); this.enable() },
       () => { this.disable() }
     );
+
+    let content = document.getElementById("AutoRingDetection-dialog-template").innerHTML;
+    this.dialog = L.control.dialog({
+      'size': [320, 320],
+      'anchor': [50, 5],
+      'initOpen': false,
+      'position': 'topleft',
+      'minSize': [320, 0],
+      'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
+    }).setContent(content).addTo(Inte.treering.viewer);
   
     /**
      * Turn on tool, either set preferences or outline area to detect from
@@ -78,16 +92,6 @@ function AutoRingDetection(Inte) {
      */
     AutoRingDetection.prototype.enable = function () {
       this.active = true;
-
-      let content = document.getElementById("AutoRingDetection-dialog-template").innerHTML;
-      this.dialog = L.control.dialog({
-        'size': [320, 320],
-        'anchor': [50, 5],
-        'initOpen': false,
-        'position': 'topleft',
-        'minSize': [320, 0],
-        'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
-      }).setContent(content).addTo(Inte.treering.viewer);
 
       //Save user's settings before changing to detection settings
       this.userImageSettings = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCurrentViewJSON();
@@ -106,58 +110,6 @@ function AutoRingDetection(Inte) {
       this.startLatLng = null;
       this.endLatLng = null;
 
-      if (!Inte.treering.measurementOptions.userSelectedPref && Inte.treering.data.year === 0) {
-        Inte.treering.measurementOptions.enable();
-      } else {
-        this.main();
-      }
-    }
-
-    /**
-     * Turn off tool, remove/revert visuals
-     * @function
-     */
-    AutoRingDetection.prototype.disable = function () {
-      if (this.active) {
-        // this.dialog.close()
-        this.dialog.remove();
-  
-        this.active = false;
-        this.btn.state('inactive');
-        Inte.treering.viewer.getContainer().style.cursor = 'default';
-        if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
-          Inte.treering.imageAdjustmentInterface.imageAdjustment.disable()
-        }
-
-        //Remove visuals
-        for (let line of this.detectionAreaOutline) {
-          line.remove()
-        }
-        this.startMarker.remove()
-        this.endMarker.remove()
-        for (let marker of this.markers) { marker.remove()};
-
-        //Remove visuals/event listeners from detectionAreaPlacement
-        if (Inte.treering.mouseLine.active) { Inte.treering.mouseLine.disable(); }
-        $(Inte.treering.viewer.getContainer()).off("click");
-
-        L.DomEvent.off(window, "keydown", this.saveBoxWithEnter, this);
-        if (this.boundEnterHandler) {
-          L.DomEvent.off(window, "keydown", this.boundEnterHandler, this);
-        }
-
-        Inte.treering.imageAdjustmentInterface.imageAdjustment.loadImageSettings(this.userImageSettings);
-      }
-    }
-
-    AutoRingDetection.prototype.main = function() {
-      //Enable style changes for box placement
-      this.dialog.open();
-      $("#auto-ring-detection-box-placement").removeClass("ard-disabled-div")
-      $("#auto-ring-detection-point-placement").addClass("ard-disabled-div");
-      Inte.treering.viewer.getContainer().style.cursor = 'pointer'; //Indicate first point can be placed
-      Inte.treering.imageAdjustmentInterface.imageAdjustment.setDetectionSettings(this.detectionImageSettings);
-
       //Grab user's zoom level if it wasn't previously saved
       if (this.userDetectionSettings.zoom === 0) {
         let zoom = Math.round(Inte.treering.viewer.getZoom());
@@ -168,6 +120,80 @@ function AutoRingDetection(Inte) {
         }
       }
 
+      if ($("#auto-ring-detection-zoom-change-check").is(':checked')) {
+        Inte.treering.viewer.setZoom(this.userDetectionSettings.zoom)
+      }
+
+      //Set bounds for zoom input
+      $("#auto-ring-detection-zoom-input").prop('max', Inte.treering.getMaxNativeZoom())
+      $("#auto-ring-detection-zoom-input").prop('min', Inte.treering.viewer.getMinZoom())
+      $("#auto-ring-detection-zoom-input").prop('value', this.userDetectionSettings.zoom);
+      $("#auto-ring-detection-zoom-number-display").html(this.userDetectionSettings.zoom);
+
+      $("#auto-ring-detection-box-placement").one('finishEnable', () => {
+        this.dialog.open();
+        this.setStartUpStyle();
+
+        //For some reason, map container event is removed when 
+        this.handleEndpointPlacement(); //Handles click events to place start and end points
+
+        if (!this.listenersOn) { //Only need to enable event listens once
+          this.enableEventListeners();
+        }
+      })
+      
+      if (!Inte.treering.measurementOptions.userSelectedPref && Inte.treering.data.year === 0) {
+        Inte.treering.measurementOptions.enable();
+      } else {
+        $("#auto-ring-detection-box-placement").trigger('finishEnable');
+      }
+    }
+
+    /**
+     * Turn off tool, remove/revert visuals
+     * @function
+     */
+    AutoRingDetection.prototype.disable = function () {
+      if (this.active) {
+        this.dialog.close();
+        // this.dialog.remove();
+  
+        this.active = false;
+        this.btn.state('inactive');
+        Inte.treering.viewer.getContainer().style.cursor = 'default';
+        if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
+          Inte.treering.imageAdjustmentInterface.imageAdjustment.disable()
+        }
+
+        //Remove visuals
+        for (let line of this.detectionAreaOutline) { line.remove() }
+        this.startMarker.remove()
+        this.endMarker.remove()
+        for (let marker of this.markers) { marker.remove()};
+
+        //Remove visuals/event listeners from detectionAreaPlacement
+        if (Inte.treering.mouseLine.active) { Inte.treering.mouseLine.disable(); }
+
+        Inte.treering.imageAdjustmentInterface.imageAdjustment.loadImageSettings(this.userImageSettings);
+
+      }
+    }
+
+    /**
+     * Enables event listeners, including click events, dialog inputs, keydown, etc.
+     * @function
+     */
+    AutoRingDetection.prototype.enableEventListeners = function() {
+      this.listenersOn = true;
+      /**
+       * Event listeners for box placement and dialog startup
+      */
+
+      //Listen for dialog closure
+      $(this.dialog._closeNode).on("click", () => {
+        this.disable();
+      })
+    
       //Instructions dialog open/close
       $("#auto-ring-detection-directions-toggle").on("click", () => {
         if ($("#auto-ring-detection-directions-text").is(":hidden")) {
@@ -185,175 +211,6 @@ function AutoRingDetection(Inte) {
       $("#auto-ring-detection-reset").on("click", () => {
         this.disable();
         this.enable();
-      })
-
-      //Listen for dialog closure
-      $(this.dialog._closeNode).on("click", () => {
-        this.disable();
-      })
-
-      this.setInputValues();
-
-      //Create detection area
-      this.detectionAreaListeners();
-
-      $("#auto-ring-detection-point-placement").on("select", () => {
-        let u = this.getUnitVector();
-        let blurredData = this.medianBlur(this.imgData, this.userDetectionSettings.blurRadius, this.userDetectionSettings.colorChannel);
-        let boundarySets = this.findBoundaryEdges(blurredData)
-        let boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
-        this.showAutomaticPlacements(u, boundarySets, boundaryPlacements);
-
-        if (boundaryPlacements && boundaryPlacements.length > 0) {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
-          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
-        } else {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
-          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
-        }
-
-        this.boundaryAdjustmentListeners(blurredData)
-      })
-    }
-
-    AutoRingDetection.prototype.detectionAreaListeners = function () {
-      //Start/end boundary placements
-      let clickCount = 0
-      $(Inte.treering.viewer.getContainer()).on("click", (e) => {
-        if (e.isTrigger) { return } //Prevent JQuerry issue when starting new measurement
-        if (this.active) {
-          clickCount++;
-          if (clickCount == 1) {
-            //If forward, first point placed is the start point
-            if (Inte.treering.measurementOptions.forwardDirection) {
-              this.startLatLng = Inte.treering.viewer.mouseEventToLatLng(e); //Save start boundary placement
-              let color = 'start';
-
-              this.startMarker = L.marker(this.startLatLng, {
-                icon: new MarkerIcon(color, Inte.treering.basePath),
-                draggable: true
-              }).addTo(Inte.treering.viewer).on("dragend", () => { //Create marker + listener
-                for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
-                this.startLatLng = this.startMarker._latlng; //Get new start latlng
-
-                if (this.startLatLng.lng < this.endLatLng.lng) {
-                  this.leftLatLng = this.startLatLng;
-                  this.rightLatLng = this.endLatLng
-                } else {
-                  this.leftLatLng =this.endLatLng;
-                  this.rightLatLng = this.startLatLng;
-                }
-                corners = this.getDetectionGeometry().corners; //Get new outline
-                this.detectionAreaOutline = this.createOutline(corners);
-              });
-
-              //Turn on mouseLine (line from point to cursor)
-              Inte.treering.mouseLine.enable();
-              Inte.treering.mouseLine.from(this.startLatLng);
-
-              //If year not yet chosen by user, use popup to get it
-              if (Inte.treering.data.year === 0) { this.getYear(true); }
-            }  else {
-              this.endLatLng = Inte.treering.viewer.mouseEventToLatLng(e); //Save start boundary placement
-              let color = 'dark_blue'
-
-              this.endMarker = L.marker(this.endLatLng, {
-                icon: new MarkerIcon(color, Inte.treering.basePath),
-                draggable: true
-              }).addTo(Inte.treering.viewer).on("dragend", () => { //Create marker + listener
-                for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
-                this.endLatLng = this.endMarker._latlng; //Get new start latlng
-
-                if (this.startLatLng.lng < this.endLatLng.lng) {
-                  this.leftLatLng = this.startLatLng;
-                  this.rightLatLng = this.endLatLng
-                } else {
-                  this.leftLatLng =this.endLatLng;
-                  this.rightLatLng = this.startLatLng;
-                }
-                corners = this.getDetectionGeometry().corners; //Get new outline
-                this.detectionAreaOutline = this.createOutline(corners);
-              });
-
-              //Turn on mouseLine (line from point to cursor)
-              Inte.treering.mouseLine.enable();
-              Inte.treering.mouseLine.from(this.endLatLng);
-
-              //If year not yet chosen by user, use popup to get it
-              if (Inte.treering.data.year === 0) { this.getYear(false); }
-            }
-          }
-        
-          else if (clickCount == 2) {
-            if (Inte.treering.measurementOptions.forwardDirection) {
-              this.endLatLng = Inte.treering.viewer.mouseEventToLatLng(e); //Save end boundary placement
-              let color = 'dark_blue';
-
-              this.endMarker = L.marker(this.endLatLng, {
-                icon: new MarkerIcon(color, Inte.treering.basePath),
-                draggable: true
-              }).addTo(Inte.treering.viewer).on("dragend", () => {
-                for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
-                this.endLatLng = this.endMarker._latlng; //Get new start latlng
-
-                if (this.startLatLng.lng < this.endLatLng.lng) {
-                  this.leftLatLng = this.startLatLng;
-                  this.rightLatLng = this.endLatLng
-                } else {
-                  this.leftLatLng =this.endLatLng;
-                  this.rightLatLng = this.startLatLng;
-                }
-                corners = this.getDetectionGeometry().corners; //Get new outline
-                this.detectionAreaOutline = this.createOutline(corners);
-              });
-            } else {
-              this.startLatLng = Inte.treering.viewer.mouseEventToLatLng(e); //Save end boundary placement
-              let color = 'start'
-
-              this.startMarker = L.marker(this.startLatLng, {
-                icon: new MarkerIcon(color, Inte.treering.basePath),
-                draggable: true
-              }).addTo(Inte.treering.viewer).on("dragend", () => {
-                for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
-                this.startLatLng = this.startMarker._latlng; //Get new start latlng
-
-                if (this.startLatLng.lng < this.endLatLng.lng) {
-                  this.leftLatLng = this.startLatLng;
-                  this.rightLatLng = this.endLatLng
-                } else {
-                  this.leftLatLng =this.endLatLng;
-                  this.rightLatLng = this.startLatLng;
-                }
-                corners = this.getDetectionGeometry().corners; //Get new outline
-                this.detectionAreaOutline = this.createOutline(corners);
-              });
-            }
-
-            //Assign left & right end points
-            if (this.startLatLng.lng < this.endLatLng.lng) {
-              this.leftLatLng = this.startLatLng;
-              this.rightLatLng = this.endLatLng
-            } else {
-              this.leftLatLng =this.endLatLng;
-              this.rightLatLng = this.startLatLng;
-            }
-
-            $("#auto-ring-detection-height-input").prop("disabled", false); //Allow height input to be changed
-
-            //Allow box settings to be saved (requires first and second point to be placed)
-            $("#auto-ring-detection-area-save-button").prop("disabled", false);
-            $("#auto-ring-detection-area-save-button").addClass("ard-button-ready");
-            
-            Inte.treering.viewer.getContainer().style.cursor = 'default'; //Change cursor back to default
-            Inte.treering.mouseLine.disable();
-
-            //Create new outline if necessary points exist
-            if (this.leftLatLng && this.rightLatLng) {
-              corners = this.getDetectionGeometry().corners;
-              this.detectionAreaOutline = this.createOutline(corners);          
-            }
-          }
-        }
       });
 
       $("#auto-ring-detection-height-input").on("change", () => {
@@ -403,21 +260,235 @@ function AutoRingDetection(Inte) {
       //Save area button
       $("#auto-ring-detection-area-save-button").on("click", () => {this.saveDetectionBox()});
 
-      L.DomEvent.on(window, "keydown", this.saveBoxWithEnter, this)
+
+      /**
+       * Event listeners for thresholding and point placement
+       */
+      let blurredData;
+      let boundarySets = [];
+      $("#auto-ring-detection-point-placement").on("select", () => {
+        this.u = this.getUnitVector();
+        blurredData = this.medianBlur(this.imgData, this.userDetectionSettings.blurRadius, this.userDetectionSettings.colorChannel);
+        boundarySets = this.findBoundaryEdges(blurredData);
+        this.boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
+        this.showAutomaticPlacements(this.u, boundarySets, this.boundaryPlacements);
+
+        if (this.boundaryPlacements && this.boundaryPlacements.length > 0) {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
+          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
+        } else {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
+          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
+        }
+      })
+
+      $("#auto-ring-detection-blur-input").on("change", () => {
+        this.userDetectionSettings.blurRadius = $("#auto-ring-detection-blur-input").val();
+        $("#auto-ring-detection-blur-text").html(this.userDetectionSettings.blurRadius);
+        
+        blurredData = this.medianBlur(this.imgData, this.userDetectionSettings.blurRadius, this.userDetectionSettings.colorChannel);
+
+        boundarySets = this.findBoundaryEdges(blurredData);
+        this.boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
+        this.showAutomaticPlacements(this.u, boundarySets, this.boundaryPlacements);
+
+        if (this.boundaryPlacements && this.boundaryPlacements.length > 0) {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
+          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
+        } else {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
+          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
+        }
+      })
+
+      $("#auto-ring-detection-global-threshold").on("change", () => {
+        this.userDetectionSettings.threshold = $("#auto-ring-detection-global-threshold").val();
+        $("#auto-ring-detection-global-threshold-text").html(this.userDetectionSettings.threshold);
+
+        boundarySets = this.findBoundaryEdges(blurredData);
+        this.boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
+        this.showAutomaticPlacements(this.u, boundarySets, this.boundaryPlacements);
+
+        if (this.boundaryPlacements && this.boundaryPlacements.length > 0) {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
+          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
+        } else {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
+          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
+        }
+      })
+
+      $(".auto-ring-detection-channel-radio").on("change", (e) => {
+        let colorChannel = e.currentTarget.value;
+        this.userDetectionSettings.colorChannel = colorChannel;
+
+        blurredData = this.medianBlur(this.imgData, this.userDetectionSettings.blurRadius, colorChannel);
+
+        boundarySets = this.findBoundaryEdges(blurredData);
+        this.boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
+        this.showAutomaticPlacements(this.u, boundarySets, this.boundaryPlacements);
+
+        if (this.boundaryPlacements && this.boundaryPlacements.length > 0) {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
+          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
+        } else {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
+          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
+        }
+      })
+
+      $("#auto-ring-detection-point-color").on("change", () => {
+        this.userDetectionSettings.markerColor = $("#auto-ring-detection-point-color").val()
+
+        this.showAutomaticPlacements(this.u, boundarySets, this.boundaryPlacements);
+        if (this.boundaryPlacements.length > 0) {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
+          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
+        } else {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
+          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
+        }
+      })
+
+      $("#auto-ring-detection-edge-color").on("change", () => {
+        this.userDetectionSettings.edgeColor = $("#auto-ring-detection-edge-color").val()
+
+        this.showAutomaticPlacements(this.u, boundarySets, this.boundaryPlacements);
+        if (this.boundaryPlacements.length > 0) {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
+          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
+        } else {
+          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
+          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
+        }
+      })
+
+      //Save placements button listener
+      $("#auto-ring-detection-placements-save-button").on("click", () => {
+        this.placePoints();
+      });
+
+      //Save Boundary Points
+      L.DomEvent.on(window, "keydown", e => {
+        console.log(Boolean(Object.keys($("#year_input")).length === 0)) //figure how to stop enter if and only if year input avtive
+        if (this.active && e.key === "Enter" && Object.keys($("#year_input")).length === 0) {
+          if ($("#auto-ring-detection-point-placement").hasClass("ard-disabled-div")) {
+            this.saveDetectionBox();
+          } else {
+            this.placePoints();
+          }
+        }
+      });
+    }
+
+    AutoRingDetection.prototype.setStartUpStyle = function () {
+      $("#auto-ring-detection-box-placement").removeClass("ard-disabled-div")
+      $("#auto-ring-detection-point-placement").addClass("ard-disabled-div");
+      Inte.treering.viewer.getContainer().style.cursor = 'pointer'; //Indicate first point can be placed
+      Inte.treering.imageAdjustmentInterface.imageAdjustment.setDetectionSettings(this.detectionImageSettings);
+      $("#auto-ring-detection-height-input").prop("disabled", true)
+    }
+
+    AutoRingDetection.prototype.handleEndpointPlacement = function () {
+      let forward = Inte.treering.measurementOptions.forwardDirection;
+      let firstPoint = forward ? this.startLatLng : this.endLatLng;
+      let secondPoint = forward ? this.endLatLng : this.startLatLng;
+      let firstMarker = L.marker();
+      let secondMarker = L.marker();
+
+      $(Inte.treering.viewer.getContainer()).on("click", (e) => {
+        if (!firstPoint) {
+          firstPoint = Inte.treering.viewer.mouseEventToLatLng(e);
+          let color = forward ? 'start' : 'dark_blue';
+
+          firstMarker = L.marker(firstPoint, {
+            icon: new MarkerIcon(color, Inte.treering.basePath),
+            draggable: true
+          }).addTo(Inte.treering.viewer);
+
+          firstMarker.on("dragend", () => {
+            for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
+            firstPoint = firstMarker._latlng;
+            this.assignPoints(forward, firstPoint, secondPoint, firstMarker, secondMarker);
+
+            corners = this.getDetectionGeometry().corners; //Get new outline
+            this.detectionAreaOutline = this.createOutline(corners);
+          });
+
+          //Turn on mouseLine (line from point to cursor)
+          Inte.treering.mouseLine.enable();
+          Inte.treering.mouseLine.from(firstPoint);
+
+        } else if (!secondPoint) {
+          secondPoint = Inte.treering.viewer.mouseEventToLatLng(e);
+          let color = forward ? 'dark_blue' : 'start';
+
+          secondMarker = L.marker(secondPoint, {
+            icon: new MarkerIcon(color, Inte.treering.basePath),
+            draggable: true
+          }).addTo(Inte.treering.viewer);
+
+          secondMarker.on("dragend", () => {
+            for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
+            secondPoint = secondMarker._latlng;
+            this.assignPoints(forward, firstPoint, secondPoint, firstMarker, secondMarker);
+
+            corners = this.getDetectionGeometry().corners; //Get new outline
+            this.detectionAreaOutline = this.createOutline(corners);
+          });
+
+          this.assignPoints(forward, firstPoint, secondPoint, firstMarker, secondMarker);
+          
+          //If year not yet chosen by user, use popup to get it
+          if (Inte.treering.data.year === 0) { this.getYear(forward); }
+
+          $("#auto-ring-detection-height-input").prop("disabled", false); //Allow height input to be changed
+
+          //Allow box settings to be saved (requires first and second point to be placed)
+          $("#auto-ring-detection-area-save-button").prop("disabled", false);
+          $("#auto-ring-detection-area-save-button").addClass("ard-button-ready");
+          
+          Inte.treering.viewer.getContainer().style.cursor = 'default'; //Change cursor back to default
+          Inte.treering.mouseLine.disable();
+
+          //Create new outline if necessary points exist
+          if (this.leftLatLng && this.rightLatLng) {
+            corners = this.getDetectionGeometry().corners;
+            this.detectionAreaOutline = this.createOutline(corners);          
+          }
+        }
+      })
+    }
+
+    AutoRingDetection.prototype.assignPoints = function(forward, firstPoint, secondPoint, firstMarker, secondMarker) {
+      this.startLatLng = forward ? firstPoint : secondPoint;
+      this.endLatLng = forward ? secondPoint : firstPoint;
+      this.startMarker = forward ? firstMarker: secondMarker;
+      this.endMarker = forward ? secondMarker : firstMarker;
+
+      //Assign left & right end points
+      if (firstPoint.lng < secondPoint.lng) {
+        this.leftLatLng = firstPoint;
+        this.rightLatLng = secondPoint;
+      } else {
+        this.leftLatLng = secondPoint;
+        this.rightLatLng = firstPoint;
+      }
     }
 
     AutoRingDetection.prototype.saveDetectionBox = async function () {
       if (this.leftLatLng && this.rightLatLng) {
         let detectionGeometry = this.getDetectionGeometry();
 
-        //Hide image adjust for less clutter
+        //Hide image adjust dialog
         Inte.treering.imageAdjustmentInterface.imageAdjustment.disable();
         this.dialog._container.style.left = "5px"
 
         //Disable buttons
         $("#auto-ring-detection-box-placement").addClass("ard-disabled-div");
 
-        let cssFilters = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCSSAdjustments(); //Get CSS image filters for data collection
+        //Get CSS image filters for data collection
+        let cssFilters = Inte.treering.imageAdjustmentInterface.imageAdjustment.getCSSAdjustments();
 
         //Save the user's view
         let viewCenter = Inte.treering.baseLayer["GL Layer"]._map.getCenter();
@@ -446,146 +517,9 @@ function AutoRingDetection(Inte) {
           Inte.treering.baseLayer["GL Layer"]._map.flyTo(viewCenter, viewZoom, {animate: false}) //Return to view settings
 
           //Move on to adjust point placements
-        L.DomEvent.off(window, "keydown", this.saveBoxWithEnter, this)
           $("#auto-ring-detection-point-placement").removeClass("ard-disabled-div");
           $("#auto-ring-detection-point-placement").trigger("select");
         }
-      }
-    }
-
-    AutoRingDetection.prototype.saveBoxWithEnter = function(e) {
-      if (e.key === "Enter") {
-        this.saveDetectionBox();
-      }
-    }
-
-    AutoRingDetection.prototype.boundaryAdjustmentListeners = function (blurredData) {
-      let u = this.getUnitVector();
-      let boundarySets = this.findBoundaryEdges(blurredData);
-      let boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
-      this.boundEnterHandler = this.savePlacementsWithEnter.bind(null, boundaryPlacements, u, this)
-      
-      $("#auto-ring-detection-blur-input").on("change", () => {
-        for (pointMarker of this.markers) { pointMarker.remove() };
-        this.markers = [];
-
-        this.userDetectionSettings.blurRadius = $("#auto-ring-detection-blur-input").val();
-        $("#auto-ring-detection-blur-text").html(this.userDetectionSettings.blurRadius);
-        
-        blurredData = this.medianBlur(this.imgData, this.userDetectionSettings.blurRadius, this.userDetectionSettings.colorChannel);
-
-        boundarySets = this.findBoundaryEdges(blurredData)
-        boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
-        this.showAutomaticPlacements(u, boundarySets, boundaryPlacements);
-
-        if (boundaryPlacements && boundaryPlacements.length > 0) {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
-          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
-        } else {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
-          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
-        }
-      })
-
-      $("#auto-ring-detection-global-threshold").on("change", () => {
-        this.userDetectionSettings.threshold = $("#auto-ring-detection-global-threshold").val();
-        $("#auto-ring-detection-global-threshold-text").html(this.userDetectionSettings.threshold);
-
-        boundarySets = this.findBoundaryEdges(blurredData)
-        boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
-        this.showAutomaticPlacements(u, boundarySets, boundaryPlacements);
-
-        if (boundaryPlacements && boundaryPlacements.length > 0) {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
-          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
-        } else {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
-          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
-        }
-      })
-
-      $(".auto-ring-detection-channel-radio").on("change", (e) => {
-        let colorChannel = e.currentTarget.value;
-        this.userDetectionSettings.colorChannel = colorChannel;
-
-        blurredData = this.medianBlur(this.imgData, this.userDetectionSettings.blurRadius, colorChannel);
-
-        boundarySets = this.findBoundaryEdges(blurredData)
-        boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
-        this.showAutomaticPlacements(u, boundarySets, boundaryPlacements);
-
-        if (boundaryPlacements && boundaryPlacements.length > 0) {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
-          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
-        } else {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
-          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
-        }
-      })
-
-      $("#auto-ring-detection-point-color").on("change", () => {
-        this.userDetectionSettings.markerColor = $("#auto-ring-detection-point-color").val()
-
-        if (!boundaryPlacements) {
-          boundarySets = this.findBoundaryEdges(blurredData)
-          boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
-        }
-
-        this.showAutomaticPlacements(u, boundarySets, boundaryPlacements);
-        if (boundaryPlacements.length > 0) {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
-          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
-        } else {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
-          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
-        }
-      })
-
-      $("#auto-ring-detection-edge-color").on("change", () => {
-        this.userDetectionSettings.edgeColor = $("#auto-ring-detection-edge-color").val()
-
-        if (!boundaryPlacements) {
-          boundarySets = this.findBoundaryEdges(blurredData)
-          boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
-        }
-
-        this.showAutomaticPlacements(u, boundarySets, boundaryPlacements);
-        if (boundaryPlacements.length > 0) {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", false)
-          $("#auto-ring-detection-placements-save-button").addClass("ard-button-ready");
-        } else {
-          $("#auto-ring-detection-placements-save-button").prop("disabled", true);
-          $("#auto-ring-detection-placements-save-button").removeClass("ard-button-ready");
-        }
-      })
-
-      //Save placements button listener
-      $("#auto-ring-detection-placements-save-button").on("click", () => {
-        for (let line of this.detectionAreaOutline) {
-          line.remove();
-        }
-        for (let marker of this.markers) {
-          marker.remove()
-        }
-
-        boundarySets = this.findBoundaryEdges(blurredData)
-        boundaryPlacements = this.findBoundaryPoints(blurredData, boundarySets);
-        this.placePoints(u, boundaryPlacements);
-      });
-
-      L.DomEvent.on(window, "keydown", this.boundEnterHandler, this)
-    }
-
-    AutoRingDetection.prototype.savePlacementsWithEnter = function(boundaryPlacements, u, autoRingDetectionObject, e) {
-      if (e.key === "Enter" && boundaryPlacements.length > 0) {
-          for (let line of autoRingDetectionObject.detectionAreaOutline) {
-            line.remove();
-          }
-          for (let marker of autoRingDetectionObject.markers) {
-            marker.remove()
-          }
-
-          autoRingDetectionObject.placePoints(u, boundaryPlacements);
       }
     }
 
@@ -607,7 +541,7 @@ function AutoRingDetection(Inte) {
             yearSaved = true;
             if (Inte.treering.measurementOptions.forwardDirection == false && Inte.treering.measurementOptions.subAnnual == false) {
               // must subtract one so newest measurment is consistent with measuring forward value
-              // issue only applies to meauring backwwards annually
+              // issue only applies to meauring backwards annually
               Inte.treering.data.year = parseInt(document.getElementById('year_input').value) - 1;
             } else  {
               Inte.treering.data.year = parseInt(document.getElementById('year_input').value);
@@ -615,30 +549,6 @@ function AutoRingDetection(Inte) {
             popup.remove(Inte.treering.viewer);
           }
       });
-    }
-
-    AutoRingDetection.prototype.setInputValues = function() {
-      $("#auto-ring-detection-zoom-input").prop('max', Inte.treering.getMaxNativeZoom())
-      $("#auto-ring-detection-zoom-input").prop('min', Inte.treering.viewer.getMinZoom())
-      $("#auto-ring-detection-zoom-input").prop('value', this.userDetectionSettings.zoom);
-      $("#auto-ring-detection-zoom-number-display").html(this.userDetectionSettings.zoom);
-
-      //Change visuals of settings if they had been previously changed
-      $("#auto-ring-detection-zoom-change-check").prop("checked", this.userDetectionSettings.zoomOnChange);
-      $("#auto-ring-detection-height-input").val(this.userDetectionSettings.boxHeight); //Might need to add .trigger("change")
-      $("#auto-ring-detection-box-height-number-display").html(this.userDetectionSettings.boxHeight);
-
-      let valString = "[value='" + this.userDetectionSettings.colorChannel + "']";
-      $("input[name='ard-color-channel']" + valString).prop("checked", true);
-
-      $("#auto-ring-detection-blur-input").val(this.userDetectionSettings.blurRadius);
-        $("#auto-ring-detection-blur-text").html(this.userDetectionSettings.blurRadius);
-
-      $("#auto-ring-detection-global-threshold").val(this.userDetectionSettings.threshold);
-      $("#auto-ring-detection-global-threshold-text").html(this.userDetectionSettings.threshold);
-
-      $("#auto-ring-detection-point-color").val(this.userDetectionSettings.markerColor);
-      $("#auto-ring-detection-edge-color").val(this.userDetectionSettings.edgeColor);
     }
 
     /**
@@ -832,7 +742,13 @@ function AutoRingDetection(Inte) {
      * @param {Object} u - unit vector of form {x: x, y: y} that represents direction from start to end point
      * @param {Array} boundaryPlacements - Boundary placements from detection algorithms
      */
-    AutoRingDetection.prototype.placePoints = function(u, boundaryPlacements) {
+    AutoRingDetection.prototype.placePoints = function() {
+      for (let line of this.detectionAreaOutline) {line.remove();}
+      for (let marker of this.markers) { marker.remove(); }
+
+      let u = this.u;
+      let boundaryPlacements = this.boundaryPlacements;
+
       let h = this.userDetectionSettings.boxHeight;
       let l = this.imgData[0].length;
       Inte.treering.undo.push();
@@ -840,7 +756,6 @@ function AutoRingDetection(Inte) {
       if (Inte.treering.measurementOptions.forwardDirection != (this.startLatLng == this.leftLatLng)) {
         boundaryPlacements = boundaryPlacements.reverse()
       }
-
 
       let leftLatLng = this.leftLatLng;
 
