@@ -167,8 +167,8 @@ function AutoRingDetection(Inte) {
 
         //Remove visuals
         for (let line of this.detectionAreaOutline) { line.remove() }
-        this.startMarker.remove()
-        this.endMarker.remove()
+        this.startMarker.remove();
+        this.endMarker.remove();
         for (let marker of this.markers) { marker.remove()};
 
         //Remove visuals/event listeners from detectionAreaPlacement
@@ -176,6 +176,7 @@ function AutoRingDetection(Inte) {
 
         Inte.treering.imageAdjustmentInterface.imageAdjustment.loadImageSettings(this.userImageSettings);
 
+        $(Inte.treering.viewer.getContainer()).off('click')
       }
     }
 
@@ -209,8 +210,22 @@ function AutoRingDetection(Inte) {
 
       //Reset button
       $("#auto-ring-detection-reset").on("click", () => {
-        this.disable();
-        this.enable();
+        if ($("#auto-ring-detection-point-placement").hasClass("ard-disabled-div")) {
+          this.disable();
+          this.enable();
+        } else {
+          $("#auto-ring-detection-point-placement").addClass("ard-disabled-div");
+          $("#auto-ring-detection-box-placement").removeClass("ard-disabled-div");
+
+          this.startMarker.addTo(Inte.treering.viewer);
+          this.endMarker.addTo(Inte.treering.viewer);
+
+          // corners = this.getDetectionGeometry().corners;
+          // this.detectionAreaOutline = this.createOutline(corners);
+
+          for (let marker of this.markers) {marker.remove()};
+          this.markers = [];
+        }
       });
 
       $("#auto-ring-detection-height-input").on("change", () => {
@@ -370,7 +385,6 @@ function AutoRingDetection(Inte) {
 
       //Save Boundary Points
       L.DomEvent.on(window, "keydown", e => {
-        console.log(Boolean(Object.keys($("#year_input")).length === 0)) //figure how to stop enter if and only if year input avtive
         if (this.active && e.key === "Enter" && Object.keys($("#year_input")).length === 0) {
           if ($("#auto-ring-detection-point-placement").hasClass("ard-disabled-div")) {
             this.saveDetectionBox();
@@ -405,6 +419,7 @@ function AutoRingDetection(Inte) {
             icon: new MarkerIcon(color, Inte.treering.basePath),
             draggable: true
           }).addTo(Inte.treering.viewer);
+          this.startMarker = firstMarker; //Store (possibly incorrectly) to remove later if needed
 
           firstMarker.on("dragend", () => {
             for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
