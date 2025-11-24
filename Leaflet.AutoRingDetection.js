@@ -53,7 +53,7 @@ function AutoRingDetection(Inte) {
       zoomOnChange: true,
       boxHeight: 50,
       colorChannel: "intensity",
-      blurRadius: 3,
+      blurRadius: 1,
       threshold: 80,
       markerColor: "#dfe615",
       edgeColor: "#02bfd1"
@@ -78,7 +78,7 @@ function AutoRingDetection(Inte) {
 
     let content = document.getElementById("AutoRingDetection-dialog-template").innerHTML;
     this.dialog = L.control.dialog({
-      'size': [320, 320],
+      'size': [525, 200],
       'anchor': [50, 5],
       'initOpen': false,
       'position': 'topleft',
@@ -118,10 +118,6 @@ function AutoRingDetection(Inte) {
         } else {
           this.userDetectionSettings.zoom = zoom;
         }
-      }
-
-      if ($("#auto-ring-detection-zoom-change-check").is(':checked')) {
-        Inte.treering.viewer.setZoom(this.userDetectionSettings.zoom)
       }
 
       //Set bounds for zoom input
@@ -208,6 +204,22 @@ function AutoRingDetection(Inte) {
         }
       });
 
+      //Quick open image adjustments
+      $("#auto-ring-detection-img-adjust-toggle").on("click", () => {
+        let leftPosition = parseInt(this.dialog._container.style.left.slice(0,-2));
+        if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
+          Inte.treering.imageAdjustmentInterface.imageAdjustment.disable();
+          if (leftPosition <= 325) {
+            this.dialog._container.style.left = "5px"
+          }
+        } else {
+          Inte.treering.imageAdjustmentInterface.imageAdjustment.enable();
+          if (leftPosition <= 325) {
+            this.dialog._container.style.left = "300px"
+          }
+        }
+      });
+
       //Reset button
       $("#auto-ring-detection-reset").on("click", () => {
         if ($("#auto-ring-detection-point-placement").hasClass("ard-disabled-div")) {
@@ -219,9 +231,6 @@ function AutoRingDetection(Inte) {
 
           this.startMarker.addTo(Inte.treering.viewer);
           this.endMarker.addTo(Inte.treering.viewer);
-
-          // corners = this.getDetectionGeometry().corners;
-          // this.detectionAreaOutline = this.createOutline(corners);
 
           for (let marker of this.markers) {marker.remove()};
           this.markers = [];
@@ -261,20 +270,26 @@ function AutoRingDetection(Inte) {
         }
       });
 
-      //Quick open image adjustments
-      $("#auto-ring-detection-img-adjust-toggle").on("click", () => {
-        if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
-          Inte.treering.imageAdjustmentInterface.imageAdjustment.disable();
-          this.dialog._container.style.left = "5px"
-        } else {
-          Inte.treering.imageAdjustmentInterface.imageAdjustment.enable();
-          this.dialog._container.style.left = "300px"          
+      //If user zooms while zoom checkbox is checked, set slider to match zoom
+      L.DomEvent.on(map, "zoomend", () => {
+        if ($("#auto-ring-detection-zoom-change-check").is(":checked")) {
+          let newZoom = Math.floor(Inte.treering.viewer.getZoom())
+          $("#auto-ring-detection-zoom-input").val(newZoom);
+          $("#auto-ring-detection-zoom-number-display").html(newZoom);
+          this.userDetectionSettings.zoom = newZoom;
         }
+      })
+
+      //Make sure zoom and resolution match when checked
+      $("#auto-ring-detection-zoom-change-check").on("change", e => {
+        let newZoom = Math.floor(Inte.treering.viewer.getZoom())
+        $("#auto-ring-detection-zoom-input").val(newZoom);
+        $("#auto-ring-detection-zoom-number-display").html(newZoom);
+        this.userDetectionSettings.zoom = newZoom;
       });
       
       //Save area button
       $("#auto-ring-detection-area-save-button").on("click", () => {this.saveDetectionBox()});
-
 
       /**
        * Event listeners for thresholding and point placement
@@ -497,7 +512,7 @@ function AutoRingDetection(Inte) {
 
         //Hide image adjust dialog
         Inte.treering.imageAdjustmentInterface.imageAdjustment.disable();
-        this.dialog._container.style.left = "5px"
+        // this.dialog._container.style.left = "5px"
 
         //Disable buttons
         $("#auto-ring-detection-box-placement").addClass("ard-disabled-div");
