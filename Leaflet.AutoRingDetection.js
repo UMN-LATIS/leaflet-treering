@@ -51,7 +51,7 @@ function AutoRingDetection(Inte) {
     this.userDetectionSettings = {
       zoom: 0,
       zoomOnChange: true,
-      boxHeight: 50,
+      boxHeight: 30,
       colorChannel: "intensity",
       blurRadius: 1,
       threshold: 80,
@@ -82,8 +82,8 @@ function AutoRingDetection(Inte) {
       'anchor': [50, 5],
       'initOpen': false,
       'position': 'topleft',
-      'minSize': [320, 0],
-      'maxSize': [Number.MAX_SAFE_INTEGER, Number.MAX_SAFE_INTEGER]
+      'minSize': [475, 75],
+      'maxSize': [Number.MAX_SAFE_INTEGER, 225]
     }).setContent(content).addTo(Inte.treering.viewer);
   
     /**
@@ -110,9 +110,9 @@ function AutoRingDetection(Inte) {
       this.startLatLng = null;
       this.endLatLng = null;
 
-      //Grab user's zoom level if it wasn't previously saved
-      if (this.userDetectionSettings.zoom === 0) {
-        let zoom = Math.round(Inte.treering.viewer.getZoom());
+      //Grab user's zoom level if checkbox checked
+      if ($("#auto-ring-detection-zoom-change-check").is(":checked")) {
+        let zoom = Math.floor(Inte.treering.viewer.getZoom());
         if (zoom > Inte.treering.getMaxNativeZoom()) {
           this.userDetectionSettings.zoom = Inte.treering.getMaxNativeZoom();
         } else {
@@ -207,6 +207,7 @@ function AutoRingDetection(Inte) {
       //Quick open image adjustments
       $("#auto-ring-detection-img-adjust-toggle").on("click", () => {
         let leftPosition = parseInt(this.dialog._container.style.left.slice(0,-2));
+
         if (Inte.treering.imageAdjustmentInterface.imageAdjustment.open) {
           Inte.treering.imageAdjustmentInterface.imageAdjustment.disable();
           if (leftPosition <= 325) {
@@ -242,9 +243,10 @@ function AutoRingDetection(Inte) {
 
         let input = document.getElementById("auto-ring-detection-height-input"); //Grab input, min, max
         let val = parseInt(input.value);
+        let boxHeight = this.calcBoxHeight(val);
 
         //Save height
-        this.userDetectionSettings.boxHeight = val;
+        this.userDetectionSettings.boxHeight = boxHeight;
 
         //Update display
         $("#auto-ring-detection-box-height-number-display").html(this.userDetectionSettings.boxHeight)
@@ -257,7 +259,7 @@ function AutoRingDetection(Inte) {
       });
       
       $("#auto-ring-detection-zoom-input").on('change', () => {
-        this.userDetectionSettings.zoom = Math.round($("#auto-ring-detection-zoom-input").val());
+        this.userDetectionSettings.zoom = Math.floor($("#auto-ring-detection-zoom-input").val());
         $("#auto-ring-detection-zoom-number-display").html(this.userDetectionSettings.zoom);
         if ($("#auto-ring-detection-zoom-change-check").is(':checked')) { Inte.treering.viewer.setZoom(this.userDetectionSettings.zoom) } //Zoom if user has setting toggled
 
@@ -272,11 +274,19 @@ function AutoRingDetection(Inte) {
 
       //If user zooms while zoom checkbox is checked, set slider to match zoom
       L.DomEvent.on(map, "zoomend", () => {
-        if ($("#auto-ring-detection-zoom-change-check").is(":checked")) {
+        if (this.active && $("#auto-ring-detection-zoom-change-check").is(":checked") && $("#auto-ring-detection-point-placement").hasClass("ard-disabled-div")) {
           let newZoom = Math.floor(Inte.treering.viewer.getZoom())
           $("#auto-ring-detection-zoom-input").val(newZoom);
           $("#auto-ring-detection-zoom-number-display").html(newZoom);
           this.userDetectionSettings.zoom = newZoom;
+
+          for (let line of this.detectionAreaOutline) { line.remove() }; //Remove outline
+
+          //Create new outline if necessary points exist
+          if (this.leftLatLng && this.rightLatLng) {
+            corners = this.getDetectionGeometry().corners;
+            this.detectionAreaOutline = this.createOutline(corners);          
+          }
         }
       })
 
@@ -1012,5 +1022,19 @@ function AutoRingDetection(Inte) {
           }
         }
       }
+    }
+
+    AutoRingDetection.prototype.calcBoxHeight = function(x) {
+      let boxHeight = 10;
+      if (x <= 9) {
+        boxHeight = 10 + 5 * x;
+      } else if (x <= 14) {
+        boxHeight = 50 + 10 * (x - 9);
+      } else if (x <= 18) {
+        boxHeight = 100 + 25 * (x - 14);
+      } else {
+        boxHeight = 200 + 50 * (x - 18);
+      }
+      return boxHeight;
     }
   }

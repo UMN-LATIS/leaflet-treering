@@ -864,7 +864,6 @@ nextHighestPowerOfTwo: function(x) {
         let ctx = canvas.getContext("2d");
 		let tileSize = this.getTileSize();
 		if (Math.floor(this._map.getZoom()) !== zoom) {
-			console.log('inexact')
 			this._map.setZoom(zoom, {animate: false}) //Zoom in to desired level so projections work properly
 		}
 
@@ -1075,7 +1074,6 @@ nextHighestPowerOfTwo: function(x) {
 
 		// this._map.flyTo(ll, zoom, {animate: false});
 		if (Math.floor(this._map.getZoom()) !== zoom) {
-			console.log('flyin')
 			this._map.flyTo(ll, zoom, {animate: false}); //Zoom in to desired level so projections work properly
 		} else {
 			this._map.flyTo(ll, this._map.getZoom(), {animate: false});
