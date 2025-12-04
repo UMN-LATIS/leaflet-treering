@@ -667,7 +667,7 @@ function AutoRingDetection(Inte) {
           currentClass = intensity <= globalThreshold ? "dark" : "bright";
           if (currentClass !== prevClass) {
             transitions.push([i, j]);
-            trs[[i,j]] = currentClass
+            trs[[i,j]] = currentClass;
           }
           prevClass = currentClass;
         }
@@ -681,7 +681,7 @@ function AutoRingDetection(Inte) {
           currentClass = intensity <= globalThreshold ? "dark" : "bright";
           if (currentClass !== prevClass && !transitions.includes([i,j])) {
             transitions.push([i, j]);
-            trs[[i,j]] = currentClass
+            trs[[i,j]] = currentClass;
           }
           prevClass = currentClass;
         }
@@ -702,7 +702,6 @@ function AutoRingDetection(Inte) {
             }
             boundarySets = boundarySets.concat(edges);
           }
-          
         }
       }
 
@@ -710,19 +709,64 @@ function AutoRingDetection(Inte) {
     }
 
     AutoRingDetection.prototype.findBoundaryPoints = function(imageData, boundarySets) {
-    let l = imageData[0].length;
-    let h = imageData.length;
+      let l = imageData[0].length;
+      let h = imageData.length;
+      let globalThreshold = this.userDetectionSettings.threshold;
 
-    let boundaryPlacements = []
+      let boundaryPlacements = [];
       let y = Math.floor(h/2);
-      for (let edge of boundarySets) {
-        for (let x = 0; x < l; x++) {
-          for (let point of edge) {
-            if (x == point[1] && y == point[0]) {
-              boundaryPlacements.push([y,x]);
-              x = l;
+      if (Inte.treering.measurementOptions.subAnnual) {
+        for (let edge of boundarySets) {
+          for (let x = 0; x < l; x++) {
+            for (let point of edge) {
+              if (x == point[1] && y == point[0]) {
+                boundaryPlacements.push([y,x]);
+                x = l;
+              }
             }
           }
+        }
+
+
+      } 
+      
+      else {
+        let invertActive = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert;
+        let annualEdges = [];
+
+        for (let edge of boundarySets) {
+          let intersects = [];
+          for (let point of edge) {
+            if (y == point[0]) {
+              intersects.push(point);
+            }
+          }
+
+          let leftMostIntersect = [y, Infinity]
+          let rightMostIntersect = [y, 0];
+          for (let point of intersects) {
+            if (point[1] <= leftMostIntersect[1]) {
+              leftMostIntersect = point;
+            }
+
+            //Left and right intersects can be the same point
+            if (point[1] >= rightMostIntersect[1]) {
+              rightMostIntersect = point;
+            }
+          }
+
+          let leftDark = imageData[leftMostIntersect[0]][leftMostIntersect[1] - 1] <= globalThreshold ? true : false;
+          let rightDark = imageData[rightMostIntersect[0]][rightMostIntersect[1] + 1] <= globalThreshold ? true : false;
+          
+          //Annual point exist when transitioning from dark to light (non invert), opposite for invert
+          if ((leftDark != rightDark) && (rightDark == invertActive)) {
+            boundaryPlacements.push(leftMostIntersect);
+            annualEdges.push(edge)
+          }
+        }
+        boundarySets.splice(0, boundarySets.length + 1);
+        for (edge of annualEdges) {
+          boundarySets.splice(-1, 0, edge)
         }
       }
 
@@ -1032,8 +1076,10 @@ function AutoRingDetection(Inte) {
         boxHeight = 50 + 10 * (x - 9);
       } else if (x <= 18) {
         boxHeight = 100 + 25 * (x - 14);
-      } else {
+      } else if (x <= 22) {
         boxHeight = 200 + 50 * (x - 18);
+      } else {
+        boxHeight = 400 + 100 * (x - 22);
       }
       return boxHeight;
     }
