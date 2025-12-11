@@ -1,4 +1,19 @@
 /**
+ * Automatic Boundary Detection Sequence:
+ * 1. User determines area of core to be analyzed for boundary detection
+ *  - User can adjust start/end points, resolution level, height, and image adjustments
+ * 2. Data Collection (function lives in TileLayer.GL.js)
+ * 3. Boundary Detection Algorithm
+ *  - a. Median blur is applied to specified color channel of image data
+ *  - b. Threshold is applied to processed data for binary classification of pixels
+ *  - c. Image data is swept to find transitions in binary values
+ *  - d. Sets of transitions that can be traced from the top to the bottom of the detection area are stored as boundaries
+ *  - e. Points within boundaries that lie at center of detection area are saved as boundary points (one per boundary)
+ * 4. Boundary points saved, essentially the same as manual poits with different markers
+ */
+
+
+/**
  * Interface for auto ring detection and related tools
  * @constructor
  * 
@@ -177,7 +192,7 @@ function AutoRingDetection(Inte) {
     }
 
     /**
-     * Enables event listeners, including click events, dialog inputs, keydown, etc.
+     * Enables event listeners, including click events, dialog inputs, keydowns, etc.
      * @function
      */
     AutoRingDetection.prototype.enableEventListeners = function() {
@@ -438,6 +453,10 @@ function AutoRingDetection(Inte) {
       });
     }
 
+    /**
+     * Makes necessary style changes and saves relevant data upon enabling
+     * @function
+     */
     AutoRingDetection.prototype.setStartUpStyle = function () {
       $("#auto-ring-detection-box-placement").removeClass("ard-disabled-div")
       $("#auto-ring-detection-point-placement").addClass("ard-disabled-div");
@@ -446,6 +465,10 @@ function AutoRingDetection(Inte) {
       $("#auto-ring-detection-height-input").prop("disabled", true)
     }
 
+    /**
+     * Handles logic of placing endpoints of detection area
+     * @function
+     */
     AutoRingDetection.prototype.handleEndpointPlacement = function () {
       let forward = Inte.treering.measurementOptions.forwardDirection;
       let firstPoint = forward ? this.startLatLng : this.endLatLng;
@@ -462,7 +485,7 @@ function AutoRingDetection(Inte) {
             icon: new MarkerIcon(color, Inte.treering.basePath),
             draggable: true
           }).addTo(Inte.treering.viewer);
-          this.startMarker = firstMarker; //Store (possibly incorrectly) to remove later if needed
+          this.startMarker = firstMarker; //Store (possibly incorrectly) first point to remove later if needed
 
           firstMarker.on("dragend", () => {
             for (let line of this.detectionAreaOutline) { line.remove() } //Remove outline
@@ -518,6 +541,14 @@ function AutoRingDetection(Inte) {
       })
     }
 
+    /**
+     * Assigns user-placed latlng points to variables used in later functions
+     * @param {boolean} forward Whether or not user is measuring forward or backward
+     * @param {object} firstPoint First point (latlng) user placed, which isn't always the start point of measurements
+     * @param {object} secondPoint Second point user placed
+     * @param {object} firstMarker Marker associated with first point
+     * @param {object} secondMarker Marker associated with second point
+     */
     AutoRingDetection.prototype.assignPoints = function(forward, firstPoint, secondPoint, firstMarker, secondMarker) {
       this.startLatLng = forward ? firstPoint : secondPoint;
       this.endLatLng = forward ? secondPoint : firstPoint;
@@ -534,6 +565,10 @@ function AutoRingDetection(Inte) {
       }
     }
 
+    /**
+     * Triggers subsequent steps upon user saving detection box (data collection, boundary placement algorithm)
+     * @function
+     */
     AutoRingDetection.prototype.saveDetectionBox = async function () {
       if (this.leftLatLng && this.rightLatLng) {
         let detectionGeometry = this.getDetectionGeometry();
@@ -581,6 +616,10 @@ function AutoRingDetection(Inte) {
       }
     }
 
+    /**
+     * Used to get start year if using auto ring detection on a core with no data
+     * @param {boolean} forward Whether or not user is measuring forwards or backwards in time
+     */
     AutoRingDetection.prototype.getYear = function(forward) {
       let placedPoint = forward ? this.startLatLng : this.endLatLng
       let content = document.getElementById("start-point-popup-template").innerHTML;
@@ -666,6 +705,12 @@ function AutoRingDetection(Inte) {
       return {corners: corners, angle: -angle}
     }
 
+    /**
+     * Performs horizontal and vertical sweeps of image data to find transitions in threshold value, then traces boundaries
+     * 
+     * @param {Array} imageData - 2D array of processed image data, where each point [i,j] represents the r, g, b, or intensity of the corresponding pixel
+     * @returns boundarySets - Array of boundaries, which are arrays of points that make up the boundaries
+     */
     AutoRingDetection.prototype.findBoundaryEdges = function(imageData) {
       let globalThreshold = this.userDetectionSettings.threshold;
 
@@ -726,6 +771,12 @@ function AutoRingDetection(Inte) {
       return boundarySets
     }
 
+    /**
+     * Uses boundaries to identify specific points for each boundary that lie in center of data collection box
+     * @param {Array} imageData 
+     * @param {Array} boundarySets 
+     * @returns boundaryPlacements - Array of boundary points
+     */
     AutoRingDetection.prototype.findBoundaryPoints = function(imageData, boundarySets) {
       let l = imageData[0].length;
       let h = imageData.length;
@@ -758,10 +809,11 @@ function AutoRingDetection(Inte) {
     }
     
     /**
-     * Places temporary markers representing boundary placements
+     * Places temporary markers representing boundaries and boundary points
      * @function
      * 
      * @param {Object} u - unit vector of form {x: x, y: y} that represents direction from start to end point
+     * @param {Array} boundarySets - Set of identified boundaries
      * @param {Array} boundaryPlacements - Boundary placements from detection algorithms
      */
     AutoRingDetection.prototype.showAutomaticPlacements = function(u, boundarySets, boundaryPlacements) {
@@ -793,11 +845,8 @@ function AutoRingDetection(Inte) {
     }
 
     /**
-     * Saves boundary placements and saves accompanying data
+     * Saves boundary placements (similar to manual placements) and accompanying data
      * @function
-     * 
-     * @param {Object} u - unit vector of form {x: x, y: y} that represents direction from start to end point
-     * @param {Array} boundaryPlacements - Boundary placements from detection algorithms
      */
     AutoRingDetection.prototype.placePoints = function() {
       for (let line of this.detectionAreaOutline) {line.remove();}
@@ -839,7 +888,6 @@ function AutoRingDetection(Inte) {
      * Calculates the unit vector with direction from first to second point
      * @function
      * 
-     * @param {Integer} zoom - Zoom level from user input
      * @returns object in the form {x: int, y: int} representing the unit vector with the direction from the first to the second placed point
      */
     AutoRingDetection.prototype.getUnitVector = function() {
@@ -864,6 +912,7 @@ function AutoRingDetection(Inte) {
      * 
      * @param {Array} data - Matrix of pixels in image, with each pixel represented by (r, g, b)
      * @param {Integer} r - Blur radius for kernel size, r=1 uses a 3x3 kernel, r=2 uses 5x5 etc.
+     * @param {string} channel - Indicates which color channnel to use for blurring and user in later functions 
      * @returns 2D matrix of pixels, represented by avg rgb after blurring
      */
     AutoRingDetection.prototype.medianBlur = function (data, r, channel) {
@@ -885,7 +934,6 @@ function AutoRingDetection(Inte) {
           let pixel = data[i][j];
           let value = selectedChannel[0] * pixel [0] + selectedChannel[1] * pixel[1] + selectedChannel[2] * pixel[2];
           row.push((value))
-          // row.push(pixel[0])
         }
         intensityData.push(row)
       }
@@ -925,6 +973,15 @@ function AutoRingDetection(Inte) {
       return blurData
     }
 
+    /**
+     * Finds all points that connect to the start point, then finds the shortest path to the bottom of detection box
+     * see https://www.geeksforgeeks.org/dsa/shortest-path-unweighted-graph/
+     * 
+     * @param {object} transitions - Object with transition points [i,j] as keys (values not used tbh, just easier than using an array)
+     * @param {Array} start - Starting point [i,j] of search
+     * @param {integer} h - height of detection box
+     * @returns [optPath] - Array of points [i,j] that make up most efficient path from top to bottom
+     */
     AutoRingDetection.prototype.traceEdge = function(transitions, start, h) {
       let edge = {};
       edge[start] = 0;
@@ -1029,6 +1086,13 @@ function AutoRingDetection(Inte) {
       }
     }
 
+    /**
+     * see https://www.geeksforgeeks.org/dsa/shortest-path-unweighted-graph/
+     * @param {*} graph 
+     * @param {*} S 
+     * @param {*} par 
+     * @param {*} dist 
+     */
     AutoRingDetection.prototype.shortestPath = function(graph, S, par, dist) {
       let q = [];
       dist[S] = 0;
@@ -1047,6 +1111,12 @@ function AutoRingDetection(Inte) {
       }
     }
 
+    /**
+     * Uses piecewise linear function to transform slider input to box height, resulting in a slider with
+     * small step sizes near bottom of slider and large step sizer near top
+     * @param {integer} x - Input of box height slider
+     * @returns boxHeight - Height of box to be used later
+     */
     AutoRingDetection.prototype.calcBoxHeight = function(x) {
       let boxHeight = 10;
       if (x <= 9) {
