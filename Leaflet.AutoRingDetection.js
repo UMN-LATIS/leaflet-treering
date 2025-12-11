@@ -50,7 +50,7 @@ function AutoRingDetection(Inte) {
     //Settings used in boundary detection that save between uses
     this.userDetectionSettings = {
       zoom: 0,
-      zoomOnChange: true,
+      zoomOnChange: false,
       boxHeight: 30,
       colorChannel: "intensity",
       blurRadius: 1,
@@ -111,7 +111,7 @@ function AutoRingDetection(Inte) {
       this.endLatLng = null;
 
       //Grab user's zoom level if checkbox checked
-      if ($("#auto-ring-detection-zoom-change-check").is(":checked")) {
+      if ($("#auto-ring-detection-zoom-change-check").is(":checked") || this.userDetectionSettings.zoom == 0) {
         let zoom = Math.floor(Inte.treering.viewer.getZoom());
         if (zoom > Inte.treering.getMaxNativeZoom()) {
           this.userDetectionSettings.zoom = Inte.treering.getMaxNativeZoom();
@@ -230,6 +230,22 @@ function AutoRingDetection(Inte) {
           $("#auto-ring-detection-point-placement").addClass("ard-disabled-div");
           $("#auto-ring-detection-box-placement").removeClass("ard-disabled-div");
 
+          if ($("#auto-ring-detection-zoom-change-check").is(":checked")) {
+            let newZoom = Math.floor(Inte.treering.viewer.getZoom());
+            newZoom = newZoom > Inte.treering.getMaxNativeZoom() ? Inte.treering.getMaxNativeZoom() : newZoom;
+            $("#auto-ring-detection-zoom-input").val(newZoom);
+            $("#auto-ring-detection-zoom-number-display").html(newZoom);
+            this.userDetectionSettings.zoom = newZoom;
+
+            for (let line of this.detectionAreaOutline) { line.remove() }; //Remove outline
+
+            //Create new outline if necessary points exist
+            if (this.leftLatLng && this.rightLatLng) {
+              corners = this.getDetectionGeometry().corners;
+              this.detectionAreaOutline = this.createOutline(corners);          
+            }
+          }
+
           this.startMarker.addTo(Inte.treering.viewer);
           this.endMarker.addTo(Inte.treering.viewer);
 
@@ -275,10 +291,12 @@ function AutoRingDetection(Inte) {
       //If user zooms while zoom checkbox is checked, set slider to match zoom
       L.DomEvent.on(map, "zoomend", () => {
         if (this.active && $("#auto-ring-detection-zoom-change-check").is(":checked") && $("#auto-ring-detection-point-placement").hasClass("ard-disabled-div")) {
-          let newZoom = Math.floor(Inte.treering.viewer.getZoom())
+          let newZoom = Math.floor(Inte.treering.viewer.getZoom());
+          newZoom = newZoom > Inte.treering.getMaxNativeZoom() ? Inte.treering.getMaxNativeZoom() : newZoom;
           $("#auto-ring-detection-zoom-input").val(newZoom);
           $("#auto-ring-detection-zoom-number-display").html(newZoom);
           this.userDetectionSettings.zoom = newZoom;
+          // console.log(Inte.treering.getMaxNativeZoom())
 
           for (let line of this.detectionAreaOutline) { line.remove() }; //Remove outline
 
@@ -711,62 +729,17 @@ function AutoRingDetection(Inte) {
     AutoRingDetection.prototype.findBoundaryPoints = function(imageData, boundarySets) {
       let l = imageData[0].length;
       let h = imageData.length;
-      let globalThreshold = this.userDetectionSettings.threshold;
 
       let boundaryPlacements = [];
       let y = Math.floor(h/2);
-      if (Inte.treering.measurementOptions.subAnnual) {
-        for (let edge of boundarySets) {
-          for (let x = 0; x < l; x++) {
-            for (let point of edge) {
-              if (x == point[1] && y == point[0]) {
-                boundaryPlacements.push([y,x]);
-                x = l;
-              }
-            }
+
+      for (let edge of boundarySets) {
+        for (let i = 0; i < edge.length; i++) {
+          let point = edge[i];
+          if (point[0] == y) {
+            boundaryPlacements.push(point)
+            i = edge.length;
           }
-        }
-
-
-      } 
-      
-      else {
-        let invertActive = Inte.treering.imageAdjustmentInterface.imageAdjustment.invert;
-        let annualEdges = [];
-
-        for (let edge of boundarySets) {
-          let intersects = [];
-          for (let point of edge) {
-            if (y == point[0]) {
-              intersects.push(point);
-            }
-          }
-
-          let leftMostIntersect = [y, Infinity]
-          let rightMostIntersect = [y, 0];
-          for (let point of intersects) {
-            if (point[1] <= leftMostIntersect[1]) {
-              leftMostIntersect = point;
-            }
-
-            //Left and right intersects can be the same point
-            if (point[1] >= rightMostIntersect[1]) {
-              rightMostIntersect = point;
-            }
-          }
-
-          let leftDark = imageData[leftMostIntersect[0]][leftMostIntersect[1] - 1] <= globalThreshold ? true : false;
-          let rightDark = imageData[rightMostIntersect[0]][rightMostIntersect[1] + 1] <= globalThreshold ? true : false;
-          
-          //Annual point exist when transitioning from dark to light (non invert), opposite for invert
-          if ((leftDark != rightDark) && (rightDark == invertActive)) {
-            boundaryPlacements.push(leftMostIntersect);
-            annualEdges.push(edge)
-          }
-        }
-        boundarySets.splice(0, boundarySets.length + 1);
-        for (edge of annualEdges) {
-          boundarySets.splice(-1, 0, edge)
         }
       }
 
@@ -1000,53 +973,59 @@ function AutoRingDetection(Inte) {
         }
       }
 
-      let search = false;
-      let s,d;
-      // let split = false;
 
       if (sources.length > 0 && destinations.length > 0) {
-        search = true;
-        s = sources[0];
-        d = destinations[0];
-      }
-
-      if (search) {
-        let vertexCount = nextIndex;
+        let optDist = Infinity;
+        let optPath = [[]];
+        for (let s of sources) {
+          for (let d of destinations) {
+            optDist = Infinity;
+            optPath = [[]];
+            if (s && d) {
+              let vertexCount = nextIndex;
         
-        let par = Array(vertexCount).fill(-1);
-        let distance = Array(vertexCount).fill(Infinity)
+              let par = Array(vertexCount).fill(-1);
+              let distance = Array(vertexCount).fill(Infinity)
 
-        let q = [];
-        distance[s] = 0;
-        q.push(s);
+              let q = [];
+              distance[s] = 0;
+              q.push(s);
 
-        while (q.length > 0) {
-          let node = q.shift();
+              while (q.length > 0) {
+                let node = q.shift();
 
-          for (let neighbor of graph[node]) {
-            if (distance[neighbor] === Infinity) {
-              par[neighbor] = node;
-              distance[neighbor] = distance[node] + 1;
-              q.push(neighbor)
+                for (let neighbor of graph[node]) {
+                  if (distance[neighbor] === Infinity) {
+                    par[neighbor] = node;
+                    distance[neighbor] = distance[node] + 1;
+                    q.push(neighbor);
+                  }
+                }
+              }
+
+              let path = [d];
+              let currentNode = d;
+              while (par[currentNode] !== -1) {
+                path.push(par[currentNode]);
+                currentNode = par[currentNode]
+              }
+              path.push(s)
+
+              let localOptPath = []
+              for (let point of path) {
+                localOptPath.push(o2[point])
+              }
+              // return [optimalPath]
+              if (localOptPath.length < optDist) {
+                optDist = localOptPath.length;
+                optPath = localOptPath;
+              }
             }
           }
         }
-
-        let path = [d];
-        let currentNode = d;
-        while (par[currentNode] !== -1) {
-          path.push(par[currentNode]);
-          currentNode = par[currentNode]
-        }
-        path.push(s)
-
-        let optimalPath = []
-        for (let point of path) {
-          optimalPath.push(o2[point])
-        }
-        return [optimalPath]
+        return [optPath];
       } else {
-        return [[]]
+        return [[]];
       }
     }
 
